@@ -36,7 +36,15 @@ Property mutations are synchronized immediately after purchases, auctions,
 upgrades, free-house prizes, power-ups, trades, mortgages, and unmortgages.
 Godot compares the new tile payload with the previous one to animate owner
 flags, miniature houses and hotels, complete-district trim, mortgage shutters,
-and short status callouts without duplicating any game rules.
+and short status callouts without duplicating any game rules. Unchanged
+development nodes are retained between syncs to avoid rebuilding detailed city
+models on mobile GPUs.
+
+New York properties additionally select one of 14 location-aware development
+families from the stable logical tile index. This keeps Chinatown, Central
+Park, Times Square, Wall Street, Brooklyn Bridge, Flatiron, Hudson Yards,
+Empire State, the Statue of Liberty, and neighborhood architecture attached to
+the correct gameplay space even when the visible location label is localized.
 
 The Flutter splash, main menu, and two-step setup flow use a lightweight
 Flutter-drawn miniature city backdrop rather than a second Godot surface. This

@@ -2730,13 +2730,19 @@ func _refresh_tile_development(
 	index: int,
 	previous_payload: Dictionary = {}
 ) -> void:
+	var payload := _visual_tile_payload(index)
 	var previous := tile.get_node_or_null("DevelopmentMarkers")
+	if (
+		previous != null
+		and not previous_payload.is_empty()
+		and not _development_payload_changed(payload, previous_payload)
+	):
+		return
 	if previous != null:
 		previous.name = "RetiringDevelopmentMarkers"
 		tile.remove_child(previous)
 		previous.queue_free()
 
-	var payload := _visual_tile_payload(index)
 	var owner_color := _color_from_argb(
 		int(payload.get("ownerColorArgb", 0)),
 		Color.TRANSPARENT
@@ -2755,11 +2761,22 @@ func _refresh_tile_development(
 	if has_complete_group and owner_color.a > 0.0:
 		_create_complete_group_trim(markers, owner_color)
 
-	if upgrade_level >= 5:
-		_create_mini_hotel(markers, owner_color)
-	elif upgrade_level > 0:
-		for house_index in mini(upgrade_level, 4):
-			_create_mini_house(markers, house_index, owner_color)
+	if upgrade_level > 0:
+		if (
+			current_board_id == "usa_new_york"
+			and str(payload.get("type", "")) == "property"
+		):
+			_create_nyc_property_development(
+				markers,
+				payload,
+				upgrade_level,
+				owner_color
+			)
+		elif upgrade_level >= 5:
+			_create_mini_hotel(markers, owner_color)
+		else:
+			for house_index in mini(upgrade_level, 4):
+				_create_mini_house(markers, house_index, owner_color)
 
 	if is_mortgaged:
 		_create_mortgage_shutter(markers)
@@ -2787,6 +2804,25 @@ func _refresh_tile_development(
 		change_label = "REOPENED"
 	if not change_label.is_empty():
 		_animate_property_change(markers, change_label, change_color)
+
+
+func _development_payload_changed(
+	payload: Dictionary,
+	previous_payload: Dictionary
+) -> bool:
+	return (
+		str(payload.get("type", "")) != str(previous_payload.get("type", ""))
+		or int(payload.get("logicalIndex", -1))
+			!= int(previous_payload.get("logicalIndex", -1))
+		or int(payload.get("ownerColorArgb", 0))
+			!= int(previous_payload.get("ownerColorArgb", 0))
+		or int(payload.get("upgradeLevel", 0))
+			!= int(previous_payload.get("upgradeLevel", 0))
+		or bool(payload.get("isMortgaged", false))
+			!= bool(previous_payload.get("isMortgaged", false))
+		or bool(payload.get("hasCompleteColorGroup", false))
+			!= bool(previous_payload.get("hasCompleteColorGroup", false))
+	)
 
 
 func _create_owner_flag(markers: Node3D, owner_color: Color) -> void:
@@ -2893,6 +2929,939 @@ func _create_mini_hotel(markers: Node3D, owner_color: Color) -> void:
 		Vector3(0.1, 0.73, -0.28),
 		_material(owner_color, 0.22, 0.3, owner_color, 0.8)
 	)
+
+
+func _create_nyc_property_development(
+	markers: Node3D,
+	payload: Dictionary,
+	upgrade_level: int,
+	owner_color: Color
+) -> void:
+	var logical_index := int(payload.get("logicalIndex", -1))
+	var family := _nyc_development_family(logical_index)
+	var model := Node3D.new()
+	model.name = "NYC%sDevelopment" % (
+		family.capitalize().replace(" ", "").replace("_", "")
+	)
+	# Keep the architecture on the color-strip side of the card so the
+	# location name and price remain readable from the normal board camera.
+	model.position = Vector3(0.04, 0.16, 0.28)
+	model.set_meta("logical_index", logical_index)
+	model.set_meta("development_family", family)
+	model.set_meta("upgrade_level", upgrade_level)
+	markers.add_child(model)
+
+	match family:
+		"chinatown":
+			_create_nyc_chinatown_model(model, upgrade_level, owner_color)
+		"loft":
+			_create_nyc_loft_model(model, upgrade_level, owner_color)
+		"neon":
+			_create_nyc_neon_model(model, upgrade_level, owner_color)
+		"luxury":
+			_create_nyc_luxury_model(model, upgrade_level, owner_color)
+		"arts":
+			_create_nyc_arts_model(model, upgrade_level, owner_color)
+		"finance":
+			_create_nyc_finance_model(model, upgrade_level, owner_color)
+		"bridge":
+			_create_nyc_bridge_model(model, upgrade_level, owner_color)
+		"park":
+			_create_nyc_park_model(model, upgrade_level, owner_color)
+		"waterfront":
+			_create_nyc_waterfront_model(model, upgrade_level, owner_color)
+		"flatiron":
+			_create_nyc_flatiron_model(model, upgrade_level, owner_color)
+		"modern":
+			_create_nyc_modern_model(model, upgrade_level, owner_color)
+		"art_deco":
+			_create_nyc_art_deco_model(model, upgrade_level, owner_color)
+		"liberty":
+			_create_nyc_liberty_model(model, upgrade_level, owner_color)
+		_:
+			_create_nyc_brownstone_model(model, upgrade_level, owner_color)
+	_create_nyc_development_badges(model, upgrade_level, owner_color)
+
+
+func _nyc_development_family(logical_index: int) -> String:
+	match logical_index:
+		1:
+			return "chinatown"
+		3, 11, 23:
+			return "brownstone"
+		6, 8, 9, 31:
+			return "loft"
+		13:
+			return "neon"
+		14, 24, 26:
+			return "luxury"
+		16:
+			return "arts"
+		18:
+			return "finance"
+		19:
+			return "bridge"
+		21:
+			return "park"
+		27, 29:
+			return "waterfront"
+		32:
+			return "flatiron"
+		34:
+			return "modern"
+		37:
+			return "art_deco"
+		39:
+			return "liberty"
+		_:
+			return "brownstone"
+
+
+func _create_nyc_development_badges(
+	parent: Node3D,
+	upgrade_level: int,
+	owner_color: Color
+) -> void:
+	var badge_material := _material(
+		owner_color.lightened(0.18),
+		0.22,
+		0.25,
+		owner_color,
+		1.35
+	)
+	if upgrade_level >= 5:
+		var hotel_badge := _add_box(
+			parent,
+			Vector3(0.28, 0.035, 0.055),
+			Vector3(0.0, 0.035, -0.26),
+			badge_material
+		)
+		hotel_badge.name = "HotelBadge"
+		return
+	var badge_count := mini(upgrade_level, 4)
+	for badge_index in badge_count:
+		var badge_x := (
+			(float(badge_index) - float(badge_count - 1) * 0.5) * 0.09
+		)
+		var badge := _add_box(
+			parent,
+			Vector3(0.06, 0.035, 0.055),
+			Vector3(badge_x, 0.035, -0.26),
+			badge_material
+		)
+		badge.name = "HouseBadge%d" % (badge_index + 1)
+
+
+func _create_nyc_brownstone_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var count := 1 if level <= 1 else 2 if level <= 3 else 3
+	var body := _material(
+		owner_color.lerp(Color("#9b5c47"), 0.72),
+		0.02,
+		0.68
+	)
+	var trim := _material(Color("#ead9bf"), 0.03, 0.55)
+	var window := _material(
+		GOLD_LIGHT,
+		0.05,
+		0.24,
+		GOLD_LIGHT,
+		0.9
+	)
+	for building_index in count:
+		var width := 0.42 / float(count)
+		var x := (
+			-0.21 + width * 0.5 + float(building_index) * width
+		)
+		var height := (
+			0.32 + 0.055 * float(level)
+			if level < 5
+			else 0.68
+		)
+		_add_box(
+			parent,
+			Vector3(width - 0.018, height, 0.25),
+			Vector3(x, height * 0.5, 0.0),
+			body
+		)
+		_add_box(
+			parent,
+			Vector3(width - 0.035, 0.035, 0.275),
+			Vector3(x, height + 0.018, 0.0),
+			_material(owner_color, 0.08, 0.42)
+		)
+		for floor_index in mini(level + 1, 4):
+			_add_box(
+				parent,
+				Vector3(width * 0.42, 0.035, 0.014),
+				Vector3(
+					x,
+					0.15 + float(floor_index) * 0.11,
+					-0.132
+				),
+				window
+			)
+		_add_box(
+			parent,
+			Vector3(width * 0.28, 0.12, 0.018),
+			Vector3(x, 0.07, -0.134),
+			trim
+		)
+
+
+func _create_nyc_chinatown_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var brick := _material(
+		owner_color.lerp(Color("#b44b3f"), 0.72),
+		0.03,
+		0.62
+	)
+	var jade := _material(
+		Color("#2aa987"),
+		0.16,
+		0.34,
+		Color("#2aa987"),
+		0.45
+	)
+	var lantern := _material(
+		Color("#ff5548"),
+		0.04,
+		0.25,
+		Color("#ff5548"),
+		1.6
+	)
+	var height := 0.28 + 0.075 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.43, height, 0.26),
+		Vector3(0.0, height * 0.5, 0.0),
+		brick
+	)
+	var roof_layers := 2 if level >= 3 else 1
+	for roof_index in roof_layers:
+		var roof_width := 0.49 - float(roof_index) * 0.11
+		_add_box(
+			parent,
+			Vector3(roof_width, 0.055, 0.32),
+			Vector3(
+				0.0,
+				height + 0.04 + float(roof_index) * 0.11,
+				0.0
+			),
+			jade
+		)
+	for lantern_x in [-0.15, 0.15]:
+		_add_sphere(
+			parent,
+			0.045,
+			Vector3(lantern_x, 0.19, -0.16),
+			lantern,
+			10,
+			6
+		)
+	if level >= 5:
+		_add_cylinder(
+			parent,
+			0.025,
+			0.04,
+			0.28,
+			Vector3(0.0, height + 0.3, 0.0),
+			_material(GOLD, 0.55, 0.24)
+		)
+
+
+func _create_nyc_loft_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var brick := _material(
+		owner_color.lerp(Color("#8a5546"), 0.82),
+		0.02,
+		0.7
+	)
+	var iron := _material(Color("#263642"), 0.42, 0.24)
+	var glass := _material(
+		Color("#7ad2df"),
+		0.18,
+		0.22,
+		Color("#7ad2df"),
+		0.45
+	)
+	var height := 0.3 + 0.085 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.44, height, 0.27),
+		Vector3(0.0, height * 0.5, 0.0),
+		brick
+	)
+	for floor_index in mini(level + 1, 5):
+		_add_box(
+			parent,
+			Vector3(0.32, 0.038, 0.016),
+			Vector3(
+				0.0,
+				0.13 + float(floor_index) * 0.105,
+				-0.144
+			),
+			glass
+		)
+		_add_box(
+			parent,
+			Vector3(0.38, 0.018, 0.03),
+			Vector3(
+				0.0,
+				0.095 + float(floor_index) * 0.105,
+				-0.153
+			),
+			iron
+		)
+	if level >= 3:
+		_add_cylinder(
+			parent,
+			0.075,
+			0.075,
+			0.11,
+			Vector3(0.12, height + 0.09, 0.0),
+			iron
+		)
+		_add_box(
+			parent,
+			Vector3(0.12, 0.018, 0.12),
+			Vector3(0.12, height + 0.16, 0.0),
+			_material(owner_color, 0.2, 0.35)
+		)
+
+
+func _create_nyc_neon_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var tower := _material(Color("#202b42"), 0.35, 0.22)
+	var height := 0.34 + 0.095 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.36, height, 0.24),
+		Vector3(0.0, height * 0.5, 0.0),
+		tower
+	)
+	var sign_colors := [
+		Color("#36c5f0"),
+		Color("#ff4f9a"),
+		GOLD_LIGHT,
+		owner_color.lightened(0.12),
+	]
+	var sign_count := mini(level + 1, 4)
+	for sign_index in sign_count:
+		var sign_color: Color = sign_colors[sign_index]
+		var sign_material := _material(
+			sign_color,
+			0.08,
+			0.24,
+			sign_color,
+			2.2
+		)
+		for sign_side in [-1.0, 1.0]:
+			var sign := _add_box(
+				parent,
+				Vector3(
+					0.16 + float(sign_index % 2) * 0.07,
+					0.105,
+					0.016
+				),
+				Vector3(
+					-0.08 + float(sign_index % 2) * 0.16,
+					0.2 + float(sign_index) * 0.13,
+					float(sign_side) * 0.132
+				),
+				sign_material
+			)
+			sign.rotation_degrees.z = -5.0 + float(sign_index) * 3.5
+	if level >= 5:
+		_add_cylinder(
+			parent,
+			0.025,
+			0.04,
+			0.32,
+			Vector3(0.0, height + 0.16, 0.0),
+			_material(GOLD_LIGHT, 0.5, 0.2, GOLD_LIGHT, 1.6)
+		)
+
+
+func _create_nyc_luxury_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var stone := _material(
+		owner_color.lerp(Color("#e8dfce"), 0.84),
+		0.12,
+		0.42
+	)
+	var glass := _material(
+		Color("#8fd8e5"),
+		0.35,
+		0.18,
+		Color("#8fd8e5"),
+		0.38
+	)
+	var height := 0.34 + 0.105 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.34, height, 0.25),
+		Vector3(0.0, height * 0.5, 0.0),
+		stone
+	)
+	for floor_index in mini(level + 2, 6):
+		_add_box(
+			parent,
+			Vector3(0.25, 0.026, 0.016),
+			Vector3(
+				0.0,
+				0.11 + float(floor_index) * 0.1,
+				-0.134
+			),
+			glass
+		)
+		if floor_index % 2 == 1:
+			_add_box(
+				parent,
+				Vector3(0.42, 0.018, 0.31),
+				Vector3(
+					0.0,
+					0.14 + float(floor_index) * 0.1,
+					0.0
+				),
+				_material(owner_color, 0.2, 0.36)
+			)
+	if level >= 5:
+		_add_box(
+			parent,
+			Vector3(0.2, 0.11, 0.18),
+			Vector3(0.0, height + 0.055, 0.0),
+			glass
+		)
+
+
+func _create_nyc_arts_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var theater := _material(Color("#3b2538"), 0.08, 0.5)
+	var marquee := _material(
+		owner_color.lightened(0.18),
+		0.12,
+		0.24,
+		owner_color,
+		1.8
+	)
+	var height := 0.3 + 0.075 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.44, height, 0.26),
+		Vector3(0.0, height * 0.5, 0.0),
+		theater
+	)
+	_add_box(
+		parent,
+		Vector3(0.4, 0.12, 0.055),
+		Vector3(0.0, 0.2, -0.155),
+		marquee
+	)
+	_add_box(
+		parent,
+		Vector3(0.26, 0.055, 0.17),
+		Vector3(0.0, 0.11, -0.1),
+		_material(GOLD_LIGHT, 0.24, 0.3, GOLD_LIGHT, 0.7)
+	)
+	for light_index in mini(level + 2, 6):
+		var light_x := -0.17 + float(light_index) * 0.068
+		_add_sphere(
+			parent,
+			0.018,
+			Vector3(light_x, 0.255, -0.189),
+			_material(
+				GOLD_LIGHT,
+				0.02,
+				0.2,
+				GOLD_LIGHT,
+				2.4
+			),
+			8,
+			5
+		)
+	if level >= 5:
+		_add_box(
+			parent,
+			Vector3(0.3, 0.16, 0.025),
+			Vector3(0.0, height + 0.09, 0.0),
+			marquee
+		)
+
+
+func _create_nyc_finance_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var stone := _material(Color("#d9d0bd"), 0.12, 0.4)
+	var dark := _material(
+		owner_color.lerp(Color("#243746"), 0.7),
+		0.42,
+		0.22
+	)
+	var height := 0.28 + 0.085 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.46, height, 0.26),
+		Vector3(0.0, height * 0.5, 0.0),
+		stone
+	)
+	for column_x in [-0.14, -0.047, 0.047, 0.14]:
+		_add_cylinder(
+			parent,
+			0.018,
+			0.024,
+			height * 0.72,
+			Vector3(column_x, height * 0.42, -0.145),
+			dark
+		)
+	_add_triangular_prism(
+		parent,
+		Vector3(0.5, 0.12, 0.3),
+		Vector3(0.0, height + 0.06, 0.0),
+		stone
+	)
+	if level >= 4:
+		_add_box(
+			parent,
+			Vector3(0.22, 0.24, 0.18),
+			Vector3(0.0, height + 0.2, 0.0),
+			dark
+		)
+	if level >= 5:
+		_add_cylinder(
+			parent,
+			0.02,
+			0.04,
+			0.3,
+			Vector3(0.0, height + 0.47, 0.0),
+			_material(GOLD_LIGHT, 0.55, 0.2, GOLD_LIGHT, 1.0)
+		)
+
+
+func _create_nyc_bridge_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var stone := _material(
+		owner_color.lerp(Color("#bca487"), 0.8),
+		0.08,
+		0.5
+	)
+	var cable := _material(Color("#e8dbc6"), 0.48, 0.22)
+	var tower_height := 0.32 + 0.055 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.48, 0.045, 0.16),
+		Vector3(0.0, 0.13, 0.0),
+		stone
+	)
+	for tower_x in [-0.17, 0.17]:
+		for tower_offset in [-0.035, 0.035]:
+			_add_box(
+				parent,
+				Vector3(0.035, tower_height, 0.035),
+				Vector3(
+					tower_x + tower_offset,
+					0.13 + tower_height * 0.5,
+					0.0
+				),
+				stone
+			)
+		_add_box(
+			parent,
+			Vector3(0.12, 0.035, 0.08),
+			Vector3(tower_x, 0.13 + tower_height, 0.0),
+			cable
+		)
+	_add_box(
+		parent,
+		Vector3(0.42, 0.018, 0.03),
+		Vector3(0.0, 0.13 + tower_height * 0.72, -0.055),
+		cable
+	)
+	if level >= 5:
+		for lamp_x in [-0.12, 0.0, 0.12]:
+			_add_sphere(
+				parent,
+				0.024,
+				Vector3(lamp_x, 0.2, -0.1),
+				_material(
+					GOLD_LIGHT,
+					0.05,
+					0.2,
+					GOLD_LIGHT,
+					2.0
+				),
+				8,
+				5
+			)
+
+
+func _create_nyc_park_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var lawn := _material(Color("#48a663"), 0.0, 0.82)
+	var path := _material(Color("#ead7aa"), 0.0, 0.72)
+	_add_box(
+		parent,
+		Vector3(0.48, 0.035, 0.27),
+		Vector3(0.0, 0.02, 0.0),
+		lawn
+	)
+	_add_box(
+		parent,
+		Vector3(0.42, 0.018, 0.045),
+		Vector3(0.0, 0.045, 0.0),
+		path
+	)
+	var tree_positions := [
+		Vector3(-0.16, 0.05, -0.075),
+		Vector3(0.0, 0.05, 0.07),
+		Vector3(0.16, 0.05, -0.05),
+		Vector3(-0.08, 0.05, 0.08),
+	]
+	for tree_index in mini(level, 4):
+		var tree_position: Vector3 = tree_positions[tree_index]
+		_add_cylinder(
+			parent,
+			0.018,
+			0.025,
+			0.15,
+			tree_position + Vector3.UP * 0.075,
+			_material(Color("#66452d"), 0.0, 0.85)
+		)
+		_add_sphere(
+			parent,
+			0.075,
+			tree_position + Vector3.UP * 0.19,
+			_material(
+				owner_color.lerp(Color("#2f8252"), 0.72),
+				0.0,
+				0.78
+			),
+			12,
+			7
+		)
+	if level >= 5:
+		_add_cylinder(
+			parent,
+			0.09,
+			0.12,
+			0.13,
+			Vector3(0.0, 0.13, 0.0),
+			_material(Color("#f0d6b0"), 0.04, 0.52)
+		)
+		_add_cylinder(
+			parent,
+			0.025,
+			0.13,
+			0.12,
+			Vector3(0.0, 0.255, 0.0),
+			_material(owner_color, 0.12, 0.38)
+		)
+
+
+func _create_nyc_waterfront_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var warehouse := _material(
+		owner_color.lerp(Color("#a86148"), 0.78),
+		0.03,
+		0.68
+	)
+	var steel := _material(Color("#354b59"), 0.45, 0.24)
+	var glass := _material(
+		Color("#84d2df"),
+		0.26,
+		0.2,
+		Color("#84d2df"),
+		0.32
+	)
+	var height := 0.27 + 0.07 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.44, height, 0.27),
+		Vector3(0.0, height * 0.5, 0.0),
+		warehouse
+	)
+	for window_x in [-0.13, 0.0, 0.13]:
+		for floor_index in mini(level + 1, 4):
+			_add_box(
+				parent,
+				Vector3(0.07, 0.035, 0.015),
+				Vector3(
+					window_x,
+					0.14 + float(floor_index) * 0.1,
+					-0.145
+				),
+				glass
+			)
+	if level >= 3:
+		_add_cylinder(
+			parent,
+			0.075,
+			0.075,
+			0.12,
+			Vector3(0.11, height + 0.08, 0.0),
+			steel
+		)
+		_add_box(
+			parent,
+			Vector3(0.13, 0.025, 0.13),
+			Vector3(0.11, height + 0.155, 0.0),
+			_material(owner_color, 0.18, 0.36)
+		)
+	if level >= 5:
+		_add_box(
+			parent,
+			Vector3(0.5, 0.035, 0.31),
+			Vector3(0.0, height + 0.018, 0.0),
+			steel
+		)
+
+
+func _create_nyc_flatiron_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var limestone := _material(
+		owner_color.lerp(Color("#d9cdb7"), 0.86),
+		0.1,
+		0.44
+	)
+	var height := 0.34 + 0.09 * float(level)
+	var wedge := _add_triangular_prism(
+		parent,
+		Vector3(0.46, height, 0.3),
+		Vector3(0.0, height * 0.5, 0.0),
+		limestone
+	)
+	wedge.rotation_degrees.y = 180.0
+	for floor_index in mini(level + 2, 6):
+		_add_box(
+			parent,
+			Vector3(0.3, 0.025, 0.014),
+			Vector3(
+				0.0,
+				0.11 + float(floor_index) * 0.1,
+				-0.158
+			),
+			_material(
+				GOLD_LIGHT,
+				0.05,
+				0.25,
+				GOLD_LIGHT,
+				0.55
+			)
+		)
+	if level >= 5:
+		_add_box(
+			parent,
+			Vector3(0.25, 0.07, 0.17),
+			Vector3(0.0, height + 0.035, -0.025),
+			_material(owner_color, 0.2, 0.32)
+		)
+
+
+func _create_nyc_modern_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var glass := _material(
+		owner_color.lerp(Color("#70cce1"), 0.72),
+		0.52,
+		0.14,
+		Color("#70cce1"),
+		0.25
+	)
+	var steel := _material(Color("#d6e1e5"), 0.64, 0.18)
+	var height := 0.36 + 0.1 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.25, height, 0.25),
+		Vector3(-0.08, height * 0.5, 0.0),
+		glass
+	)
+	if level >= 2:
+		_add_box(
+			parent,
+			Vector3(0.2, height * 0.78, 0.2),
+			Vector3(0.13, height * 0.39, 0.025),
+			glass
+		)
+	for floor_index in mini(level + 2, 6):
+		_add_box(
+			parent,
+			Vector3(0.42, 0.018, 0.012),
+			Vector3(
+				0.0,
+				0.12 + float(floor_index) * 0.1,
+				-0.135
+			),
+			steel
+		)
+	if level >= 5:
+		_add_box(
+			parent,
+			Vector3(0.44, 0.055, 0.3),
+			Vector3(0.0, height + 0.03, 0.0),
+			_material(owner_color, 0.3, 0.24, owner_color, 0.7)
+		)
+
+
+func _create_nyc_art_deco_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var stone := _material(
+		owner_color.lerp(Color("#c9c0ad"), 0.88),
+		0.16,
+		0.36
+	)
+	var steel := _material(Color("#8298a4"), 0.62, 0.18)
+	var base_height := 0.27 + 0.045 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.4, base_height, 0.27),
+		Vector3(0.0, base_height * 0.5, 0.0),
+		stone
+	)
+	_add_box(
+		parent,
+		Vector3(0.29, 0.22 + 0.025 * float(level), 0.21),
+		Vector3(
+			0.0,
+			base_height + 0.11 + 0.0125 * float(level),
+			0.0
+		),
+		stone
+	)
+	if level >= 3:
+		_add_box(
+			parent,
+			Vector3(0.18, 0.2, 0.15),
+			Vector3(0.0, base_height + 0.38, 0.0),
+			steel
+		)
+	if level >= 5:
+		_add_cylinder(
+			parent,
+			0.018,
+			0.04,
+			0.38,
+			Vector3(0.0, base_height + 0.67, 0.0),
+			_material(
+				GOLD_LIGHT,
+				0.6,
+				0.16,
+				GOLD_LIGHT,
+				1.5
+			)
+		)
+
+
+func _create_nyc_liberty_model(
+	parent: Node3D,
+	level: int,
+	owner_color: Color
+) -> void:
+	var pedestal := _material(Color("#cfc3a8"), 0.06, 0.55)
+	var copper := _material(
+		owner_color.lerp(Color("#55a693"), 0.82),
+		0.18,
+		0.42
+	)
+	var pedestal_height := 0.17 + 0.035 * float(level)
+	_add_box(
+		parent,
+		Vector3(0.27, pedestal_height, 0.25),
+		Vector3(0.0, pedestal_height * 0.5, 0.0),
+		pedestal
+	)
+	_add_capsule(
+		parent,
+		0.06,
+		0.28 + 0.035 * float(level),
+		Vector3(0.0, pedestal_height + 0.18, 0.0),
+		copper,
+		12,
+		7
+	)
+	_add_sphere(
+		parent,
+		0.065,
+		Vector3(0.0, pedestal_height + 0.39, 0.0),
+		copper,
+		12,
+		7
+	)
+	var torch_arm := _add_capsule(
+		parent,
+		0.022,
+		0.27,
+		Vector3.ZERO,
+		copper,
+		10,
+		6
+	)
+	_orient_capsule_between(
+		torch_arm,
+		Vector3(0.035, pedestal_height + 0.3, 0.0),
+		Vector3(0.12, pedestal_height + 0.52, 0.0),
+		0.022
+	)
+	_add_sphere(
+		parent,
+		0.042,
+		Vector3(0.125, pedestal_height + 0.57, 0.0),
+		_material(
+			GOLD_LIGHT,
+			0.04,
+			0.18,
+			GOLD_LIGHT,
+			2.5
+		),
+		10,
+		6
+	)
+	if level >= 5:
+		var crown := _add_cylinder(
+			parent,
+			0.02,
+			0.11,
+			0.055,
+			Vector3(0.0, pedestal_height + 0.46, 0.0),
+			_material(owner_color, 0.2, 0.36)
+		)
+		crown.rotation_degrees.z = 180.0
 
 
 func _create_mortgage_shutter(markers: Node3D) -> void:

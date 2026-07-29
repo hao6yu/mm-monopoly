@@ -84,6 +84,8 @@ func _run() -> void:
 	await _test_city_catalog(scene, state)
 	_test_special_tile_metadata(scene)
 	_test_property_development_metadata(scene)
+	await _test_nyc_development_families(scene, state)
+	await _test_unchanged_property_visuals_are_reused(scene, state)
 	await _test_property_state_transition(scene, state)
 	_test_board_object_picking(scene)
 
@@ -171,7 +173,7 @@ func _test_property_development_metadata(scene: Node) -> void:
 	if (
 		markers == null
 		or markers.get_node_or_null("OwnerFlag") == null
-		or markers.get_node_or_null("House1") == null
+		or markers.get_node_or_null("NYCChinatownDevelopment") == null
 		or markers.get_node_or_null("CompleteGroupTrim0") == null
 		or markers.get_node_or_null("MortgageShutter") == null
 	):
@@ -184,6 +186,82 @@ func _test_property_development_metadata(scene: Node) -> void:
 		quit(1)
 		return
 	print("PROPERTY_DEVELOPMENT_METADATA_OK")
+
+
+func _test_nyc_development_families(
+	scene: Node,
+	state: Dictionary
+) -> void:
+	var expected_families := {
+		1: "Chinatown",
+		3: "Brownstone",
+		6: "Loft",
+		13: "Neon",
+		14: "Luxury",
+		16: "Arts",
+		18: "Finance",
+		19: "Bridge",
+		21: "Park",
+		27: "Waterfront",
+		32: "Flatiron",
+		34: "Modern",
+		37: "ArtDeco",
+		39: "Liberty",
+	}
+	for logical_index in expected_families:
+		var payload: Dictionary = state["tiles"][logical_index]
+		payload["type"] = "property"
+		payload["ownerColorArgb"] = 0xff29b6f6
+		payload["upgradeLevel"] = 5 if logical_index % 2 == 1 else 3
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	for _frame in 3:
+		await process_frame
+	for logical_index in expected_families:
+		var visual_position := (
+			roundi(float(logical_index) * 52.0 / 40.0) % 52
+		)
+		var tile: Node3D = scene.board_root.get_node(
+			"Tile%02d" % visual_position
+		) as Node3D
+		var markers := tile.get_node_or_null("DevelopmentMarkers")
+		var model_name := "NYC%sDevelopment" % expected_families[logical_index]
+		if (
+			markers == null
+			or markers.get_node_or_null(model_name) == null
+		):
+			push_error(
+				"NYC development family %s is missing at logical tile %d."
+				% [model_name, logical_index]
+			)
+			quit(1)
+			return
+	print("NYC_DEVELOPMENT_FAMILIES_OK ", expected_families.size())
+
+
+func _test_unchanged_property_visuals_are_reused(
+	scene: Node,
+	state: Dictionary
+) -> void:
+	var visual_position := roundi(52.0 / 40.0) % 52
+	var tile: Node3D = scene.board_root.get_node(
+		"Tile%02d" % visual_position
+	) as Node3D
+	var before := tile.get_node_or_null("DevelopmentMarkers")
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	for _frame in 2:
+		await process_frame
+	var after := tile.get_node_or_null("DevelopmentMarkers")
+	if before == null or after != before:
+		push_error("Unchanged 3D property visuals were unnecessarily rebuilt.")
+		quit(1)
+		return
+	print("PROPERTY_VISUAL_REUSE_OK")
 
 
 func _test_property_state_transition(scene: Node, state: Dictionary) -> void:
@@ -209,7 +287,7 @@ func _test_property_state_transition(scene: Node, state: Dictionary) -> void:
 	if (
 		markers == null
 		or markers.get_node_or_null("OwnerFlag") == null
-		or markers.get_node_or_null("House1") == null
+		or markers.get_node_or_null("NYCBrownstoneDevelopment") == null
 		or status == null
 		or status.text != "SOLD"
 	):
@@ -430,6 +508,28 @@ func _test_city_catalog(scene: Node, base_state: Dictionary) -> void:
 			return
 		if scene.active_tile_names[0] != "TILE 00":
 			push_error("%s did not apply Flutter tile names." % board_id)
+			quit(1)
+			return
+		var property_visual := roundi(52.0 / 40.0) % 52
+		var property_tile: Node3D = scene.board_root.get_node(
+			"Tile%02d" % property_visual
+		) as Node3D
+		var property_markers := property_tile.get_node_or_null(
+			"DevelopmentMarkers"
+		)
+		var expected_model := (
+			"NYCChinatownDevelopment"
+			if board_id == "usa_new_york"
+			else "House1"
+		)
+		if (
+			property_markers == null
+			or property_markers.get_node_or_null(expected_model) == null
+		):
+			push_error(
+				"%s did not build its expected %s property model."
+				% [board_id, expected_model]
+			)
 			quit(1)
 			return
 

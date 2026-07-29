@@ -49,6 +49,16 @@ Downtown, the Statue of Liberty, Brooklyn Bridge, piers, and multiple harbor
 lanes. The other cities use the shared procedural theme-park framework so their
 gameplay, camera, dice, and Flutter bridge behave consistently.
 
+Manhattan properties also use location-specific development families instead
+of the shared house model. Chinatown grows a pagoda-roof block; brownstone and
+cast-iron neighborhoods build rowhouses and lofts; Times Square lights neon
+billboards; Wall Street adds a columned financial building; Central Park gains
+trees and a pavilion; Brooklyn Bridge builds bridge towers; Williamsburg and
+DUMBO use waterfront warehouses; Flatiron, Hudson Yards, Empire State, and the
+Statue of Liberty receive recognizable miniature silhouettes. Upgrade badges
+still show the exact house/hotel state, and owner colors remain part of every
+model.
+
 The scene supports 2–4 color-matched miniature character pieces through the
 `active_player_count` exported property. Four are enabled by default for the
 showcase build, and turns rotate automatically after movement finishes.
@@ -77,5 +87,6 @@ license file next to the model assets.
 
 The smoke suite rebuilds every city and verifies its landmarks, 52-stop route,
 localized Flutter labels, special-space metadata, ownership/development
-markers and transitions, completed districts, object picking, players, dice,
-camera bridge, movement completion, and water-only boat lanes.
+markers and transitions, all Manhattan development families, development-model
+reuse, completed districts, object picking, players, dice, camera bridge,
+movement completion, and water-only boat lanes.
