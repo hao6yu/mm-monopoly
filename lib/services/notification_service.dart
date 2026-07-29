@@ -1,5 +1,7 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -27,7 +29,8 @@ class NotificationService {
   // Notification channel for Android
   static const String _channelId = 'fun_facts_channel';
   static const String _channelName = 'Fun Facts';
-  static const String _channelDescription = 'Interesting facts about places around the world';
+  static const String _channelDescription =
+      'Interesting facts about places around the world';
 
   // Preference keys
   static const String _lastScheduledKey = 'notifications_last_scheduled';
@@ -47,54 +50,64 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
-    // Initialize timezone
-    tz_data.initializeTimeZones();
+    try {
+      // Initialize timezone
+      tz_data.initializeTimeZones();
 
-    // Android initialization settings
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    // iOS initialization settings
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-      // Show notifications even when app is in foreground
-      notificationCategories: [
-        DarwinNotificationCategory(
-          'funFacts',
-          actions: <DarwinNotificationAction>[],
-          options: <DarwinNotificationCategoryOption>{
-            DarwinNotificationCategoryOption.hiddenPreviewShowTitle,
-          },
-        ),
-      ],
-    );
-
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
-    await _notifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: _onNotificationTap,
-    );
-
-    // Enable foreground notifications on iOS
-    final iOS = _notifications.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
-    if (iOS != null) {
-      await iOS.requestPermissions(
-        alert: true,
-        badge: true,
-        sound: true,
+      // Android initialization settings
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
       );
+
+      // Request permission explicitly after initialization so scheduling can be
+      // skipped when iOS denies or cannot provide notification authorization.
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+        // Show notifications even when app is in foreground
+        notificationCategories: [
+          DarwinNotificationCategory(
+            'funFacts',
+            actions: <DarwinNotificationAction>[],
+            options: <DarwinNotificationCategoryOption>{
+              DarwinNotificationCategoryOption.hiddenPreviewShowTitle,
+            },
+          ),
+        ],
+      );
+
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
+
+      await _notifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: _onNotificationTap,
+      );
+
+      _initialized = true;
+
+      final permissionGranted = await requestPermissions();
+      if (!permissionGranted) {
+        debugPrint(
+          'Notifications are disabled; weekly scheduling was skipped.',
+        );
+        return;
+      }
+
+      // Schedule notifications if needed.
+      await _scheduleWeeklyNotificationsIfNeeded();
+    } on PlatformException catch (error, stackTrace) {
+      // Notifications are optional. A denied permission or simulator
+      // notification-service failure must never prevent the game from opening.
+      debugPrint('Notification initialization skipped: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } catch (error, stackTrace) {
+      debugPrint('Notification initialization failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
-
-    _initialized = true;
-
-    // Schedule notifications if needed
-    await _scheduleWeeklyNotificationsIfNeeded();
   }
 
   /// Handle notification tap
@@ -105,8 +118,11 @@ class NotificationService {
 
   /// Request notification permissions (iOS)
   Future<bool> requestPermissions() async {
-    final iOS = _notifications.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    final iOS =
+        _notifications
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >();
 
     if (iOS != null) {
       final granted = await iOS.requestPermissions(
@@ -117,8 +133,11 @@ class NotificationService {
       return granted ?? false;
     }
 
-    final android = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android =
+        _notifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
 
     if (android != null) {
       final granted = await android.requestNotificationsPermission();
@@ -133,7 +152,9 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     final lastScheduled = prefs.getInt(_lastScheduledKey) ?? 0;
     final now = DateTime.now();
-    final lastScheduledDate = DateTime.fromMillisecondsSinceEpoch(lastScheduled);
+    final lastScheduledDate = DateTime.fromMillisecondsSinceEpoch(
+      lastScheduled,
+    );
 
     // Check if we need to reschedule (different week)
     final needsReschedule = _isDifferentWeek(lastScheduledDate, now);
@@ -152,8 +173,8 @@ class NotificationService {
     final monday2 = date2.subtract(Duration(days: date2.weekday - 1));
 
     return monday1.year != monday2.year ||
-           monday1.month != monday2.month ||
-           monday1.day != monday2.day;
+        monday1.month != monday2.month ||
+        monday1.day != monday2.day;
   }
 
   /// Schedule 2-3 notifications for the current week
@@ -329,7 +350,10 @@ class NotificationService {
     await _scheduleWeeklyNotifications();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_lastScheduledKey, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setInt(
+      _lastScheduledKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   /// Check if notifications are likely enabled

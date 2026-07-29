@@ -4,11 +4,7 @@ import 'tile.dart';
 import 'serialization/serialization_helpers.dart';
 
 /// Player status in the game
-enum PlayerStatus {
-  active,
-  bankrupt,
-  skipped,
-}
+enum PlayerStatus { active, bankrupt, skipped }
 
 /// Icons available for player selection during game setup
 enum PlayerIcon {
@@ -119,7 +115,7 @@ class Player {
   final Avatar? avatar; // Custom avatar (Phase 3)
 
   int cash;
-  int position; // tile index (0-39)
+  int position; // Logical tile index for the selected board.
   List<String> propertyIds; // owned property IDs
 
   PlayerStatus status;
@@ -145,7 +141,9 @@ class Player {
   }) : propertyIds = propertyIds ?? [];
 
   /// Get the avatar or a default based on player index
-  Avatar get effectiveAvatar => avatar ?? Avatars.forPlayerIndex(int.tryParse(id.replaceAll('player_', '')) ?? 0);
+  Avatar get effectiveAvatar =>
+      avatar ??
+      Avatars.forPlayerIndex(int.tryParse(id.replaceAll('player_', '')) ?? 0);
 
   /// Calculate net worth (cash + property values)
   /// Note: This is a simple getter for backwards compatibility.

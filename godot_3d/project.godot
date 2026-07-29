@@ -1,0 +1,41 @@
+; Property Tycoon 3D vertical slice
+; Generated as a standalone prototype beside the existing Flutter application.
+
+config_version=5
+
+[application]
+
+config/name="Property Tycoon 3D"
+run/main_scene="res://main.tscn"
+boot_splash/bg_color=Color(0.18, 0.53, 0.75, 1)
+boot_splash/show_image=false
+boot_splash/minimum_display_time=0
+
+[display]
+
+window/size/viewport_width=1440
+window/size/viewport_height=900
+window/size/window_width_override=1440
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[input]
+
+orbit={
+"deadzone": 0.5,
+"events": []
+}
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=2
+textures/default_filters/use_nearest_mipmap_filter=false
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/positional_shadow/atlas_size=4096
+environment/defaults/default_clear_color=Color(0.18, 0.53, 0.75, 1)

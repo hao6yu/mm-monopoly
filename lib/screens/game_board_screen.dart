@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/player.dart';
@@ -14,8 +15,11 @@ import '../services/save_service.dart';
 import '../services/stats_service.dart';
 import '../services/locale_service.dart';
 import '../services/game_content_loader.dart';
+import '../integration/godot_board_contract.dart';
+import '../integration/godot_board_controller.dart';
 import '../widgets/achievements/achievement_notification.dart';
 import '../widgets/board/game_board.dart';
+import '../widgets/board/godot_board_host.dart';
 import '../widgets/player/player_card.dart';
 import '../widgets/dice/dice_widget.dart';
 import '../widgets/dialogs/buy_property_dialog.dart';
@@ -89,6 +93,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   bool _isPaused = false; // Track if game menu is open
   bool _isMusicPlaying = true; // Track music state
   bool _isProcessingTurn = false; // Prevent dice rolls while processing
+  late final GodotBoardController _godotBoardController;
+  bool _show3DBoard = false;
+  ui.Offset _last3DGestureFocalPoint = ui.Offset.zero;
+  double _last3DGestureScale = 1;
 
   // Phase 4: AI Decision Engines per AI player
   final Map<String, AIDecisionEngine> _aiEngines = {};
@@ -112,6 +120,33 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _initializeAIEngines();
     _isMusicPlaying = AudioService.instance.musicEnabled;
     _loadLocalizedCards();
+    _godotBoardController = GodotBoardController();
+    _godotBoardController.addListener(_onGodotBoardChanged);
+    _initialize3DBoard();
+  }
+
+  bool get _supports3DBoard =>
+      GodotBoardProtocol.supportedBoardIds.contains(widget.cityBoard.boardId);
+
+  Future<void> _initialize3DBoard() async {
+    await _godotBoardController.initialize();
+    if (!mounted) return;
+    setState(() {
+      _show3DBoard = _supports3DBoard && _godotBoardController.isAvailable;
+    });
+    await _sync3DBoard();
+  }
+
+  Future<void> _sync3DBoard() async {
+    if (!_supports3DBoard || !_godotBoardController.isAvailable) return;
+    await _godotBoardController.syncGameState(
+      gameState,
+      boardId: widget.cityBoard.boardId,
+    );
+  }
+
+  void _onGodotBoardChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadLocalizedCards() async {
@@ -153,6 +188,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         _totalRounds = 1;
         _isPaused = false;
       });
+      _sync3DBoard();
     }
   }
 
@@ -182,6 +218,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _diceController.dispose();
     _bounceController.dispose();
     _glowController.dispose();
+    _godotBoardController.removeListener(_onGodotBoardChanged);
+    _godotBoardController.dispose();
     super.dispose();
   }
 
@@ -271,6 +309,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         engine = GameEngine(gameState);
         _isPaused = false;
       });
+      _sync3DBoard();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -357,12 +396,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                 right: 0,
                 child: Center(child: _buildCityBadge()),
               ),
-              OrientationBuilder(
-                builder: (context, orientation) {
-                  final isPortrait = orientation == Orientation.portrait;
-                  return isPortrait
-                      ? _buildPortraitLayout()
-                      : _buildLandscapeLayout();
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (_show3DBoard) {
+                    return _build3DBoardLayout();
+                  }
+                  final useLandscape =
+                      constraints.maxWidth > constraints.maxHeight * 1.08;
+                  return useLandscape
+                      ? _buildLandscapeLayout()
+                      : _buildPortraitLayout();
                 },
               ),
               // Power-up cards button (if has cards) - top left overlay
@@ -398,6 +441,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                             .toList(),
                   ),
                 ),
+              if (_supports3DBoard && _godotBoardController.isAvailable)
+                Positioned(top: 8, right: 8, child: _buildBoardModeToggle()),
             ],
           ),
         ),
@@ -434,6 +479,356 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
+  Widget _buildBoardModeToggle() {
+    return Material(
+      color: const Color(0xDD111A33),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap:
+            _isProcessingTurn
+                ? null
+                : () {
+                  setState(() => _show3DBoard = !_show3DBoard);
+                  if (_show3DBoard) _sync3DBoard();
+                },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _show3DBoard ? Icons.view_in_ar : Icons.grid_view_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _show3DBoard ? '3D' : '2D',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _build3DBoardLayout() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GodotBoardHost(controller: _godotBoardController),
+            ),
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                excludeFromSemantics: true,
+                onScaleStart: _on3DGestureStart,
+                onScaleUpdate: _on3DGestureUpdate,
+                onScaleEnd: _on3DGestureEnd,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              left: 12,
+              child: _build3DOverlayButton(
+                icon: Icons.menu_rounded,
+                tooltip: 'Game menu',
+                onTap: _showGameMenu,
+              ),
+            ),
+            Positioned(
+              top: 12,
+              left: 68,
+              right: 68,
+              child: Center(child: _build3DCurrentPlayerHud()),
+            ),
+            if (constraints.maxWidth >= 700)
+              Positioned(left: 14, bottom: 16, child: _build3DGestureHint()),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 14,
+              child: Center(child: _build3DRollControl()),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _on3DGestureStart(ScaleStartDetails details) {
+    _last3DGestureFocalPoint = details.localFocalPoint;
+    _last3DGestureScale = 1;
+  }
+
+  void _on3DGestureUpdate(ScaleUpdateDetails details) {
+    final focalDelta = details.localFocalPoint - _last3DGestureFocalPoint;
+    var orbitDeltaX = 0.0;
+    var orbitDeltaY = 0.0;
+    var zoomScale = 1.0;
+
+    if (details.pointerCount >= 2) {
+      if (_last3DGestureScale > 0) {
+        zoomScale = (details.scale / _last3DGestureScale).clamp(0.82, 1.18);
+      }
+    } else {
+      orbitDeltaX = focalDelta.dx;
+      orbitDeltaY = focalDelta.dy;
+    }
+
+    _last3DGestureFocalPoint = details.localFocalPoint;
+    _last3DGestureScale = details.scale;
+    unawaited(
+      _godotBoardController.updateCameraGesture(
+        orbitDeltaX: orbitDeltaX,
+        orbitDeltaY: orbitDeltaY,
+        zoomScale: zoomScale,
+      ),
+    );
+  }
+
+  void _on3DGestureEnd(ScaleEndDetails details) {
+    _last3DGestureScale = 1;
+  }
+
+  Widget _build3DCurrentPlayerHud() {
+    final player = gameState.currentPlayer;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      constraints: const BoxConstraints(maxWidth: 230),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xE6111A33),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: player.color, width: 1.5),
+        boxShadow: [
+          BoxShadow(color: player.color.withValues(alpha: 0.3), blurRadius: 16),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(player.icon.iconData, size: 17, color: player.color),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              '${player.name}’s turn',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '\$${player.cash}',
+            style: TextStyle(
+              color: player.color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _build3DRollControl() {
+    final boardReady = _godotBoardController.isBoardReady;
+    final canRoll = boardReady && gameState.canRoll && !_isProcessingTurn;
+    final isRolling =
+        gameState.animationState == TurnAnimationState.rollingDice;
+    final isMoving = gameState.animationState == TurnAnimationState.movingToken;
+    final label =
+        !boardReady
+            ? 'LOADING BOARD'
+            : isRolling
+            ? 'ROLLING…'
+            : isMoving
+            ? 'MOVING…'
+            : 'ROLL DICE';
+
+    return AnimatedBuilder(
+      animation: _glowController,
+      builder: (context, child) {
+        final glow = canRoll ? 0.18 + _glowController.value * 0.2 : 0.08;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.amber.withValues(alpha: glow),
+                blurRadius: 24,
+                spreadRadius: 1,
+                offset: const ui.Offset(0, 7),
+              ),
+            ],
+          ),
+          child: Material(
+            color: canRoll ? const Color(0xFFF2C452) : const Color(0xE6111A33),
+            borderRadius: BorderRadius.circular(999),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: canRoll ? _rollDice : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 11,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isRolling || isMoving)
+                      SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color:
+                              canRoll ? const Color(0xFF142033) : Colors.white,
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.casino_rounded,
+                        size: 24,
+                        color:
+                            canRoll ? const Color(0xFF142033) : Colors.white54,
+                      ),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color:
+                            canRoll ? const Color(0xFF142033) : Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    if (gameState.die1Value > 0) ...[
+                      const SizedBox(width: 10),
+                      Text(
+                        gameState.diceCount == 1
+                            ? '${gameState.die1Value}'
+                            : '${gameState.die1Value} + ${gameState.die2Value}',
+                        style: TextStyle(
+                          color:
+                              canRoll
+                                  ? const Color(0xFF142033)
+                                  : Colors.white54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _build3DGestureHint() {
+    return IgnorePointer(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xB3111A33),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.pinch_rounded, size: 16, color: Colors.white70),
+            SizedBox(width: 6),
+            Text(
+              'Drag to rotate  •  Pinch to zoom',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _build3DOverlayButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: const Color(0xE6111A33),
+      borderRadius: BorderRadius.circular(14),
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onTap,
+        color: Colors.white,
+        icon: Icon(icon),
+      ),
+    );
+  }
+
+  Widget _build2DBoardViewport(double boardSize) {
+    // The original 2D board contains rich fixed-size details. Lay it out at a
+    // comfortable logical canvas and scale the complete board on small phones.
+    // This preserves every control without RenderFlex overflows.
+    final logicalBoardSize = max(boardSize, 1100.0);
+    return SizedBox(
+      width: boardSize,
+      height: boardSize,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: SizedBox(
+          width: logicalBoardSize,
+          height: logicalBoardSize,
+          child: GameBoard(
+            players: gameState.players,
+            currentPlayerIndex: gameState.currentPlayerIndex,
+            highlightedTile: gameState.highlightedTileIndex,
+            bounceAnimation: _bounceAnimation,
+            glowController: _glowController,
+            tiles: gameState.tiles,
+            boardTheme: widget.boardTheme,
+            centerControls: _buildCenterControls(),
+            onMenuTap: _showGameMenu,
+            onTradeTap: widget.tradingEnabled ? _showTradeDialog : null,
+            onBankTap: widget.bankEnabled ? _showMortgageDialog : null,
+            showActionButtons:
+                !gameState.currentPlayer.isAI &&
+                (widget.tradingEnabled || widget.bankEnabled),
+            onTileTap: _showTileInfo,
+            isChanceHighlighted: _waitingForCardPick && _isChanceCard,
+            isChestHighlighted: _waitingForCardPick && !_isChanceCard,
+            onChanceTap: () => _onCardDeckTap(true),
+            onChestTap: () => _onCardDeckTap(false),
+            onMusicToggle: _toggleMusic,
+            isMusicPlaying: _isMusicPlaying,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLandscapeLayout() {
     final activePlayers =
         gameState.players
@@ -443,15 +838,20 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate board size to maximize it (use full height)
-        final boardSize = constraints.maxHeight - 16; // 8px padding each side
+        final boardSize = max(
+          0.0,
+          min(constraints.maxHeight - 16, constraints.maxWidth - 16),
+        );
         final remainingWidth = constraints.maxWidth - boardSize;
-        final playerPanelWidth = remainingWidth / 2;
+        final showPlayerPanels =
+            constraints.maxHeight >= 600 && remainingWidth >= 480;
+        final playerPanelWidth = showPlayerPanels ? remainingWidth / 2 : 0.0;
 
         return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Left player panel - fixed width based on remaining space
-            if (activePlayers.isNotEmpty)
+            if (showPlayerPanels && activePlayers.isNotEmpty)
               SizedBox(
                 width: playerPanelWidth,
                 child: _buildVerticalPlayerPanel(
@@ -461,36 +861,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             // Game board - maximized square
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: SizedBox(
-                width: boardSize,
-                height: boardSize,
-                child: GameBoard(
-                  players: gameState.players,
-                  currentPlayerIndex: gameState.currentPlayerIndex,
-                  highlightedTile: gameState.highlightedTileIndex,
-                  bounceAnimation: _bounceAnimation,
-                  glowController: _glowController,
-                  tiles: gameState.tiles,
-                  boardTheme: widget.boardTheme,
-                  centerControls: _buildCenterControls(),
-                  onMenuTap: _showGameMenu,
-                  onTradeTap: widget.tradingEnabled ? _showTradeDialog : null,
-                  onBankTap: widget.bankEnabled ? _showMortgageDialog : null,
-                  showActionButtons:
-                      !gameState.currentPlayer.isAI &&
-                      (widget.tradingEnabled || widget.bankEnabled),
-                  onTileTap: _showTileInfo,
-                  isChanceHighlighted: _waitingForCardPick && _isChanceCard,
-                  isChestHighlighted: _waitingForCardPick && !_isChanceCard,
-                  onChanceTap: () => _onCardDeckTap(true),
-                  onChestTap: () => _onCardDeckTap(false),
-                  onMusicToggle: _toggleMusic,
-                  isMusicPlaying: _isMusicPlaying,
-                ),
-              ),
+              child: _build2DBoardViewport(boardSize),
             ),
             // Right player panel - fixed width based on remaining space
-            if (activePlayers.length > halfCount)
+            if (showPlayerPanels && activePlayers.length > halfCount)
               SizedBox(
                 width: playerPanelWidth,
                 child: _buildVerticalPlayerPanel(
@@ -512,15 +886,20 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate board size to maximize it (use full width)
-        final boardSize = constraints.maxWidth - 16; // 8px padding each side
+        final boardSize = max(
+          0.0,
+          min(constraints.maxWidth - 16, constraints.maxHeight - 16),
+        );
         final remainingHeight = constraints.maxHeight - boardSize;
-        final playerPanelHeight = remainingHeight / 2;
+        final showPlayerPanels =
+            constraints.maxWidth >= 700 && remainingHeight >= 240;
+        final playerPanelHeight = showPlayerPanels ? remainingHeight / 2 : 0.0;
 
         return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Top player panel - fixed height based on remaining space
-            if (activePlayers.isNotEmpty)
+            if (showPlayerPanels && activePlayers.isNotEmpty)
               SizedBox(
                 height: playerPanelHeight,
                 child: _buildHorizontalPlayerPanel(
@@ -530,36 +909,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             // Game board - maximized square
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: SizedBox(
-                width: boardSize,
-                height: boardSize,
-                child: GameBoard(
-                  players: gameState.players,
-                  currentPlayerIndex: gameState.currentPlayerIndex,
-                  highlightedTile: gameState.highlightedTileIndex,
-                  bounceAnimation: _bounceAnimation,
-                  glowController: _glowController,
-                  tiles: gameState.tiles,
-                  boardTheme: widget.boardTheme,
-                  centerControls: _buildCenterControls(),
-                  onMenuTap: _showGameMenu,
-                  onTradeTap: widget.tradingEnabled ? _showTradeDialog : null,
-                  onBankTap: widget.bankEnabled ? _showMortgageDialog : null,
-                  showActionButtons:
-                      !gameState.currentPlayer.isAI &&
-                      (widget.tradingEnabled || widget.bankEnabled),
-                  onTileTap: _showTileInfo,
-                  isChanceHighlighted: _waitingForCardPick && _isChanceCard,
-                  isChestHighlighted: _waitingForCardPick && !_isChanceCard,
-                  onChanceTap: () => _onCardDeckTap(true),
-                  onChestTap: () => _onCardDeckTap(false),
-                  onMusicToggle: _toggleMusic,
-                  isMusicPlaying: _isMusicPlaying,
-                ),
-              ),
+              child: _build2DBoardViewport(boardSize),
             ),
             // Bottom player panel - fixed height based on remaining space
-            if (activePlayers.length > halfCount)
+            if (showPlayerPanels && activePlayers.length > halfCount)
               SizedBox(
                 height: playerPanelHeight,
                 child: _buildHorizontalPlayerPanel(
@@ -616,9 +969,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
-  Widget _buildCenterControls() {
+  Widget _buildCenterControls({bool boardReady = true}) {
     // Only allow roll if game state allows AND we're not processing a turn
-    final canRoll = gameState.canRoll && !_isProcessingTurn;
+    final canRoll = boardReady && gameState.canRoll && !_isProcessingTurn;
 
     return CenterControls(
       die1: gameState.die1Value,
@@ -643,7 +996,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         animationState: TurnAnimationState.rollingDice,
       );
     });
-    _diceController.forward(from: 0);
+    final use3DRoll = _show3DBoard && _godotBoardController.isBoardReady;
+    if (!use3DRoll) {
+      _diceController.forward(from: 0);
+    }
 
     // Play dice roll sound
     AudioService.instance.onDiceRoll();
@@ -683,10 +1039,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       isDoubles = die1 == die2;
     }
 
-    await Future.delayed(AnimationDurations.diceRoll);
-
-    // Play dice land sound
-    AudioService.instance.onDiceLand();
+    if (!use3DRoll) {
+      await Future.delayed(AnimationDurations.diceRoll);
+      AudioService.instance.onDiceLand();
+    }
 
     // Phase 3: Track dice stats
     final newTotalRolls = gameState.totalDiceRolls + 1;
@@ -699,7 +1055,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         die1Value: die1,
         die2Value: die2,
         lastDiceRoll: roll,
-        animationState: TurnAnimationState.movingToken,
+        animationState:
+            use3DRoll
+                ? TurnAnimationState.rollingDice
+                : TurnAnimationState.movingToken,
         logicPhase: TurnLogicPhase.rolled,
         totalDiceRolls: newTotalRolls,
         totalDiceSum: newTotalSum,
@@ -707,28 +1066,71 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       );
     });
 
-    // Move current player tile by tile
+    // Move current player tile by tile. Flutter owns the logical destination;
+    // Godot only animates the mapped visual route.
     final startPosition = player.position;
-    final endPosition = (startPosition + roll) % 40;
+    final tileCount = gameState.tiles.length;
+    final endPosition = (startPosition + roll) % tileCount;
+    var movedInGodot = false;
 
-    for (int i = 0; i < roll; i++) {
-      await Future.delayed(AnimationDurations.tokenHop);
+    if (_show3DBoard && _godotBoardController.isBoardReady) {
+      final command = _godotBoardController.createRollCommand(
+        gameState: gameState,
+        playerIndex: gameState.currentPlayerIndex,
+        die1: die1,
+        die2: die2,
+      );
+      try {
+        final movementFuture = _godotBoardController.animateRoll(command);
+        await Future.delayed(const Duration(milliseconds: 1040));
+        AudioService.instance.onDiceLand();
+        if (mounted) {
+          setState(() {
+            gameState = gameState.copyWith(
+              animationState: TurnAnimationState.movingToken,
+            );
+          });
+        }
+        final movement = await movementFuture;
+        movedInGodot =
+            movement.playerId == player.id &&
+            movement.logicalPosition == endPosition;
+      } on Object {
+        movedInGodot = false;
+        if (mounted) {
+          setState(() {
+            gameState = gameState.copyWith(
+              animationState: TurnAnimationState.movingToken,
+            );
+          });
+        }
+      }
+    }
 
-      // Play token step sound
-      AudioService.instance.onTokenStep();
-
+    if (movedInGodot) {
       setState(() {
-        player.position = (player.position + 1) % 40;
-        // Collect GO bonus whenever crossing or landing on GO via movement
-        if (player.position == 0) {
+        player.position = endPosition;
+        if (startPosition + roll >= tileCount) {
           player.cash += gameState.getGoBonusForPlayer(player.id);
-          // Play pass GO sound
           AudioService.instance.onPassGo();
-          // Check for mid-game achievements (like Cash King)
           _checkMidGameAchievements(player);
         }
       });
-      _bounceController.forward(from: 0);
+    } else {
+      for (int i = 0; i < roll; i++) {
+        await Future.delayed(AnimationDurations.tokenHop);
+
+        AudioService.instance.onTokenStep();
+        setState(() {
+          player.position = (player.position + 1) % tileCount;
+          if (player.position == 0) {
+            player.cash += gameState.getGoBonusForPlayer(player.id);
+            AudioService.instance.onPassGo();
+            _checkMidGameAchievements(player);
+          }
+        });
+        _bounceController.forward(from: 0);
+      }
     }
 
     // Play token land sound
@@ -742,6 +1144,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         logicPhase: TurnLogicPhase.tileResolution,
       );
     });
+    await _sync3DBoard();
 
     // Wait for the bounce animation to complete before showing dialogs
     await Future.delayed(const Duration(milliseconds: 600));
@@ -1183,6 +1586,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                         ),
                       ),
                     ),
+                    if (_supports3DBoard && _godotBoardController.isAvailable)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: _buildBoardModeToggle(),
+                      ),
                   ],
                 ),
               ),
@@ -1544,7 +1953,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           player.cash += gameState.getGoBonusForPlayer(player.id);
           break;
         case 'back3':
-          player.position = (player.position - 3 + 40) % 40;
+          final tileCount = gameState.tiles.length;
+          player.position = (player.position - 3 + tileCount) % tileCount;
           newPosition = player.position;
           break;
       }
@@ -1757,6 +2167,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           }
         });
       }
+      _sync3DBoard();
       return;
     }
 
@@ -1789,6 +2200,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         _checkEventTrigger();
       }
     });
+    _sync3DBoard();
 
     // Check if next player is in jail
     final nextPlayer = gameState.currentPlayer;

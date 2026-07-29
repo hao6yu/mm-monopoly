@@ -502,7 +502,7 @@ class GameEngine {
   /// Check if player passed GO during movement
   bool didPassGo(int startPosition, int endPosition, int steps) {
     // If we moved forward and crossed position 0
-    return startPosition + steps >= 40;
+    return startPosition + steps >= state.tiles.length;
   }
 
   // Helper methods

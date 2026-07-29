@@ -5,6 +5,40 @@
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES">
+      <PreActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Run Prepare Flutter Framework Script"
+               scriptText = "/bin/sh &quot;$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh&quot; prepare&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "97C146ED1CF9000F007C117D"
+                     BuildableName = "Runner.app"
+                     BlueprintName = "Runner"
+                     ReferencedContainer = "container:Runner.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Prepare SwiftGodot Host Generator"
+               scriptText = "set -e&#10;SWIFTGODOT_PACKAGE=&quot;$SRCROOT/Packages/SwiftGodotCompatible&quot;&#10;MACOS_SDK=&quot;$(xcrun --sdk macosx --show-sdk-path)&quot;&#10;(cd &quot;$SWIFTGODOT_PACKAGE&quot; &amp;&amp; SDKROOT=&quot;$MACOS_SDK&quot; swift build --product Generator -c debug)&#10;mkdir -p &quot;$BUILD_DIR/$CONFIGURATION&quot;&#10;ln -sfn &quot;$SWIFTGODOT_PACKAGE/.build/debug/Generator&quot; &quot;$BUILD_DIR/$CONFIGURATION/Generator&quot;&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "97C146ED1CF9000F007C117D"
+                     BuildableName = "Runner.app"
+                     BlueprintName = "Runner"
+                     ReferencedContainer = "container:Runner.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PreActions>
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"

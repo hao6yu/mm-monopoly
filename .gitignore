@@ -71,6 +71,8 @@ app.*.map.json
 /ios/Pods/
 /ios/ServiceDefinitions.json
 /ios/Runner/GeneratedPluginRegistrant.*
+/ios/Packages/SwiftGodotCompatible/.build/
+/ios/Packages/SwiftGodotCompatible/.swiftpm/
 
 # macOS
 /macos/Flutter/ephemeral/
