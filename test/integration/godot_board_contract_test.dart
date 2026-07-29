@@ -67,6 +67,8 @@ void main() {
         'ownerColorArgb': 0,
         'upgradeLevel': 0,
         'isMortgaged': false,
+        'groupId': null,
+        'hasCompleteColorGroup': false,
       });
     });
 

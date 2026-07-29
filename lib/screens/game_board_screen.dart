@@ -1764,6 +1764,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         if (engine.buyProperty(player, tile)) {
           AudioService.instance.onBuyProperty();
           setState(() {});
+          await _sync3DBoard();
         }
       } else {
         // AI declined - start auction for all players
@@ -1782,6 +1783,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         if (engine.buyProperty(player, tile)) {
           AudioService.instance.onBuyProperty();
           setState(() {});
+          unawaited(_sync3DBoard());
         }
       },
       onSkip: () async {
@@ -1827,6 +1829,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           winner.propertyIds.add(tile.index.toString());
         }
         setState(() {});
+        unawaited(_sync3DBoard());
       },
       onNoWinner: () {
         // Property goes back to bank (no change needed)
@@ -1865,6 +1868,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         if (engine.upgradeProperty(player, property)) {
           AudioService.instance.onUpgrade();
           setState(() {});
+          await _sync3DBoard();
         }
       }
       return;
@@ -1879,6 +1883,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         if (engine.upgradeProperty(player, property)) {
           AudioService.instance.onUpgrade();
           setState(() {});
+          unawaited(_sync3DBoard());
         }
       },
       onSkip: () {
@@ -2121,6 +2126,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       );
       await _applySpinPrizeWithUI(player, prize);
       setState(() {});
+      await _sync3DBoard();
       return;
     }
 
@@ -2135,6 +2141,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         await _applySpinPrizeWithUI(player, prize);
         if (mounted) {
           setState(() {});
+          await _sync3DBoard();
         }
       },
     );
@@ -2337,6 +2344,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     final player = gameState.currentPlayer;
     applyPowerUpCard(player, card, gameState);
     setState(() {});
+    unawaited(_sync3DBoard());
   }
 
   // ==========================================================================
@@ -2871,6 +2879,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         );
         offer.execute();
         setState(() {});
+        await _sync3DBoard();
       } else {
         await _showAIActionNotification(
           recipient.name,
@@ -2890,7 +2899,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       onAccept: () {
         offer.execute();
         setState(() {});
-        _sync3DBoard();
+        unawaited(_sync3DBoard());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.tradeCompleted),

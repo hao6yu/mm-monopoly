@@ -104,6 +104,8 @@ class GodotBoardTileState {
     this.ownerColorArgb = 0,
     this.upgradeLevel = 0,
     this.isMortgaged = false,
+    this.groupId,
+    this.hasCompleteColorGroup = false,
   });
 
   final int logicalIndex;
@@ -117,6 +119,8 @@ class GodotBoardTileState {
   final int ownerColorArgb;
   final int upgradeLevel;
   final bool isMortgaged;
+  final String? groupId;
+  final bool hasCompleteColorGroup;
 
   Map<String, Object?> toJson() => {
     'logicalIndex': logicalIndex,
@@ -130,6 +134,8 @@ class GodotBoardTileState {
     'ownerColorArgb': ownerColorArgb,
     'upgradeLevel': upgradeLevel,
     'isMortgaged': isMortgaged,
+    'groupId': groupId,
+    'hasCompleteColorGroup': hasCompleteColorGroup,
   };
 }
 

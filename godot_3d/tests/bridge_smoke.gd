@@ -42,11 +42,14 @@ func _run() -> void:
 			"ownerColorArgb": 0,
 			"upgradeLevel": 0,
 			"isMortgaged": false,
+			"groupId": "group_%d" % (index / 3),
+			"hasCompleteColorGroup": false,
 		}
 		if index == 1:
 			tile_payload["ownerColorArgb"] = 0xffff4f5e
 			tile_payload["upgradeLevel"] = 3
 			tile_payload["isMortgaged"] = true
+			tile_payload["hasCompleteColorGroup"] = true
 		logical_tiles.append(tile_payload)
 
 	var state := {
@@ -81,6 +84,7 @@ func _run() -> void:
 	await _test_city_catalog(scene, state)
 	_test_special_tile_metadata(scene)
 	_test_property_development_metadata(scene)
+	await _test_property_state_transition(scene, state)
 	_test_board_object_picking(scene)
 
 	var command := {
@@ -164,7 +168,13 @@ func _test_property_development_metadata(scene: Node) -> void:
 		"Tile%02d" % visual_position
 	) as Node3D
 	var markers := tile.get_node_or_null("DevelopmentMarkers")
-	if markers == null or markers.get_child_count() < 5:
+	if (
+		markers == null
+		or markers.get_node_or_null("OwnerFlag") == null
+		or markers.get_node_or_null("House1") == null
+		or markers.get_node_or_null("CompleteGroupTrim0") == null
+		or markers.get_node_or_null("MortgageShutter") == null
+	):
 		push_error("3D property ownership and development markers are missing.")
 		quit(1)
 		return
@@ -174,6 +184,39 @@ func _test_property_development_metadata(scene: Node) -> void:
 		quit(1)
 		return
 	print("PROPERTY_DEVELOPMENT_METADATA_OK")
+
+
+func _test_property_state_transition(scene: Node, state: Dictionary) -> void:
+	var tile_payload: Dictionary = state["tiles"][4]
+	tile_payload["ownerColorArgb"] = 0xff29b6f6
+	tile_payload["upgradeLevel"] = 1
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	for _frame in 3:
+		await process_frame
+	var visual_position := roundi(4.0 * 52.0 / 40.0) % 52
+	var tile: Node3D = scene.board_root.get_node(
+		"Tile%02d" % visual_position
+	) as Node3D
+	var markers := tile.get_node_or_null("DevelopmentMarkers")
+	var status := (
+		markers.get_node_or_null("PropertyChangeLabel") as Label3D
+		if markers != null
+		else null
+	)
+	if (
+		markers == null
+		or markers.get_node_or_null("OwnerFlag") == null
+		or markers.get_node_or_null("House1") == null
+		or status == null
+		or status.text != "SOLD"
+	):
+		push_error("3D property state transition did not animate.")
+		quit(1)
+		return
+	print("PROPERTY_STATE_TRANSITION_OK")
 
 
 func _test_board_object_picking(scene: Node) -> void:

@@ -64,6 +64,7 @@ class GodotBoardController extends ChangeNotifier {
     final playersById = {
       for (final player in gameState.players) player.id: player,
     };
+    final completedGroupOwners = _completedColorGroupOwners(gameState.tiles);
     return GodotBoardSceneState(
       boardId: boardId,
       logicalTileCount: logicalTileCount,
@@ -78,6 +79,7 @@ class GodotBoardController extends ChangeNotifier {
           _tileStateFrom(
             tile,
             playersById: playersById,
+            completedGroupOwners: completedGroupOwners,
             logicalTileCount: logicalTileCount,
             visualSpotCount: visualSpotCount,
           ),
@@ -104,6 +106,7 @@ class GodotBoardController extends ChangeNotifier {
   GodotBoardTileState _tileStateFrom(
     TileData tile, {
     required Map<String, Player> playersById,
+    required Map<String, String> completedGroupOwners,
     required int logicalTileCount,
     required int visualSpotCount,
   }) {
@@ -111,11 +114,16 @@ class GodotBoardController extends ChangeNotifier {
     var price = 0;
     var upgradeLevel = 0;
     var isMortgaged = false;
+    String? groupId;
+    var hasCompleteColorGroup = false;
     if (tile is PropertyTileData) {
       ownerId = tile.ownerId;
       price = tile.price;
       upgradeLevel = tile.upgradeLevel;
       isMortgaged = tile.isMortgaged;
+      groupId = tile.groupId;
+      hasCompleteColorGroup =
+          ownerId != null && completedGroupOwners[tile.groupId] == ownerId;
     } else if (tile is RailroadTileData) {
       ownerId = tile.ownerId;
       price = tile.price;
@@ -143,7 +151,28 @@ class GodotBoardController extends ChangeNotifier {
       ownerColorArgb: owner?.color.toARGB32() ?? 0,
       upgradeLevel: upgradeLevel,
       isMortgaged: isMortgaged,
+      groupId: groupId,
+      hasCompleteColorGroup: hasCompleteColorGroup,
     );
+  }
+
+  Map<String, String> _completedColorGroupOwners(List<TileData> tiles) {
+    final propertiesByGroup = <String, List<PropertyTileData>>{};
+    for (final property in tiles.whereType<PropertyTileData>()) {
+      propertiesByGroup.putIfAbsent(property.groupId, () => []).add(property);
+    }
+
+    final completedOwners = <String, String>{};
+    for (final entry in propertiesByGroup.entries) {
+      final properties = entry.value;
+      if (properties.isEmpty) continue;
+      final ownerId = properties.first.ownerId;
+      if (ownerId == null) continue;
+      if (properties.every((property) => property.ownerId == ownerId)) {
+        completedOwners[entry.key] = ownerId;
+      }
+    }
+    return completedOwners;
   }
 
   Future<void> syncGameState(

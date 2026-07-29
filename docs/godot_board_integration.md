@@ -9,8 +9,8 @@ the camera, dice, and movement animation.
 Flutter sends:
 
 - `scene_state`: board ID, localized tile names and types, prices, ownership,
-  upgrades, mortgage state, logical tile count, visual spot count, current
-  turn, dice, and player state.
+  upgrades, mortgage state, completed color-group state, logical tile count,
+  visual spot count, current turn, dice, and player state.
 - `animate_roll`: dice values, logical start/destination, and a mapped visual
   path. Godot uses that path for the route preview, destination beacon, dice
   focus, movement camera, and landing reaction before returning completion.
@@ -31,6 +31,12 @@ landing tile only after the matching movement-complete event returns.
 Flutter also owns all informational and gameplay dialogs. Godot picks the 3D
 object, then Flutter opens the same tile facts, player portfolio, card draw, or
 city guide UI used by the rest of the app.
+
+Property mutations are synchronized immediately after purchases, auctions,
+upgrades, free-house prizes, power-ups, trades, mortgages, and unmortgages.
+Godot compares the new tile payload with the previous one to animate owner
+flags, miniature houses and hotels, complete-district trim, mortgage shutters,
+and short status callouts without duplicating any game rules.
 
 The Flutter splash, main menu, and two-step setup flow use a lightweight
 Flutter-drawn miniature city backdrop rather than a second Godot surface. This

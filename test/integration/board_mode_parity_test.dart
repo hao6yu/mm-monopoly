@@ -97,6 +97,38 @@ void main() {
       expect(mirroredProperty.ownerColorArgb, player.color.toARGB32());
       expect(mirroredProperty.upgradeLevel, 3);
       expect(mirroredProperty.isMortgaged, isTrue);
+      expect(mirroredProperty.groupId, property.groupId);
+    });
+
+    test('3D scene identifies a completed color group', () {
+      final tiles = BoardFactory.generateTiles(CityBoardRegistry.all.first);
+      final player = Player(
+        id: 'player_0',
+        name: 'Player 1',
+        icon: PlayerIcon.dog,
+        color: Colors.red,
+      );
+      final target = tiles.whereType<PropertyTileData>().first;
+      final group =
+          tiles
+              .whereType<PropertyTileData>()
+              .where((property) => property.groupId == target.groupId)
+              .toList();
+      for (final property in group) {
+        property.ownerId = player.id;
+      }
+      final state = GameState.initial(players: [player], tiles: tiles);
+      final controller = GodotBoardController();
+      addTearDown(controller.dispose);
+
+      final scene = controller.sceneStateFrom(
+        state,
+        boardId: CityBoardRegistry.all.first.boardId,
+      );
+
+      for (final property in group) {
+        expect(scene.tiles[property.index].hasCompleteColorGroup, isTrue);
+      }
     });
   });
 }

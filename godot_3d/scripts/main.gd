@@ -2665,6 +2665,7 @@ func _refresh_visual_tiles(
 ) -> void:
 	latest_logical_tile_names.assign(logical_tile_names)
 	latest_logical_tiles.assign(logical_tiles)
+	var previous_visual_tile_data := active_visual_tile_data.duplicate(true)
 	_apply_visual_tile_data(logical_tiles)
 	active_tile_names = _visual_tile_names(logical_tile_names)
 	for index in BOARD_SPOT_COUNT:
@@ -2674,10 +2675,20 @@ func _refresh_visual_tiles(
 		var label := tile.get_node_or_null("TileLabel") as Label3D
 		if label != null:
 			label.text = _tile_label_text(index)
-		_refresh_tile_style(tile, index)
+		var previous_payload_value = previous_visual_tile_data.get(index, {})
+		var previous_payload := (
+			previous_payload_value as Dictionary
+			if typeof(previous_payload_value) == TYPE_DICTIONARY
+			else {}
+		)
+		_refresh_tile_style(tile, index, previous_payload)
 
 
-func _refresh_tile_style(tile: Node3D, index: int) -> void:
+func _refresh_tile_style(
+	tile: Node3D,
+	index: int,
+	previous_payload: Dictionary = {}
+) -> void:
 	var payload := _visual_tile_payload(index)
 	var tile_type := str(payload.get("type", ""))
 	var tile_color := _tile_surface_color(index)
@@ -2711,12 +2722,17 @@ func _refresh_tile_style(tile: Node3D, index: int) -> void:
 			if tile_color.get_luminance() < 0.55
 			else INK
 		)
-	_refresh_tile_development(tile, index)
+	_refresh_tile_development(tile, index, previous_payload)
 
 
-func _refresh_tile_development(tile: Node3D, index: int) -> void:
+func _refresh_tile_development(
+	tile: Node3D,
+	index: int,
+	previous_payload: Dictionary = {}
+) -> void:
 	var previous := tile.get_node_or_null("DevelopmentMarkers")
 	if previous != null:
+		previous.name = "RetiringDevelopmentMarkers"
 		tile.remove_child(previous)
 		previous.queue_free()
 
@@ -2727,6 +2743,7 @@ func _refresh_tile_development(tile: Node3D, index: int) -> void:
 	)
 	var upgrade_level := int(payload.get("upgradeLevel", 0))
 	var is_mortgaged := bool(payload.get("isMortgaged", false))
+	var has_complete_group := bool(payload.get("hasCompleteColorGroup", false))
 	if owner_color.a <= 0.0 and upgrade_level <= 0 and not is_mortgaged:
 		return
 
@@ -2734,42 +2751,228 @@ func _refresh_tile_development(tile: Node3D, index: int) -> void:
 	markers.name = "DevelopmentMarkers"
 	tile.add_child(markers)
 	if owner_color.a > 0.0:
-		_add_cylinder(
-			markers,
-			0.1,
-			0.12,
-			0.12,
-			Vector3(-0.38, 0.18, -0.3),
-			_material(owner_color, 0.12, 0.3, owner_color, 0.3)
-		)
+		_create_owner_flag(markers, owner_color)
+	if has_complete_group and owner_color.a > 0.0:
+		_create_complete_group_trim(markers, owner_color)
 
 	if upgrade_level >= 5:
-		_add_box(
-			markers,
-			Vector3(0.38, 0.3, 0.25),
-			Vector3(0.15, 0.28, -0.31),
-			_material(RED, 0.05, 0.42)
-		)
+		_create_mini_hotel(markers, owner_color)
 	elif upgrade_level > 0:
 		for house_index in mini(upgrade_level, 4):
-			_add_box(
-				markers,
-				Vector3(0.16, 0.2, 0.16),
-				Vector3(-0.12 + float(house_index) * 0.18, 0.23, -0.31),
-				_material(Color("#42a85f"), 0.04, 0.5)
-			)
+			_create_mini_house(markers, house_index, owner_color)
 
 	if is_mortgaged:
-		var mortgage_label := Label3D.new()
-		mortgage_label.text = "M"
-		mortgage_label.font_size = 52
-		mortgage_label.pixel_size = 0.006
-		mortgage_label.position = Vector3(0.32, 0.2, -0.3)
-		mortgage_label.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
-		mortgage_label.modulate = RED
-		mortgage_label.outline_modulate = Color.WHITE
-		mortgage_label.outline_size = 5
-		markers.add_child(mortgage_label)
+		_create_mortgage_shutter(markers)
+
+	if previous_payload.is_empty():
+		return
+	var previous_owner := int(previous_payload.get("ownerColorArgb", 0))
+	var previous_upgrade := int(previous_payload.get("upgradeLevel", 0))
+	var previous_mortgage := bool(previous_payload.get("isMortgaged", false))
+	var previous_complete := bool(
+		previous_payload.get("hasCompleteColorGroup", false)
+	)
+	var change_label := ""
+	var change_color := owner_color if owner_color.a > 0.0 else GOLD_LIGHT
+	if previous_owner == 0 and owner_color.a > 0.0:
+		change_label = "SOLD"
+	elif upgrade_level > previous_upgrade:
+		change_label = "HOTEL OPEN" if upgrade_level >= 5 else "BUILDING"
+	elif not previous_complete and has_complete_group:
+		change_label = "DISTRICT COMPLETE"
+	elif not previous_mortgage and is_mortgaged:
+		change_label = "MORTGAGED"
+		change_color = RED
+	elif previous_mortgage and not is_mortgaged:
+		change_label = "REOPENED"
+	if not change_label.is_empty():
+		_animate_property_change(markers, change_label, change_color)
+
+
+func _create_owner_flag(markers: Node3D, owner_color: Color) -> void:
+	var pole_material := _material(Color("#c9d4df"), 0.72, 0.24)
+	var pole := _add_box(
+		markers,
+		Vector3(0.025, 0.44, 0.025),
+		Vector3(-0.4, 0.39, 0.25),
+		pole_material
+	)
+	pole.name = "OwnerFlagPole"
+	var flag := _add_box(
+		markers,
+		Vector3(0.24, 0.13, 0.035),
+		Vector3(-0.29, 0.54, 0.25),
+		_material(owner_color, 0.18, 0.3, owner_color, 0.7)
+	)
+	flag.name = "OwnerFlag"
+
+
+func _create_complete_group_trim(
+	markers: Node3D,
+	owner_color: Color
+) -> void:
+	var glow_material := _material(
+		owner_color.lightened(0.18),
+		0.24,
+		0.18,
+		owner_color,
+		2.2
+	)
+	var trim_index := 0
+	for edge_z in [-0.44, 0.44]:
+		var horizontal_trim := _add_box(
+			markers,
+			Vector3(1.02, 0.04, 0.035),
+			Vector3(0.0, 0.15, edge_z),
+			glow_material
+		)
+		horizontal_trim.name = "CompleteGroupTrim%d" % trim_index
+		trim_index += 1
+	for edge_x in [-0.52, 0.52]:
+		var vertical_trim := _add_box(
+			markers,
+			Vector3(0.035, 0.04, 0.85),
+			Vector3(edge_x, 0.15, 0.0),
+			glow_material
+		)
+		vertical_trim.name = "CompleteGroupTrim%d" % trim_index
+		trim_index += 1
+
+
+func _create_mini_house(
+	markers: Node3D,
+	house_index: int,
+	owner_color: Color
+) -> void:
+	var x := -0.19 + float(house_index) * 0.145
+	var body_color := owner_color.lerp(CREAM, 0.7)
+	var house := _add_box(
+		markers,
+		Vector3(0.12, 0.2, 0.15),
+		Vector3(x, 0.27, -0.29),
+		_material(body_color, 0.03, 0.62)
+	)
+	house.name = "House%d" % (house_index + 1)
+	_add_box(
+		markers,
+		Vector3(0.145, 0.07, 0.175),
+		Vector3(x, 0.405, -0.29),
+		_material(owner_color, 0.08, 0.48)
+	)
+	_add_box(
+		markers,
+		Vector3(0.035, 0.045, 0.012),
+		Vector3(x, 0.29, -0.371),
+		_material(GOLD_LIGHT, 0.08, 0.25, GOLD_LIGHT, 1.0)
+	)
+
+
+func _create_mini_hotel(markers: Node3D, owner_color: Color) -> void:
+	var body_color := owner_color.lerp(Color("#dbe7eb"), 0.74)
+	var hotel := _add_box(
+		markers,
+		Vector3(0.32, 0.52, 0.26),
+		Vector3(0.1, 0.43, -0.28),
+		_material(body_color, 0.16, 0.38)
+	)
+	hotel.name = "Hotel"
+	for floor_index in 3:
+		_add_box(
+			markers,
+			Vector3(0.2, 0.035, 0.018),
+			Vector3(
+				0.1,
+				0.27 + float(floor_index) * 0.13,
+				-0.421
+			),
+			_material(GOLD_LIGHT, 0.05, 0.24, GOLD_LIGHT, 1.2)
+		)
+	_add_box(
+		markers,
+		Vector3(0.38, 0.08, 0.3),
+		Vector3(0.1, 0.73, -0.28),
+		_material(owner_color, 0.22, 0.3, owner_color, 0.8)
+	)
+
+
+func _create_mortgage_shutter(markers: Node3D) -> void:
+	var shutter := _add_box(
+		markers,
+		Vector3(0.9, 0.045, 0.66),
+		Vector3(0.0, 0.18, 0.0),
+		_material(Color("#1b202b"), 0.08, 0.8)
+	)
+	shutter.name = "MortgageShutter"
+	for stripe_index in 5:
+		_add_box(
+			markers,
+			Vector3(0.8, 0.018, 0.025),
+			Vector3(
+				0.0,
+				0.21,
+				-0.24 + float(stripe_index) * 0.12
+			),
+			_material(Color("#3b4351"), 0.1, 0.62)
+		)
+	var mortgage_label := Label3D.new()
+	mortgage_label.name = "MortgageLabel"
+	mortgage_label.text = "CLOSED"
+	mortgage_label.font_size = 38
+	mortgage_label.pixel_size = 0.0054
+	mortgage_label.position = Vector3(0.0, 0.235, 0.0)
+	mortgage_label.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	mortgage_label.modulate = RED
+	mortgage_label.outline_modulate = Color("#070b12")
+	mortgage_label.outline_size = 7
+	markers.add_child(mortgage_label)
+
+
+func _animate_property_change(
+	markers: Node3D,
+	label_text: String,
+	change_color: Color
+) -> void:
+	markers.scale = Vector3.ONE * 0.08
+	markers.position = Vector3(0.0, -0.16, 0.0)
+	var construction_tween := create_tween()
+	construction_tween.set_parallel(true)
+	construction_tween.set_trans(Tween.TRANS_BACK)
+	construction_tween.set_ease(Tween.EASE_OUT)
+	construction_tween.tween_property(markers, "scale", Vector3.ONE, 0.48)
+	construction_tween.tween_property(
+		markers,
+		"position",
+		Vector3.ZERO,
+		0.48
+	)
+
+	var status_label := Label3D.new()
+	status_label.name = "PropertyChangeLabel"
+	status_label.text = label_text
+	status_label.font_size = 38
+	status_label.pixel_size = 0.006
+	status_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	status_label.position = Vector3(0.0, 1.0, 0.0)
+	status_label.modulate = change_color
+	status_label.outline_modulate = INK
+	status_label.outline_size = 8
+	markers.add_child(status_label)
+	var label_tween := create_tween()
+	label_tween.set_trans(Tween.TRANS_QUAD)
+	label_tween.set_ease(Tween.EASE_OUT)
+	label_tween.tween_property(
+		status_label,
+		"position:y",
+		1.38,
+		0.65
+	)
+	label_tween.tween_interval(0.35)
+	label_tween.tween_property(
+		status_label,
+		"modulate:a",
+		0.0,
+		0.32
+	)
 
 
 func _apply_city_environment() -> void:
@@ -3226,7 +3429,8 @@ func _finish_flutter_roll(command: Dictionary) -> void:
 	]
 	_finish_movement_preview(final_visual)
 	_play_landing_reaction(player_index)
-	get_tree().create_timer(0.75).timeout.connect(
+	_focus_camera_on_landing(final_visual)
+	get_tree().create_timer(1.25).timeout.connect(
 		_restore_camera_after_roll,
 		CONNECT_ONE_SHOT
 	)
@@ -3464,6 +3668,40 @@ func _focus_camera_on_route(command: Dictionary) -> void:
 		"camera_elevation",
 		deg_to_rad(55.0),
 		0.55
+	)
+
+
+func _focus_camera_on_landing(visual_index: int) -> void:
+	if not cinematic_camera_active or visual_index >= tile_positions.size():
+		return
+	var landing_position := tile_positions[visual_index]
+	var landing_focus := landing_position
+	landing_focus.y = 0.72
+	var payload := _visual_tile_payload(visual_index)
+	var is_developed := (
+		int(payload.get("ownerColorArgb", 0)) != 0
+		or int(payload.get("upgradeLevel", 0)) > 0
+	)
+	var outward_azimuth := atan2(landing_position.x, landing_position.z + 1.0)
+	if camera_tween != null and camera_tween.is_running():
+		camera_tween.kill()
+	camera_tween = create_tween()
+	camera_tween.set_parallel(true)
+	camera_tween.set_trans(Tween.TRANS_CUBIC)
+	camera_tween.set_ease(Tween.EASE_IN_OUT)
+	camera_tween.tween_property(self, "camera_target", landing_focus, 0.48)
+	camera_tween.tween_property(self, "camera_azimuth", outward_azimuth, 0.48)
+	camera_tween.tween_property(
+		self,
+		"camera_elevation",
+		deg_to_rad(49.0),
+		0.48
+	)
+	camera_tween.tween_property(
+		self,
+		"camera_distance",
+		21.5 if is_developed else 24.0,
+		0.48
 	)
 
 

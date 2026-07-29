@@ -51,6 +51,8 @@ func _render_all() -> void:
 			"ownerColorArgb": 0xffff4f5e if index == 1 else 0,
 			"upgradeLevel": 3 if index == 1 else 0,
 			"isMortgaged": false,
+			"groupId": "preview_group" if index == 1 else "",
+			"hasCompleteColorGroup": index == 1,
 		})
 
 	for board_id in CityThemesCatalog.all_board_ids():

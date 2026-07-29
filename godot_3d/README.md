@@ -38,6 +38,11 @@ When embedded, every logical location retains its Flutter tile type, price,
 owner, mortgage status, and houses/hotel level. Chance, Community Chest, Jail,
 Free Parking, Go To Jail, utilities, railroads, and taxes therefore remain
 visually distinct and continue through the shared Flutter rules engine.
+Owned locations raise a player-color flag, developed properties grow miniature
+houses or a lit hotel, complete color groups receive a glowing perimeter, and
+mortgaged properties close behind a dark shutter. Purchases, construction,
+completed districts, mortgages, and reopenings animate as soon as the Flutter
+rules engine applies them.
 
 Manhattan remains the hand-authored flagship map, with Central Park, Midtown,
 Downtown, the Statue of Liberty, Brooklyn Bridge, piers, and multiple harbor
@@ -72,5 +77,5 @@ license file next to the model assets.
 
 The smoke suite rebuilds every city and verifies its landmarks, 52-stop route,
 localized Flutter labels, special-space metadata, ownership/development
-markers, object picking, players, dice, camera bridge, movement completion, and
-water-only boat lanes.
+markers and transitions, completed districts, object picking, players, dice,
+camera bridge, movement completion, and water-only boat lanes.
