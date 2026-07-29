@@ -191,6 +191,15 @@ var board_tap_targets: Array[Dictionary] = []
 var player_ids: Array[String] = ["", "", "", ""]
 var brand_title_label: Label
 var brand_subtitle_label: Label
+var movement_preview_root: Node3D
+var movement_markers: Array[MeshInstance3D] = []
+var destination_beacon: Node3D
+var camera_tween: Tween
+var cinematic_camera_active := false
+var saved_camera_target := Vector3.ZERO
+var saved_camera_azimuth := 0.0
+var saved_camera_elevation := 0.0
+var saved_camera_distance := 36.0
 
 
 func _ready() -> void:
@@ -216,6 +225,12 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_theme_park_world(delta)
+	if cinematic_camera_active:
+		_update_camera()
+	if is_instance_valid(destination_beacon):
+		var beacon_pulse := 1.0 + sin(Time.get_ticks_msec() * 0.006) * 0.12
+		destination_beacon.scale = Vector3.ONE * beacon_pulse
+		destination_beacon.rotation.y += delta * 0.75
 	if player_tokens.is_empty():
 		return
 	if active_reach_player >= 0:
@@ -2575,6 +2590,9 @@ func _rebuild_city_board(
 		return
 	if active_tween != null and active_tween.is_running():
 		active_tween.kill()
+	if camera_tween != null and camera_tween.is_running():
+		camera_tween.kill()
+	cinematic_camera_active = false
 	active_reach_player = -1
 
 	for child in board_root.get_children():
@@ -2587,6 +2605,9 @@ func _rebuild_city_board(
 	cloud_speeds.clear()
 	boat_routes.clear()
 	board_tap_targets.clear()
+	movement_markers.clear()
+	movement_preview_root = null
+	destination_beacon = null
 	player_tiles = [19, 32, 45, 6]
 
 	current_board_id = board_id
@@ -2826,6 +2847,12 @@ func _apply_camera_gesture_json(json: String) -> void:
 	var orbit_delta_x := float(gesture.get("orbitDeltaX", 0.0))
 	var orbit_delta_y := float(gesture.get("orbitDeltaY", 0.0))
 	var zoom_scale := float(gesture.get("zoomScale", 1.0))
+	if (
+		orbit_delta_x != 0.0
+		or orbit_delta_y != 0.0
+		or (zoom_scale > 0.0 and not is_equal_approx(zoom_scale, 1.0))
+	):
+		_cancel_camera_cinematic()
 
 	if orbit_delta_x != 0.0 or orbit_delta_y != 0.0:
 		camera_azimuth -= orbit_delta_x * 0.007
@@ -3104,6 +3131,8 @@ func _animate_flutter_roll_json(json: String) -> void:
 	current_player_index = player_index
 	_set_active_player(player_index)
 	turn_label.text = "%s IS ROLLING…" % player_names[player_index]
+	_show_movement_preview(command)
+	_begin_roll_camera_cinematic()
 	_animate_3d_dice(die_one, die_two)
 
 	get_tree().create_timer(1.04).timeout.connect(
@@ -3124,6 +3153,7 @@ func _begin_flutter_token_path(command: Dictionary) -> void:
 		player_names[player_index],
 		spaces,
 	]
+	_focus_camera_on_route(command)
 
 	var visual_path_value = command.get("visualPath", [])
 	if typeof(visual_path_value) == TYPE_ARRAY:
@@ -3145,6 +3175,7 @@ func _animate_flutter_path_step(
 	if player_index < 0 or player_index >= player_tokens.size():
 		return
 	var target_tile := posmod(int(visual_path[path_index]), BOARD_SPOT_COUNT)
+	_advance_movement_preview(path_index)
 	player_tiles[player_index] = target_tile
 	var token := player_tokens[player_index]
 	var target_local := tile_positions[target_tile] + _token_offset_for_tile(
@@ -3193,6 +3224,16 @@ func _finish_flutter_roll(command: Dictionary) -> void:
 		player_names[player_index],
 		active_tile_names[final_visual],
 	]
+	_finish_movement_preview(final_visual)
+	_play_landing_reaction(player_index)
+	get_tree().create_timer(0.75).timeout.connect(
+		_restore_camera_after_roll,
+		CONNECT_ONE_SHOT
+	)
+	get_tree().create_timer(1.35).timeout.connect(
+		_clear_movement_preview,
+		CONNECT_ONE_SHOT
+	)
 	var command_id := str(command.get("commandId", ""))
 	var player_id := str(command.get("playerId", ""))
 	if flutter_bridge != null:
@@ -3209,6 +3250,261 @@ func _finish_flutter_roll(command: Dictionary) -> void:
 			"logicalPosition": to_logical,
 			"visualPosition": final_visual,
 		})
+
+
+func _show_movement_preview(command: Dictionary) -> void:
+	_clear_movement_preview()
+	movement_preview_root = Node3D.new()
+	movement_preview_root.name = "MovementPreview"
+	board_root.add_child(movement_preview_root)
+
+	var visual_path_value = command.get("visualPath", [])
+	if typeof(visual_path_value) != TYPE_ARRAY:
+		return
+	var visual_path: Array = visual_path_value
+	for path_index in visual_path.size():
+		var visual_index := posmod(
+			int(visual_path[path_index]),
+			BOARD_SPOT_COUNT
+		)
+		var marker_material := _material(
+			Color(0.16, 0.82, 0.76, 0.5),
+			0.16,
+			0.24,
+			TEAL,
+			1.5
+		)
+		marker_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		var marker := _add_cylinder(
+			movement_preview_root,
+			0.31,
+			0.31,
+			0.045,
+			tile_positions[visual_index] + Vector3.UP * 0.27,
+			marker_material
+		)
+		marker.name = "RouteMarker%02d" % path_index
+		marker.scale = Vector3.ONE * 0.05
+		movement_markers.append(marker)
+		var marker_tween := create_tween()
+		marker_tween.tween_interval(path_index * 0.035)
+		marker_tween.set_trans(Tween.TRANS_BACK)
+		marker_tween.set_ease(Tween.EASE_OUT)
+		marker_tween.tween_property(marker, "scale", Vector3.ONE, 0.18)
+
+	if visual_path.is_empty():
+		return
+	var destination_visual := posmod(
+		int(visual_path[visual_path.size() - 1]),
+		BOARD_SPOT_COUNT
+	)
+	destination_beacon = Node3D.new()
+	destination_beacon.name = "DestinationBeacon"
+	destination_beacon.position = tile_positions[destination_visual]
+	movement_preview_root.add_child(destination_beacon)
+	var beacon_material := _material(
+		Color(1.0, 0.75, 0.22, 0.48),
+		0.3,
+		0.2,
+		GOLD_LIGHT,
+		2.4
+	)
+	beacon_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_add_cylinder(
+		destination_beacon,
+		0.72,
+		0.72,
+		0.055,
+		Vector3.UP * 0.31,
+		beacon_material
+	)
+	var destination_label := Label3D.new()
+	destination_label.name = "DestinationLabel"
+	destination_label.text = "LANDING"
+	destination_label.font_size = 34
+	destination_label.pixel_size = 0.006
+	destination_label.modulate = GOLD_LIGHT
+	destination_label.outline_modulate = INK
+	destination_label.outline_size = 8
+	destination_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	destination_label.position = Vector3(0.0, 1.28, 0.0)
+	destination_beacon.add_child(destination_label)
+
+
+func _advance_movement_preview(path_index: int) -> void:
+	for marker_index in movement_markers.size():
+		var marker := movement_markers[marker_index]
+		if not is_instance_valid(marker):
+			continue
+		if marker_index < path_index:
+			marker.scale = Vector3.ONE * 0.58
+		elif marker_index == path_index:
+			marker.scale = Vector3.ONE * 1.35
+			marker.material_override = _material(
+				GOLD_LIGHT,
+				0.25,
+				0.18,
+				GOLD_LIGHT,
+				2.4
+			)
+		else:
+			marker.scale = Vector3.ONE
+
+
+func _finish_movement_preview(final_visual: int) -> void:
+	if not is_instance_valid(destination_beacon):
+		return
+	destination_beacon.position = tile_positions[final_visual]
+	var label := destination_beacon.get_node_or_null("DestinationLabel") as Label3D
+	if label != null:
+		label.text = active_tile_names[final_visual].to_upper()
+	var finish_tween := create_tween()
+	finish_tween.set_trans(Tween.TRANS_BACK)
+	finish_tween.set_ease(Tween.EASE_OUT)
+	finish_tween.tween_property(
+		destination_beacon,
+		"scale",
+		Vector3.ONE * 1.65,
+		0.24
+	)
+
+
+func _clear_movement_preview() -> void:
+	movement_markers.clear()
+	destination_beacon = null
+	if is_instance_valid(movement_preview_root):
+		movement_preview_root.queue_free()
+	movement_preview_root = null
+
+
+func _play_landing_reaction(player_index: int) -> void:
+	if player_index < 0 or player_index >= player_tokens.size():
+		return
+	var token := player_tokens[player_index]
+	var landing_tween := create_tween()
+	landing_tween.set_parallel(true)
+	landing_tween.set_trans(Tween.TRANS_BACK)
+	landing_tween.set_ease(Tween.EASE_OUT)
+	landing_tween.tween_property(token, "scale", Vector3.ONE * 1.18, 0.16)
+	landing_tween.tween_property(token, "position:y", 0.34, 0.16)
+	landing_tween.chain().set_parallel(true)
+	landing_tween.set_trans(Tween.TRANS_QUAD)
+	landing_tween.set_ease(Tween.EASE_IN_OUT)
+	landing_tween.tween_property(token, "scale", Vector3.ONE, 0.18)
+	landing_tween.tween_property(token, "position:y", 0.0, 0.18)
+
+
+func _begin_roll_camera_cinematic() -> void:
+	if camera == null or dice_nodes.is_empty():
+		return
+	_cancel_camera_cinematic()
+	saved_camera_target = camera_target
+	saved_camera_azimuth = camera_azimuth
+	saved_camera_elevation = camera_elevation
+	saved_camera_distance = camera_distance
+	cinematic_camera_active = true
+
+	var dice_focus := Vector3.ZERO
+	var visible_dice := 0
+	for die in dice_nodes:
+		if die.visible:
+			dice_focus += die.global_position
+			visible_dice += 1
+	if visible_dice > 0:
+		dice_focus /= float(visible_dice)
+	dice_focus.y = 1.25
+	camera_tween = create_tween()
+	camera_tween.set_parallel(true)
+	camera_tween.set_trans(Tween.TRANS_CUBIC)
+	camera_tween.set_ease(Tween.EASE_IN_OUT)
+	camera_tween.tween_property(self, "camera_target", dice_focus, 0.48)
+	camera_tween.tween_property(self, "camera_distance", 27.0, 0.48)
+	camera_tween.tween_property(
+		self,
+		"camera_elevation",
+		deg_to_rad(52.0),
+		0.48
+	)
+
+
+func _focus_camera_on_route(command: Dictionary) -> void:
+	if not cinematic_camera_active:
+		return
+	var visual_path_value = command.get("visualPath", [])
+	if typeof(visual_path_value) != TYPE_ARRAY:
+		return
+	var visual_path: Array = visual_path_value
+	if visual_path.is_empty():
+		return
+	var destination_visual := posmod(
+		int(visual_path[visual_path.size() - 1]),
+		BOARD_SPOT_COUNT
+	)
+	var player_index := int(command.get("playerIndex", 0))
+	var start_visual := player_tiles[clampi(
+		player_index,
+		0,
+		maxi(0, player_tiles.size() - 1)
+	)]
+	var route_focus := tile_positions[start_visual].lerp(
+		tile_positions[destination_visual],
+		0.58
+	)
+	route_focus.y = 1.15
+	if camera_tween != null and camera_tween.is_running():
+		camera_tween.kill()
+	camera_tween = create_tween()
+	camera_tween.set_parallel(true)
+	camera_tween.set_trans(Tween.TRANS_CUBIC)
+	camera_tween.set_ease(Tween.EASE_IN_OUT)
+	camera_tween.tween_property(self, "camera_target", route_focus, 0.55)
+	camera_tween.tween_property(self, "camera_distance", 28.5, 0.55)
+	camera_tween.tween_property(
+		self,
+		"camera_elevation",
+		deg_to_rad(55.0),
+		0.55
+	)
+
+
+func _restore_camera_after_roll() -> void:
+	if not cinematic_camera_active:
+		return
+	if camera_tween != null and camera_tween.is_running():
+		camera_tween.kill()
+	camera_tween = create_tween()
+	camera_tween.set_parallel(true)
+	camera_tween.set_trans(Tween.TRANS_CUBIC)
+	camera_tween.set_ease(Tween.EASE_IN_OUT)
+	camera_tween.tween_property(self, "camera_target", saved_camera_target, 0.72)
+	camera_tween.tween_property(self, "camera_azimuth", saved_camera_azimuth, 0.72)
+	camera_tween.tween_property(
+		self,
+		"camera_elevation",
+		saved_camera_elevation,
+		0.72
+	)
+	camera_tween.tween_property(
+		self,
+		"camera_distance",
+		saved_camera_distance,
+		0.72
+	)
+	camera_tween.finished.connect(
+		_complete_camera_restore,
+		CONNECT_ONE_SHOT
+	)
+
+
+func _complete_camera_restore() -> void:
+	cinematic_camera_active = false
+	_update_camera()
+
+
+func _cancel_camera_cinematic() -> void:
+	if camera_tween != null and camera_tween.is_running():
+		camera_tween.kill()
+	cinematic_camera_active = false
 
 
 func _move_player_token_to_visual(player_index: int, target_value: int) -> void:
@@ -3685,6 +3981,8 @@ func _reset_rpg_view() -> void:
 
 
 func _reset_camera() -> void:
+	_cancel_camera_cinematic()
+	camera_target = Vector3(0.0, 1.4, -1.0)
 	camera_azimuth = deg_to_rad(43.0)
 	camera_elevation = deg_to_rad(58.0)
 	camera_distance = 36.0

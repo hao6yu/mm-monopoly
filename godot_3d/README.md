@@ -51,6 +51,9 @@ showcase build, and turns rotate automatically after movement finishes.
 The presentation is intentionally focused on the large table and board, without
 full-size human characters or chairs. After a roll, the active miniature turns
 toward its path and hops from space to space until it reaches its destination.
+Each hosted roll now previews the full route, pulses the destination, moves the
+camera from the dice to the relevant part of the board, and gives the active
+character a short landing reaction before restoring the player's prior view.
 Taps on locations, character pieces, dice, landmarks, scenic stops, or the city
 background are returned to Flutter for facts, portfolios, card draws, city
 introductions, and gameplay actions.

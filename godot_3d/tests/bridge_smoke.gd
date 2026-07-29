@@ -97,6 +97,16 @@ func _run() -> void:
 		"action": "animate_roll",
 		"json": JSON.stringify(command),
 	})
+	await process_frame
+	if scene.movement_markers.size() != 5:
+		push_error("3D roll did not create the five-step route preview.")
+		quit(1)
+		return
+	if not scene.cinematic_camera_active:
+		push_error("3D roll did not start the camera cinematic.")
+		quit(1)
+		return
+	print("ROLL_PRESENTATION_OK")
 
 	for _attempt in 160:
 		await create_timer(0.05).timeout

@@ -18,6 +18,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get familyEdition => '家庭版';
 
   @override
+  String get worldCityEdition => '世界城市版';
+
+  @override
+  String get chooseNextMove => '选择你的下一步';
+
+  @override
   String get newGame => '新游戏';
 
   @override

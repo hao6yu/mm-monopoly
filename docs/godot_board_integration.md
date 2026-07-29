@@ -12,7 +12,8 @@ Flutter sends:
   upgrades, mortgage state, logical tile count, visual spot count, current
   turn, dice, and player state.
 - `animate_roll`: dice values, logical start/destination, and a mapped visual
-  path.
+  path. Godot uses that path for the route preview, destination beacon, dice
+  focus, movement camera, and landing reaction before returning completion.
 - `camera_gesture`: orbit, pinch zoom, and reset-view commands.
 - `board_tap`: normalized view coordinates for interactive object picking.
 
@@ -30,6 +31,11 @@ landing tile only after the matching movement-complete event returns.
 Flutter also owns all informational and gameplay dialogs. Godot picks the 3D
 object, then Flutter opens the same tile facts, player portfolio, card draw, or
 city guide UI used by the rest of the app.
+
+The Flutter splash, main menu, and two-step setup flow use a lightweight
+Flutter-drawn miniature city backdrop rather than a second Godot surface. This
+keeps startup immediate while matching the embedded renderer's navy, teal,
+gold, water, island, skyline, and glass-panel visual language.
 
 The Godot city catalog mirrors `CityBoardRegistry`: Atlantic City, New York
 City, Los Angeles, London, Edinburgh, Manchester, Paris, Lyon, Marseille,

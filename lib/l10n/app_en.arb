@@ -4,6 +4,8 @@
   "appTitle": "M&M Property Tycoon",
   "propertyTycoon": "PROPERTY TYCOON",
   "familyEdition": "FAMILY EDITION",
+  "worldCityEdition": "WORLD CITY EDITION",
+  "chooseNextMove": "Choose your next move",
 
   "newGame": "New Game",
   "continueGame": "Continue",

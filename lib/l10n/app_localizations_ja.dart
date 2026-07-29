@@ -18,6 +18,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get familyEdition => 'ファミリーエディション';
 
   @override
+  String get worldCityEdition => '世界都市エディション';
+
+  @override
+  String get chooseNextMove => '次の一手を選ぼう';
+
+  @override
   String get newGame => '新しいゲーム';
 
   @override

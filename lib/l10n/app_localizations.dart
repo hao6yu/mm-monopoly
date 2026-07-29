@@ -122,6 +122,18 @@ abstract class AppLocalizations {
   /// **'FAMILY EDITION'**
   String get familyEdition;
 
+  /// No description provided for @worldCityEdition.
+  ///
+  /// In en, this message translates to:
+  /// **'WORLD CITY EDITION'**
+  String get worldCityEdition;
+
+  /// No description provided for @chooseNextMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your next move'**
+  String get chooseNextMove;
+
   /// No description provided for @newGame.
   ///
   /// In en, this message translates to:

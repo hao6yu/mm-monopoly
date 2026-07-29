@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/player.dart';
@@ -9,6 +8,7 @@ import '../config/city_board_registry.dart';
 import '../config/constants.dart' hide Offset;
 import '../widgets/avatar/avatar_selector.dart';
 import '../widgets/avatar/avatar_widget.dart';
+import '../widgets/city_theme/city_theme.dart';
 
 /// Game setup screen for configuring players before starting
 class GameSetupScreen extends StatefulWidget {
@@ -165,30 +165,94 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF667eea), Color(0xFF764ba2), Color(0xFFf093fb)],
+      backgroundColor: const Color(0xFF071427),
+      body: CityThemeBackground(
+        animation: _floatController,
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildProgressIndicator(),
+              Expanded(
+                child:
+                    _currentStep == 0
+                        ? _buildPlayerCountStep()
+                        : _buildPlayerConfigStep(),
+              ),
+              _buildNavigationButtons(),
+            ],
           ),
         ),
-        child: Stack(
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    final screenSize = MediaQuery.sizeOf(context);
+    final isCompactLandscape =
+        screenSize.width > screenSize.height && screenSize.height < 500;
+    return Padding(
+      padding:
+          isCompactLandscape
+              ? const EdgeInsets.fromLTRB(10, 6, 10, 2)
+              : const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      child: CityGlassPanel(
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompactLandscape ? 6 : 10,
+          vertical: isCompactLandscape ? 4 : 8,
+        ),
+        radius: isCompactLandscape ? 14 : 18,
+        child: Row(
           children: [
-            ...List.generate(12, (index) => _buildFloatingShape(index)),
-            SafeArea(
+            _buildBackButton(compact: isCompactLandscape),
+            SizedBox(width: isCompactLandscape ? 10 : 14),
+            Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(),
-                  _buildProgressIndicator(),
-                  Expanded(
-                    child:
-                        _currentStep == 0
-                            ? _buildPlayerCountStep()
-                            : _buildPlayerConfigStep(),
+                  if (!isCompactLandscape) ...[
+                    CitySectionLabel(
+                      icon:
+                          _currentStep == 0
+                              ? Icons.public_rounded
+                              : Icons.groups_rounded,
+                      label:
+                          _currentStep == 0
+                              ? AppLocalizations.of(context)!.chooseBoard
+                              : AppLocalizations.of(context)!.setupStep,
+                    ),
+                    const SizedBox(height: 3),
+                  ],
+                  Text(
+                    _currentStep == 0
+                        ? AppLocalizations.of(context)!.howManyPlayers
+                        : AppLocalizations.of(context)!.playerSetup,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isCompactLandscape ? 16 : 20,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  _buildNavigationButtons(),
                 ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompactLandscape ? 9 : 12,
+                vertical: isCompactLandscape ? 6 : 8,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B2B48),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0x5535D5C5)),
+              ),
+              child: Text(
+                '${_currentStep + 1}/2',
+                style: const TextStyle(
+                  color: Color(0xFFFFD86B),
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],
@@ -197,92 +261,26 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     );
   }
 
-  Widget _buildFloatingShape(int index) {
-    final random = math.Random(index + 500);
-    final size = 15.0 + random.nextDouble() * 30;
-    final left = random.nextDouble();
-    final top = random.nextDouble();
-    final colors = [
-      Colors.white.withOpacity(0.08),
-      Colors.yellow.withOpacity(0.1),
-      Colors.pink.withOpacity(0.08),
-      Colors.cyan.withOpacity(0.08),
-    ];
-
-    return AnimatedBuilder(
-      animation: _floatController,
-      builder: (context, child) {
-        return Positioned(
-          left: MediaQuery.of(context).size.width * left,
-          top: MediaQuery.of(context).size.height * top,
-          child: Transform.translate(
-            offset: Offset(
-              math.sin(_floatController.value * math.pi * 2 + index) * 6,
-              math.cos(_floatController.value * math.pi * 2 + index * 0.5) * 6,
-            ),
-            child: Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                color: colors[index % colors.length],
-                shape: index % 3 == 0 ? BoxShape.circle : BoxShape.rectangle,
-                borderRadius: index % 3 != 0 ? BorderRadius.circular(6) : null,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          _buildBackButton(),
-          const SizedBox(width: 16),
-          Expanded(
-            child: ShaderMask(
-              shaderCallback:
-                  (bounds) => const LinearGradient(
-                    colors: [Colors.white, Color(0xFFFFE66D)],
-                  ).createShader(bounds),
-              child: Text(
-                _currentStep == 0
-                    ? AppLocalizations.of(context)!.howManyPlayers
-                    : AppLocalizations.of(context)!.playerSetup,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBackButton() {
+  Widget _buildBackButton({bool compact = false}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: _previousStep,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          width: 48,
-          height: 48,
+          width: compact ? 38 : 48,
+          height: compact ? 38 : 48,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF243657), Color(0xFF162541)],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0x555F91B5)),
           ),
           child: const Icon(
             Icons.arrow_back_rounded,
             color: Colors.white,
-            size: 24,
+            size: 22,
           ),
         ),
       ),
@@ -290,6 +288,10 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   }
 
   Widget _buildProgressIndicator() {
+    final screenSize = MediaQuery.sizeOf(context);
+    if (screenSize.width > screenSize.height && screenSize.height < 500) {
+      return const SizedBox(height: 4);
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
@@ -452,12 +454,19 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withOpacity(0.15),
-            Colors.white.withOpacity(0.05),
+            const Color(0xFF14223B).withOpacity(0.95),
+            const Color(0xFF091426).withOpacity(0.92),
           ],
         ),
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: const Color(0x665F91B5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x4D000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: child,
     );
@@ -594,12 +603,12 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withOpacity(0.12),
-            Colors.white.withOpacity(0.04),
+            const Color(0xFF14223B).withOpacity(0.95),
+            const Color(0xFF091426).withOpacity(0.92),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: const Color(0x665F91B5)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -715,12 +724,17 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                 size: isCompact ? 20 : 24,
               ),
               const SizedBox(width: 10),
-              Text(
-                AppLocalizations.of(context)!.numberOfPlayers,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isCompact ? 15 : 20,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    AppLocalizations.of(context)!.numberOfPlayers,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isCompact ? 15 : 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -972,6 +986,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
 
   Widget _buildPlayerCard(int index) {
     final config = _playerConfigs[index];
+    final screenSize = MediaQuery.sizeOf(context);
+    final isCompactLandscape =
+        screenSize.width > screenSize.height && screenSize.height < 500;
 
     return Container(
       decoration: BoxDecoration(
@@ -980,7 +997,8 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           end: Alignment.bottomRight,
           colors: [
             config.color.withOpacity(0.3),
-            const Color(0xFF2D1B4E).withOpacity(0.9),
+            const Color(0xFF101C33).withOpacity(0.96),
+            const Color(0xFF071223).withOpacity(0.96),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
@@ -994,7 +1012,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(isCompactLandscape ? 6 : 12),
         child: Column(
           children: [
             // Header row: Player number + AI toggle
@@ -1002,8 +1020,8 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: 8,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -1082,7 +1100,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               ],
             ),
 
-            const SizedBox(height: 4),
+            SizedBox(height: isCompactLandscape ? 1 : 4),
 
             // Avatar - centered and tappable, fills available space
             Expanded(
@@ -1092,8 +1110,8 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                   builder: (context, constraints) {
                     // Use most of the available space for the avatar
                     final avatarSize = (constraints.maxHeight * 0.85).clamp(
-                      60.0,
-                      140.0,
+                      isCompactLandscape ? 38.0 : 60.0,
+                      isCompactLandscape ? 88.0 : 140.0,
                     );
                     return Center(
                       child: Stack(
@@ -1150,11 +1168,11 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               ),
             ),
 
-            const SizedBox(height: 4),
+            SizedBox(height: isCompactLandscape ? 1 : 4),
 
             // Name input
             SizedBox(
-              height: 44,
+              height: isCompactLandscape ? 34 : 44,
               child: TextField(
                 controller: _nameControllers[index],
                 onChanged:
@@ -1168,10 +1186,10 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                   );
                 },
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: isCompactLandscape ? 14 : 16,
                 ),
                 decoration: InputDecoration(
                   hintText: AppLocalizations.of(context)!.name,
@@ -1196,68 +1214,78 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               ),
             ),
 
-            const SizedBox(height: 10),
+            SizedBox(height: isCompactLandscape ? 4 : 10),
 
             // Color selector row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children:
-                  _availableColors.map((color) {
-                    final isSelected = config.color == color;
-                    final isUsed = _playerConfigs
-                        .where((c) => c != config)
-                        .any((c) => c.color == color);
-                    return GestureDetector(
-                      onTap:
-                          isUsed
-                              ? null
-                              : () => setState(
-                                () =>
-                                    _playerConfigs[index] = config.copyWith(
-                                      color: color,
-                                    ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final dotSize =
+                    ((constraints.maxWidth / _availableColors.length) - 6)
+                        .clamp(18.0, 28.0);
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children:
+                      _availableColors.map((color) {
+                        final isSelected = config.color == color;
+                        final isUsed = _playerConfigs
+                            .where((c) => c != config)
+                            .any((c) => c.color == color);
+                        return GestureDetector(
+                          onTap:
+                              isUsed
+                                  ? null
+                                  : () => setState(
+                                    () =>
+                                        _playerConfigs[index] = config.copyWith(
+                                          color: color,
+                                        ),
+                                  ),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: dotSize,
+                            height: dotSize,
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [color, color.withOpacity(0.7)],
                               ),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 28,
-                        height: 28,
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [color, color.withOpacity(0.7)],
+                              shape: BoxShape.circle,
+                              border:
+                                  isSelected
+                                      ? Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      )
+                                      : null,
+                              boxShadow:
+                                  isSelected
+                                      ? [
+                                        BoxShadow(
+                                          color: color.withOpacity(0.6),
+                                          blurRadius: 8,
+                                        ),
+                                      ]
+                                      : null,
+                            ),
+                            child:
+                                isUsed && !isSelected
+                                    ? Icon(
+                                      Icons.close,
+                                      color: Colors.white.withOpacity(0.5),
+                                      size: dotSize * 0.5,
+                                    )
+                                    : isSelected
+                                    ? Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: dotSize * 0.58,
+                                    )
+                                    : null,
                           ),
-                          shape: BoxShape.circle,
-                          border:
-                              isSelected
-                                  ? Border.all(color: Colors.white, width: 3)
-                                  : null,
-                          boxShadow:
-                              isSelected
-                                  ? [
-                                    BoxShadow(
-                                      color: color.withOpacity(0.6),
-                                      blurRadius: 8,
-                                    ),
-                                  ]
-                                  : null,
-                        ),
-                        child:
-                            isUsed && !isSelected
-                                ? Icon(
-                                  Icons.close,
-                                  color: Colors.white.withOpacity(0.5),
-                                  size: 14,
-                                )
-                                : isSelected
-                                ? const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 16,
-                                )
-                                : null,
-                      ),
-                    );
-                  }).toList(),
+                        );
+                      }).toList(),
+                );
+              },
             ),
           ],
         ),
@@ -1290,7 +1318,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF764ba2), Color(0xFF667eea)],
+                    colors: [Color(0xFF1B3150), Color(0xFF081426)],
                   ),
                   borderRadius: BorderRadius.circular(24),
                 ),
@@ -1366,7 +1394,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0xFF764ba2), Color(0xFF667eea)],
+                        colors: [Color(0xFF1B3150), Color(0xFF081426)],
                       ),
                       borderRadius: BorderRadius.vertical(
                         top: Radius.circular(24),
@@ -1422,8 +1450,14 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   }
 
   Widget _buildNavigationButtons() {
+    final screenSize = MediaQuery.sizeOf(context);
+    final isCompactLandscape =
+        screenSize.width > screenSize.height && screenSize.height < 500;
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding:
+          isCompactLandscape
+              ? const EdgeInsets.fromLTRB(10, 4, 10, 7)
+              : const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Row(
         children: [
           Expanded(
@@ -1433,11 +1467,15 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                 onTap: _previousStep,
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(
+                    vertical: isCompactLandscape ? 10 : 16,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF243657), Color(0xFF162541)],
+                    ),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    border: Border.all(color: const Color(0x555F91B5)),
                   ),
                   child: Center(
                     child: Text(
@@ -1446,7 +1484,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                           : AppLocalizations.of(context)!.previous,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1464,29 +1502,20 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                 onTap: _nextStep,
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(
+                    vertical: isCompactLandscape ? 10 : 16,
+                  ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors:
-                          _currentStep == 0
-                              ? [
-                                const Color(0xFF4ECDC4),
-                                const Color(0xFF44A08D),
-                              ]
-                              : [
-                                const Color(0xFFFF6B6B),
-                                const Color(0xFFFF8E53),
-                              ],
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD86B), Color(0xFFF1AD35)],
                     ),
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
+                    border: Border.all(color: const Color(0xFFFFE6A1)),
+                    boxShadow: const [
                       BoxShadow(
-                        color: (_currentStep == 0
-                                ? const Color(0xFF4ECDC4)
-                                : const Color(0xFFFF6B6B))
-                            .withOpacity(0.4),
+                        color: Color(0x55F1AD35),
                         blurRadius: 12,
-                        offset: const Offset(0, 6),
+                        offset: Offset(0, 6),
                       ),
                     ],
                   ),
@@ -1496,9 +1525,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                           ? AppLocalizations.of(context)!.next
                           : AppLocalizations.of(context)!.startGame,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF122039),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),

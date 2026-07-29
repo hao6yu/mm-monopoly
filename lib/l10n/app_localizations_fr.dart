@@ -18,6 +18,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get familyEdition => 'ÉDITION FAMILIALE';
 
   @override
+  String get worldCityEdition => 'ÉDITION VILLES DU MONDE';
+
+  @override
+  String get chooseNextMove => 'Choisissez votre prochain coup';
+
+  @override
   String get newGame => 'Nouvelle Partie';
 
   @override
