@@ -91,6 +91,48 @@ class GodotBoardPlayerState {
   };
 }
 
+class GodotBoardTileState {
+  const GodotBoardTileState({
+    required this.logicalIndex,
+    required this.visualPosition,
+    required this.name,
+    required this.type,
+    required this.colorArgb,
+    this.price = 0,
+    this.ownerId,
+    this.ownerName,
+    this.ownerColorArgb = 0,
+    this.upgradeLevel = 0,
+    this.isMortgaged = false,
+  });
+
+  final int logicalIndex;
+  final int visualPosition;
+  final String name;
+  final String type;
+  final int colorArgb;
+  final int price;
+  final String? ownerId;
+  final String? ownerName;
+  final int ownerColorArgb;
+  final int upgradeLevel;
+  final bool isMortgaged;
+
+  Map<String, Object?> toJson() => {
+    'logicalIndex': logicalIndex,
+    'visualPosition': visualPosition,
+    'name': name,
+    'type': type,
+    'colorArgb': colorArgb,
+    'price': price,
+    'ownerId': ownerId,
+    'ownerName': ownerName,
+    'ownerColorArgb': ownerColorArgb,
+    'upgradeLevel': upgradeLevel,
+    'isMortgaged': isMortgaged,
+  };
+}
+
 class GodotBoardSceneState {
   const GodotBoardSceneState({
     required this.boardId,
@@ -101,6 +143,7 @@ class GodotBoardSceneState {
     required this.die1,
     required this.die2,
     required this.tileNames,
+    required this.tiles,
     required this.players,
   });
 
@@ -112,6 +155,7 @@ class GodotBoardSceneState {
   final int die1;
   final int die2;
   final List<String> tileNames;
+  final List<GodotBoardTileState> tiles;
   final List<GodotBoardPlayerState> players;
 
   Map<String, Object?> toJson() => {
@@ -125,8 +169,38 @@ class GodotBoardSceneState {
     'die1': die1,
     'die2': die2,
     'tileNames': tileNames,
+    'tiles': tiles.map((tile) => tile.toJson()).toList(),
     'players': players.map((player) => player.toJson()).toList(),
   };
+}
+
+class GodotBoardSelection {
+  const GodotBoardSelection({
+    required this.kind,
+    this.logicalIndex,
+    this.visualIndex,
+    this.playerIndex,
+    this.playerId,
+    this.title,
+  });
+
+  final String kind;
+  final int? logicalIndex;
+  final int? visualIndex;
+  final int? playerIndex;
+  final String? playerId;
+  final String? title;
+
+  factory GodotBoardSelection.fromMap(Map<Object?, Object?> map) {
+    return GodotBoardSelection(
+      kind: map['kind'] as String? ?? 'city',
+      logicalIndex: (map['logicalIndex'] as num?)?.toInt(),
+      visualIndex: (map['visualIndex'] as num?)?.toInt(),
+      playerIndex: (map['playerIndex'] as num?)?.toInt(),
+      playerId: map['playerId'] as String?,
+      title: map['title'] as String?,
+    );
+  }
 }
 
 class GodotRollCommand {

@@ -185,6 +185,10 @@ var current_board_id := "usa_new_york"
 var city_theme: Dictionary = {}
 var active_tile_names: Array[String] = []
 var latest_logical_tile_names: Array[String] = []
+var latest_logical_tiles: Array[Dictionary] = []
+var active_visual_tile_data: Dictionary = {}
+var board_tap_targets: Array[Dictionary] = []
+var player_ids: Array[String] = ["", "", "", ""]
 var brand_title_label: Label
 var brand_subtitle_label: Label
 
@@ -479,42 +483,49 @@ func _create_board() -> void:
 
 
 func _create_tile(index: int, position: Vector3) -> void:
-	var is_corner := index % 13 == 0
+	var payload := _visual_tile_payload(index)
+	var tile_type := str(payload.get("type", ""))
+	var is_corner := (
+		tile_type in ["start", "jail", "freeParking", "goToJail"]
+		or (payload.is_empty() and index % 13 == 0)
+	)
 	var tile_size := (
 		Vector3(1.34, 0.2, 1.1)
 		if is_corner
 		else Vector3(1.06, 0.2, 0.88)
 	)
 
-	var tile_color := CREAM
-	if index in [3, 15, 22, 33]:
-		tile_color = Color("#28365d")
-	elif index in [5, 12, 28, 38]:
-		tile_color = Color("#e7e0c9")
-	elif index in [6, 17, 25, 35]:
-		tile_color = Color("#d7dbe1")
-	elif is_corner:
-		tile_color = [Color("#27a982"), Color("#e2b348"), Color("#9157c8"), RED][index / 13]
+	var tile_color := _tile_surface_color(index)
 
 	var tile := Node3D.new()
 	tile.name = "Tile%02d" % index
 	tile.position = position
 	tile.rotation_degrees.y = _tile_label_rotation(index)
+	tile.set_meta("logical_index", int(payload.get("logicalIndex", -1)))
 	board_root.add_child(tile)
-	_add_box(tile, tile_size, Vector3.ZERO, _material(tile_color, 0.0, 0.5))
+	var base := _add_box(
+		tile,
+		tile_size,
+		Vector3.ZERO,
+		_material(tile_color, 0.0, 0.5)
+	)
+	base.name = "TileBase"
 
-	var accent := PROPERTY_COLORS.get(index, Color.TRANSPARENT) as Color
+	var accent := _tile_accent_color(index)
+	var accent_mesh := _add_box(
+		tile,
+		Vector3(tile_size.x - 0.08, 0.055, 0.27),
+		Vector3(0.0, 0.13, 0.34),
+		_material(accent if accent.a > 0.0 else Color.WHITE, 0.05, 0.33)
+	)
+	accent_mesh.name = "TileAccent"
+	accent_mesh.visible = accent.a > 0.0
 	if accent.a > 0.0:
-		_add_box(
-			tile,
-			Vector3(tile_size.x - 0.08, 0.055, 0.27),
-			Vector3(0.0, 0.13, 0.34),
-			_material(accent, 0.05, 0.33)
-		)
+		accent_mesh.material_override = _material(accent, 0.05, 0.33)
 
 	var label := Label3D.new()
 	label.name = "TileLabel"
-	label.text = active_tile_names[index] if index < active_tile_names.size() else "CITY STOP"
+	label.text = _tile_label_text(index)
 	label.font_size = 34 if is_corner else 27
 	label.pixel_size = 0.0066 if is_corner else 0.0056
 	label.modulate = Color("#172238") if tile_color.get_luminance() > 0.5 else Color.WHITE
@@ -528,15 +539,105 @@ func _create_tile(index: int, position: Vector3) -> void:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	tile.add_child(label)
 
-	if is_corner:
-		var icon := Label3D.new()
-		icon.text = ["➜", "☕", "★", "↪"][index / 13]
-		icon.font_size = 72
-		icon.pixel_size = 0.008
-		icon.position = Vector3(0.0, 0.18, 0.26)
-		icon.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
-		icon.modulate = Color.WHITE
-		tile.add_child(icon)
+	var icon := Label3D.new()
+	icon.name = "TileIcon"
+	icon.text = _tile_icon_text(tile_type)
+	icon.font_size = 52 if is_corner else 46
+	icon.pixel_size = 0.0064 if is_corner else 0.0056
+	icon.position = Vector3(0.0, 0.18, 0.27)
+	icon.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	icon.modulate = Color.WHITE if tile_color.get_luminance() < 0.55 else INK
+	icon.outline_modulate = Color("#07101e")
+	icon.outline_size = 5
+	icon.visible = not icon.text.is_empty()
+	tile.add_child(icon)
+	_refresh_tile_development(tile, index)
+
+
+func _visual_tile_payload(index: int) -> Dictionary:
+	var value = active_visual_tile_data.get(index, {})
+	return value as Dictionary if typeof(value) == TYPE_DICTIONARY else {}
+
+
+func _tile_surface_color(index: int) -> Color:
+	var tile_type := str(_visual_tile_payload(index).get("type", ""))
+	match tile_type:
+		"chance":
+			return Color("#df8b24")
+		"communityChest":
+			return Color("#248fc9")
+		"tax":
+			return Color("#8a54a2")
+		"railroad":
+			return Color("#444b59")
+		"utility":
+			return Color("#e4b64e")
+		"start":
+			return Color("#27a982")
+		"jail":
+			return Color("#d98632")
+		"freeParking":
+			return Color("#9157c8")
+		"goToJail":
+			return RED
+		_:
+			return CREAM
+
+
+func _tile_accent_color(index: int) -> Color:
+	var payload := _visual_tile_payload(index)
+	if str(payload.get("type", "")) == "property":
+		return _color_from_argb(
+			int(payload.get("colorArgb", 0)),
+			PROPERTY_COLORS.get(index, Color.TRANSPARENT) as Color
+		)
+	if payload.is_empty():
+		return PROPERTY_COLORS.get(index, Color.TRANSPARENT) as Color
+	return Color.TRANSPARENT
+
+
+func _tile_icon_text(tile_type: String) -> String:
+	match tile_type:
+		"start":
+			return "GO"
+		"jail":
+			return "LOCK"
+		"freeParking":
+			return "SPIN"
+		"goToJail":
+			return "JAIL"
+		"chance":
+			return "?"
+		"communityChest":
+			return "BOX"
+		"tax":
+			return "$"
+		"railroad":
+			return "R"
+		"utility":
+			return "⚡"
+		_:
+			return ""
+
+
+func _tile_label_text(index: int) -> String:
+	var name := (
+		active_tile_names[index]
+		if index < active_tile_names.size()
+		else "CITY STOP"
+	)
+	var price := int(_visual_tile_payload(index).get("price", 0))
+	return "%s\n$%d" % [name, price] if price > 0 else name
+
+
+func _color_from_argb(value: int, fallback: Color) -> Color:
+	if value == 0:
+		return fallback
+	var alpha := float((value >> 24) & 0xff) / 255.0
+	var red := float((value >> 16) & 0xff) / 255.0
+	var green := float((value >> 8) & 0xff) / 255.0
+	var blue := float(value & 0xff) / 255.0
+	return Color(red, green, blue, alpha)
 
 
 func _create_center_city() -> void:
@@ -1591,6 +1692,11 @@ func _add_landmark_label(
 	label.outline_size = 10
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	parent.add_child(label)
+	board_tap_targets.append({
+		"node": label,
+		"kind": "landmark",
+		"title": text,
+	})
 
 
 func _create_rpg_district() -> void:
@@ -2267,7 +2373,11 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 	var platform_center := _dice_platform_center()
 	for index in dice_nodes.size():
 		var die := dice_nodes[index]
-		var settle_rotation := _die_face_rotation(int(values[index]))
+		var die_value := int(values[index])
+		die.visible = die_value > 0
+		if not die.visible:
+			continue
+		var settle_rotation := _die_face_rotation(die_value)
 		var target_rotation := settle_rotation + Vector3(
 			TAU * float(2 + index),
 			TAU * float(3 - index),
@@ -2455,7 +2565,11 @@ func _theme_color(key: String, fallback: String) -> Color:
 	return Color(str(city_theme.get(key, fallback)))
 
 
-func _rebuild_city_board(board_id: String, logical_tile_names: Array[String]) -> void:
+func _rebuild_city_board(
+	board_id: String,
+	logical_tile_names: Array[String],
+	logical_tiles: Array[Dictionary]
+) -> void:
 	if not CityThemesCatalog.has_theme(board_id):
 		push_warning("No 3D city theme registered for %s." % board_id)
 		return
@@ -2472,11 +2586,14 @@ func _rebuild_city_board(board_id: String, logical_tile_names: Array[String]) ->
 	cloud_nodes.clear()
 	cloud_speeds.clear()
 	boat_routes.clear()
+	board_tap_targets.clear()
 	player_tiles = [19, 32, 45, 6]
 
 	current_board_id = board_id
 	city_theme = CityThemesCatalog.get_theme(current_board_id)
 	latest_logical_tile_names.assign(logical_tile_names)
+	latest_logical_tiles.assign(logical_tiles)
+	_apply_visual_tile_data(logical_tiles)
 	active_tile_names = _visual_tile_names(logical_tile_names)
 	_apply_city_environment()
 	_create_board()
@@ -2511,8 +2628,23 @@ func _visual_tile_names(logical_tile_names: Array[String]) -> Array[String]:
 	return result
 
 
-func _refresh_visual_tile_names(logical_tile_names: Array[String]) -> void:
+func _apply_visual_tile_data(logical_tiles: Array[Dictionary]) -> void:
+	active_visual_tile_data.clear()
+	for tile_value in logical_tiles:
+		var visual_position := posmod(
+			int(tile_value.get("visualPosition", 0)),
+			BOARD_SPOT_COUNT
+		)
+		active_visual_tile_data[visual_position] = tile_value.duplicate(true)
+
+
+func _refresh_visual_tiles(
+	logical_tile_names: Array[String],
+	logical_tiles: Array[Dictionary]
+) -> void:
 	latest_logical_tile_names.assign(logical_tile_names)
+	latest_logical_tiles.assign(logical_tiles)
+	_apply_visual_tile_data(logical_tiles)
 	active_tile_names = _visual_tile_names(logical_tile_names)
 	for index in BOARD_SPOT_COUNT:
 		var tile := board_root.get_node_or_null("Tile%02d" % index) as Node3D
@@ -2520,7 +2652,103 @@ func _refresh_visual_tile_names(logical_tile_names: Array[String]) -> void:
 			continue
 		var label := tile.get_node_or_null("TileLabel") as Label3D
 		if label != null:
-			label.text = active_tile_names[index]
+			label.text = _tile_label_text(index)
+		_refresh_tile_style(tile, index)
+
+
+func _refresh_tile_style(tile: Node3D, index: int) -> void:
+	var payload := _visual_tile_payload(index)
+	var tile_type := str(payload.get("type", ""))
+	var tile_color := _tile_surface_color(index)
+	tile.set_meta("logical_index", int(payload.get("logicalIndex", -1)))
+
+	var base := tile.get_node_or_null("TileBase") as MeshInstance3D
+	if base != null:
+		base.material_override = _material(tile_color, 0.0, 0.5)
+
+	var accent_color := _tile_accent_color(index)
+	var accent := tile.get_node_or_null("TileAccent") as MeshInstance3D
+	if accent != null:
+		accent.visible = accent_color.a > 0.0
+		if accent.visible:
+			accent.material_override = _material(accent_color, 0.05, 0.33)
+
+	var label := tile.get_node_or_null("TileLabel") as Label3D
+	if label != null:
+		label.modulate = (
+			Color("#172238")
+			if tile_color.get_luminance() > 0.5
+			else Color.WHITE
+		)
+
+	var icon := tile.get_node_or_null("TileIcon") as Label3D
+	if icon != null:
+		icon.text = _tile_icon_text(tile_type)
+		icon.visible = not icon.text.is_empty()
+		icon.modulate = (
+			Color.WHITE
+			if tile_color.get_luminance() < 0.55
+			else INK
+		)
+	_refresh_tile_development(tile, index)
+
+
+func _refresh_tile_development(tile: Node3D, index: int) -> void:
+	var previous := tile.get_node_or_null("DevelopmentMarkers")
+	if previous != null:
+		tile.remove_child(previous)
+		previous.queue_free()
+
+	var payload := _visual_tile_payload(index)
+	var owner_color := _color_from_argb(
+		int(payload.get("ownerColorArgb", 0)),
+		Color.TRANSPARENT
+	)
+	var upgrade_level := int(payload.get("upgradeLevel", 0))
+	var is_mortgaged := bool(payload.get("isMortgaged", false))
+	if owner_color.a <= 0.0 and upgrade_level <= 0 and not is_mortgaged:
+		return
+
+	var markers := Node3D.new()
+	markers.name = "DevelopmentMarkers"
+	tile.add_child(markers)
+	if owner_color.a > 0.0:
+		_add_cylinder(
+			markers,
+			0.1,
+			0.12,
+			0.12,
+			Vector3(-0.38, 0.18, -0.3),
+			_material(owner_color, 0.12, 0.3, owner_color, 0.3)
+		)
+
+	if upgrade_level >= 5:
+		_add_box(
+			markers,
+			Vector3(0.38, 0.3, 0.25),
+			Vector3(0.15, 0.28, -0.31),
+			_material(RED, 0.05, 0.42)
+		)
+	elif upgrade_level > 0:
+		for house_index in mini(upgrade_level, 4):
+			_add_box(
+				markers,
+				Vector3(0.16, 0.2, 0.16),
+				Vector3(-0.12 + float(house_index) * 0.18, 0.23, -0.31),
+				_material(Color("#42a85f"), 0.04, 0.5)
+			)
+
+	if is_mortgaged:
+		var mortgage_label := Label3D.new()
+		mortgage_label.text = "M"
+		mortgage_label.font_size = 52
+		mortgage_label.pixel_size = 0.006
+		mortgage_label.position = Vector3(0.32, 0.2, -0.3)
+		mortgage_label.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+		mortgage_label.modulate = RED
+		mortgage_label.outline_modulate = Color.WHITE
+		mortgage_label.outline_size = 5
+		markers.add_child(mortgage_label)
 
 
 func _apply_city_environment() -> void:
@@ -2557,6 +2785,7 @@ func _connect_flutter_bridge() -> void:
 		flutter_bridge.connect("sync_state", _apply_flutter_state_json)
 		flutter_bridge.connect("animate_roll", _animate_flutter_roll_json)
 		flutter_bridge.connect("camera_gesture", _apply_camera_gesture_json)
+		flutter_bridge.connect("board_tap", _pick_board_object_json)
 		flutter_bridge.ready()
 		return
 
@@ -2582,6 +2811,8 @@ func host_receive_message(message: Dictionary) -> void:
 			_animate_flutter_roll_json(json)
 		"camera_gesture":
 			_apply_camera_gesture_json(json)
+		"board_tap":
+			_pick_board_object_json(json)
 
 
 func _apply_camera_gesture_json(json: String) -> void:
@@ -2589,6 +2820,9 @@ func _apply_camera_gesture_json(json: String) -> void:
 	if typeof(value) != TYPE_DICTIONARY:
 		return
 	var gesture := value as Dictionary
+	if bool(gesture.get("reset", false)):
+		_reset_camera()
+		return
 	var orbit_delta_x := float(gesture.get("orbitDeltaX", 0.0))
 	var orbit_delta_y := float(gesture.get("orbitDeltaY", 0.0))
 	var zoom_scale := float(gesture.get("zoomScale", 1.0))
@@ -2607,6 +2841,155 @@ func _apply_camera_gesture_json(json: String) -> void:
 			CAMERA_MAX_DISTANCE
 		)
 	_update_camera()
+
+
+func _pick_board_object_json(json: String) -> void:
+	var value = JSON.parse_string(json)
+	if typeof(value) != TYPE_DICTIONARY or camera == null:
+		return
+	var pick := value as Dictionary
+	var viewport_size := get_viewport().get_visible_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return
+	var screen_position := Vector2(
+		clampf(float(pick.get("normalizedX", 0.5)), 0.0, 1.0) * viewport_size.x,
+		clampf(float(pick.get("normalizedY", 0.5)), 0.0, 1.0) * viewport_size.y
+	)
+	_emit_board_selection(_selection_at_screen(screen_position, viewport_size))
+
+
+func _selection_at_screen(
+	screen_position: Vector2,
+	viewport_size: Vector2
+) -> Dictionary:
+	var selection := {
+		"kind": "city",
+		"logicalIndex": -1,
+		"visualIndex": -1,
+		"playerIndex": -1,
+		"playerId": "",
+		"title": str(city_theme.get("city", "CITY")),
+	}
+	var best_score := INF
+	var base_radius := clampf(minf(viewport_size.x, viewport_size.y) * 0.06, 44.0, 86.0)
+
+	for player_index in player_tokens.size():
+		var token := player_tokens[player_index]
+		if not token.visible:
+			continue
+		var player_position := token.global_position + Vector3.UP * 2.1
+		var player_score := _screen_pick_score(
+			player_position,
+			screen_position,
+			base_radius * 1.25
+		) - 0.18
+		if player_score < best_score:
+			best_score = player_score
+			selection = {
+				"kind": "player",
+				"logicalIndex": -1,
+				"visualIndex": player_tiles[player_index],
+				"playerIndex": player_index,
+				"playerId": player_ids[player_index],
+				"title": player_names[player_index],
+			}
+
+	for die_index in dice_nodes.size():
+		var die := dice_nodes[die_index]
+		var die_score := _screen_pick_score(
+			die.global_position,
+			screen_position,
+			base_radius * 1.12
+		) - 0.12
+		if die_score < best_score:
+			best_score = die_score
+			selection = {
+				"kind": "dice",
+				"logicalIndex": -1,
+				"visualIndex": -1,
+				"playerIndex": -1,
+				"playerId": "",
+				"title": "DICE",
+			}
+
+	for target in board_tap_targets:
+		var target_node = target.get("node")
+		if not is_instance_valid(target_node) or not target_node is Node3D:
+			continue
+		var landmark_score := _screen_pick_score(
+			(target_node as Node3D).global_position,
+			screen_position,
+			base_radius * 1.6
+		) - 0.06
+		if landmark_score < best_score:
+			best_score = landmark_score
+			selection = {
+				"kind": str(target.get("kind", "landmark")),
+				"logicalIndex": -1,
+				"visualIndex": -1,
+				"playerIndex": -1,
+				"playerId": "",
+				"title": str(target.get("title", "LANDMARK")),
+			}
+
+	for visual_index in tile_positions.size():
+		var tile_position := board_root.to_global(
+			tile_positions[visual_index] + Vector3.UP * 0.3
+		)
+		var tile_score := _screen_pick_score(
+			tile_position,
+			screen_position,
+			base_radius
+		)
+		if tile_score >= best_score:
+			continue
+		best_score = tile_score
+		var payload := _visual_tile_payload(visual_index)
+		if payload.is_empty():
+			selection = {
+				"kind": "scenic",
+				"logicalIndex": -1,
+				"visualIndex": visual_index,
+				"playerIndex": -1,
+				"playerId": "",
+				"title": active_tile_names[visual_index],
+			}
+		else:
+			selection = {
+				"kind": "tile",
+				"logicalIndex": int(payload.get("logicalIndex", -1)),
+				"visualIndex": visual_index,
+				"playerIndex": -1,
+				"playerId": "",
+				"title": str(payload.get("name", active_tile_names[visual_index])),
+			}
+	return selection
+
+
+func _screen_pick_score(
+	world_position: Vector3,
+	screen_position: Vector2,
+	radius: float
+) -> float:
+	if camera.is_position_behind(world_position):
+		return INF
+	var projected := camera.unproject_position(world_position)
+	var distance := projected.distance_to(screen_position)
+	return distance / radius if distance <= radius else INF
+
+
+func _emit_board_selection(selection: Dictionary) -> void:
+	if flutter_bridge != null:
+		flutter_bridge.boardObjectTapped(
+			str(selection.get("kind", "city")),
+			int(selection.get("logicalIndex", -1)),
+			int(selection.get("visualIndex", -1)),
+			int(selection.get("playerIndex", -1)),
+			str(selection.get("playerId", "")),
+			str(selection.get("title", ""))
+		)
+	else:
+		_emit_swift_host_event("boardObjectTapped", selection)
 
 
 func _emit_swift_host_event(method: String, arguments: Dictionary) -> void:
@@ -2639,13 +3022,22 @@ func _apply_flutter_state_json(json: String) -> void:
 	if typeof(tile_names_value) == TYPE_ARRAY:
 		for tile_name in tile_names_value:
 			logical_tile_names.append(str(tile_name))
+	var logical_tiles: Array[Dictionary] = []
+	var tiles_value = payload.get("tiles", [])
+	if typeof(tiles_value) == TYPE_ARRAY:
+		for tile_value in tiles_value:
+			if typeof(tile_value) == TYPE_DICTIONARY:
+				logical_tiles.append((tile_value as Dictionary).duplicate(true))
 
 	var requested_player_count := clampi(players.size(), 0, PLAYER_NAMES.size())
 	if requested_board_id != current_board_id:
 		active_player_count = requested_player_count
-		_rebuild_city_board(requested_board_id, logical_tile_names)
-	elif logical_tile_names != latest_logical_tile_names:
-		_refresh_visual_tile_names(logical_tile_names)
+		_rebuild_city_board(requested_board_id, logical_tile_names, logical_tiles)
+	elif (
+		logical_tile_names != latest_logical_tile_names
+		or logical_tiles != latest_logical_tiles
+	):
+		_refresh_visual_tiles(logical_tile_names, logical_tiles)
 
 	active_player_count = clampi(players.size(), 0, player_tokens.size())
 	current_player_index = clampi(
@@ -2666,6 +3058,7 @@ func _apply_flutter_state_json(json: String) -> void:
 		var player: Dictionary = player_value
 		token.visible = bool(player.get("isActive", true))
 		player_names[index] = str(player.get("name", player_names[index]))
+		player_ids[index] = str(player.get("id", ""))
 		token.name = "%sCharacterPiece" % player_names[index]
 		var visual_position := posmod(
 			int(player.get("visualPosition", 0)),
@@ -2680,10 +3073,15 @@ func _apply_flutter_state_json(json: String) -> void:
 
 	if active_player_count > 0:
 		_set_active_player(current_player_index)
-	dice_value_label.text = "DICE\n%d + %d" % [
-		int(payload.get("die1", 0)),
-		int(payload.get("die2", 0)),
-	]
+	var synced_die_one := int(payload.get("die1", 0))
+	var synced_die_two := int(payload.get("die2", 0))
+	if dice_nodes.size() > 1:
+		dice_nodes[1].visible = synced_die_two > 0
+	dice_value_label.text = (
+		"DICE\n%d" % synced_die_one
+		if synced_die_two <= 0
+		else "DICE\n%d + %d" % [synced_die_one, synced_die_two]
+	)
 
 
 func _animate_flutter_roll_json(json: String) -> void:

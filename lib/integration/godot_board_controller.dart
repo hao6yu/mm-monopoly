@@ -6,12 +6,15 @@ import 'package:flutter/services.dart';
 
 import '../models/game_state.dart';
 import '../models/player.dart';
+import '../models/tile.dart';
 import 'godot_board_contract.dart';
 
 class GodotBoardController extends ChangeNotifier {
   static const _channel = MethodChannel('property_tycoon/godot_board_bridge');
 
   final Map<String, Completer<GodotMovementComplete>> _pendingMoves = {};
+  final StreamController<GodotBoardSelection> _selections =
+      StreamController<GodotBoardSelection>.broadcast();
   GodotBoardSceneState? _latestState;
   bool _isAvailable = false;
   bool _isBoardReady = false;
@@ -21,6 +24,7 @@ class GodotBoardController extends ChangeNotifier {
   bool get isAvailable => _isAvailable;
   bool get isBoardReady => _isBoardReady;
   bool get isLoading => _isAvailable && (!_viewCreated || !_isBoardReady);
+  Stream<GodotBoardSelection> get selections => _selections.stream;
 
   bool get canUseNativeBoard =>
       !kIsWeb &&
@@ -57,6 +61,9 @@ class GodotBoardController extends ChangeNotifier {
     int visualSpotCount = GodotBoardProtocol.cityVisualSpotCount,
   }) {
     final logicalTileCount = gameState.tiles.length;
+    final playersById = {
+      for (final player in gameState.players) player.id: player,
+    };
     return GodotBoardSceneState(
       boardId: boardId,
       logicalTileCount: logicalTileCount,
@@ -66,6 +73,15 @@ class GodotBoardController extends ChangeNotifier {
       die1: gameState.die1Value,
       die2: gameState.die2Value,
       tileNames: [for (final tile in gameState.tiles) tile.name],
+      tiles: [
+        for (final tile in gameState.tiles)
+          _tileStateFrom(
+            tile,
+            playersById: playersById,
+            logicalTileCount: logicalTileCount,
+            visualSpotCount: visualSpotCount,
+          ),
+      ],
       players: [
         for (final player in gameState.players)
           GodotBoardPlayerState(
@@ -82,6 +98,51 @@ class GodotBoardController extends ChangeNotifier {
             isActive: player.status == PlayerStatus.active,
           ),
       ],
+    );
+  }
+
+  GodotBoardTileState _tileStateFrom(
+    TileData tile, {
+    required Map<String, Player> playersById,
+    required int logicalTileCount,
+    required int visualSpotCount,
+  }) {
+    String? ownerId;
+    var price = 0;
+    var upgradeLevel = 0;
+    var isMortgaged = false;
+    if (tile is PropertyTileData) {
+      ownerId = tile.ownerId;
+      price = tile.price;
+      upgradeLevel = tile.upgradeLevel;
+      isMortgaged = tile.isMortgaged;
+    } else if (tile is RailroadTileData) {
+      ownerId = tile.ownerId;
+      price = tile.price;
+      isMortgaged = tile.isMortgaged;
+    } else if (tile is UtilityTileData) {
+      ownerId = tile.ownerId;
+      price = tile.price;
+      isMortgaged = tile.isMortgaged;
+    }
+    final owner = ownerId == null ? null : playersById[ownerId];
+
+    return GodotBoardTileState(
+      logicalIndex: tile.index,
+      visualPosition: GodotBoardProtocol.toVisualPosition(
+        logicalPosition: tile.index,
+        logicalTileCount: logicalTileCount,
+        visualSpotCount: visualSpotCount,
+      ),
+      name: tile.name,
+      type: tile.type.name,
+      colorArgb: tile.color.toARGB32(),
+      price: price,
+      ownerId: ownerId,
+      ownerName: owner?.name,
+      ownerColorArgb: owner?.color.toARGB32() ?? 0,
+      upgradeLevel: upgradeLevel,
+      isMortgaged: isMortgaged,
     );
   }
 
@@ -161,6 +222,40 @@ class GodotBoardController extends ChangeNotifier {
     }
   }
 
+  Future<void> resetCamera() async {
+    if (!_isAvailable || !_isBoardReady) return;
+    try {
+      await _channel.invokeMethod<bool>(
+        'cameraGesture',
+        jsonEncode({'reset': true}),
+      );
+    } on PlatformException {
+      // The next camera gesture remains usable if a reset frame is dropped.
+    } on MissingPluginException {
+      // The 2D fallback remains usable when the native host is unavailable.
+    }
+  }
+
+  Future<void> pickBoardObject({
+    required double normalizedX,
+    required double normalizedY,
+  }) async {
+    if (!_isAvailable || !_isBoardReady) return;
+    try {
+      await _channel.invokeMethod<bool>(
+        'pickBoardObject',
+        jsonEncode({
+          'normalizedX': normalizedX.clamp(0.0, 1.0),
+          'normalizedY': normalizedY.clamp(0.0, 1.0),
+        }),
+      );
+    } on PlatformException {
+      // Picking is informational; a missed tap must not interrupt gameplay.
+    } on MissingPluginException {
+      // The 2D fallback remains usable when the native host is unavailable.
+    }
+  }
+
   Future<void> _sendLatestState() async {
     if (!_isAvailable || _latestState == null) return;
     try {
@@ -188,6 +283,13 @@ class GodotBoardController extends ChangeNotifier {
         );
         _pendingMoves[event.commandId]?.complete(event);
         return true;
+      case 'boardObjectTapped':
+        final raw = call.arguments;
+        if (raw is! Map || _selections.isClosed) return false;
+        _selections.add(
+          GodotBoardSelection.fromMap(raw.cast<Object?, Object?>()),
+        );
+        return true;
       default:
         return false;
     }
@@ -202,6 +304,7 @@ class GodotBoardController extends ChangeNotifier {
       }
     }
     _pendingMoves.clear();
+    _selections.close();
     _channel.setMethodCallHandler(null);
     super.dispose();
   }

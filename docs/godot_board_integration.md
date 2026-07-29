@@ -8,20 +8,28 @@ the camera, dice, and movement animation.
 
 Flutter sends:
 
-- `scene_state`: board ID, localized tile names, logical tile count, visual
-  spot count, current turn, dice, and player state.
+- `scene_state`: board ID, localized tile names and types, prices, ownership,
+  upgrades, mortgage state, logical tile count, visual spot count, current
+  turn, dice, and player state.
 - `animate_roll`: dice values, logical start/destination, and a mapped visual
   path.
+- `camera_gesture`: orbit, pinch zoom, and reset-view commands.
+- `board_tap`: normalized view coordinates for interactive object picking.
 
 Godot returns:
 
 - `boardReady`: the runtime plugin and GDScript scene are connected.
 - `movementComplete`: the command ID, player ID, logical destination, and
   visual destination.
+- `boardObjectTapped`: the selected logical tile, character, dice, landmark,
+  scenic stop, or city background.
 
 Every board maps Flutter's 40 logical tiles onto 52 visual locations. The 12
 additional locations receive city-specific scenic names. Flutter resolves the
 landing tile only after the matching movement-complete event returns.
+Flutter also owns all informational and gameplay dialogs. Godot picks the 3D
+object, then Flutter opens the same tile facts, player portfolio, card draw, or
+city guide UI used by the rest of the app.
 
 The Godot city catalog mirrors `CityBoardRegistry`: Atlantic City, New York
 City, Los Angeles, London, Edinburgh, Manchester, Paris, Lyon, Marseille,

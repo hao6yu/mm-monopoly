@@ -79,6 +79,19 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
                         result.success(bridgePlugin != null)
                     }
                 }
+                "pickBoardObject" -> {
+                    val json = call.arguments as? String
+                    if (json == null) {
+                        result.error(
+                            "invalid_board_pick",
+                            "Expected a JSON string.",
+                            null,
+                        )
+                    } else {
+                        bridgePlugin?.pickBoardObject(json)
+                        result.success(bridgePlugin != null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -187,6 +200,7 @@ private class PropertyTycoonGodotBridge(
         private val SYNC_STATE_SIGNAL = SignalInfo("sync_state", String::class.java)
         private val ANIMATE_ROLL_SIGNAL = SignalInfo("animate_roll", String::class.java)
         private val CAMERA_GESTURE_SIGNAL = SignalInfo("camera_gesture", String::class.java)
+        private val BOARD_TAP_SIGNAL = SignalInfo("board_tap", String::class.java)
     }
 
     private var scriptReady = false
@@ -196,7 +210,12 @@ private class PropertyTycoonGodotBridge(
     override fun getPluginName() = "PropertyTycoonBridge"
 
     override fun getPluginSignals() =
-        setOf(SYNC_STATE_SIGNAL, ANIMATE_ROLL_SIGNAL, CAMERA_GESTURE_SIGNAL)
+        setOf(
+            SYNC_STATE_SIGNAL,
+            ANIMATE_ROLL_SIGNAL,
+            CAMERA_GESTURE_SIGNAL,
+            BOARD_TAP_SIGNAL,
+        )
 
     @Synchronized
     fun syncState(json: String) {
@@ -219,6 +238,13 @@ private class PropertyTycoonGodotBridge(
     fun cameraGesture(json: String) {
         if (scriptReady) {
             emitSignal(CAMERA_GESTURE_SIGNAL.name, json)
+        }
+    }
+
+    @Synchronized
+    fun pickBoardObject(json: String) {
+        if (scriptReady) {
+            emitSignal(BOARD_TAP_SIGNAL.name, json)
         }
     }
 
@@ -247,6 +273,28 @@ private class PropertyTycoonGodotBridge(
                 "playerId" to playerId,
                 "logicalPosition" to logicalPosition,
                 "visualPosition" to visualPosition,
+            ),
+        )
+    }
+
+    @UsedByGodot
+    fun boardObjectTapped(
+        kind: String,
+        logicalIndex: Long,
+        visualIndex: Long,
+        playerIndex: Long,
+        playerId: String,
+        title: String,
+    ) {
+        activity.notifyFlutter(
+            "boardObjectTapped",
+            mapOf(
+                "kind" to kind,
+                "logicalIndex" to logicalIndex.takeIf { it >= 0 },
+                "visualIndex" to visualIndex.takeIf { it >= 0 },
+                "playerIndex" to playerIndex.takeIf { it >= 0 },
+                "playerId" to playerId.ifEmpty { null },
+                "title" to title.ifEmpty { null },
             ),
         )
     }

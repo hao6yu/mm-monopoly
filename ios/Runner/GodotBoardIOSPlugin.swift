@@ -108,6 +108,24 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
       sendToGodot(action: "camera_gesture", json: json)
       result(true)
 
+    case "pickBoardObject":
+      guard let json = call.arguments as? String else {
+        result(
+          FlutterError(
+            code: "invalid_board_pick",
+            message: "The board pick must be a JSON string.",
+            details: nil
+          )
+        )
+        return
+      }
+      guard boardReady, viewHandle != nil else {
+        result(false)
+        return
+      }
+      sendToGodot(action: "board_tap", json: json)
+      result(true)
+
     default:
       result(FlutterMethodNotImplemented)
     }

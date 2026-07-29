@@ -34,6 +34,10 @@ Every city has a 52-location irregular route, a distinct terrain silhouette and
 palette, at least five recognizable landmarks, extra scenic stops, clouds, and
 city-appropriate environmental details. Coastal boat traffic is constrained to
 explicit water-only lanes outside the property route and dice platform.
+When embedded, every logical location retains its Flutter tile type, price,
+owner, mortgage status, and houses/hotel level. Chance, Community Chest, Jail,
+Free Parking, Go To Jail, utilities, railroads, and taxes therefore remain
+visually distinct and continue through the shared Flutter rules engine.
 
 Manhattan remains the hand-authored flagship map, with Central Park, Midtown,
 Downtown, the Statue of Liberty, Brooklyn Bridge, piers, and multiple harbor
@@ -47,6 +51,9 @@ showcase build, and turns rotate automatically after movement finishes.
 The presentation is intentionally focused on the large table and board, without
 full-size human characters or chairs. After a roll, the active miniature turns
 toward its path and hops from space to space until it reaches its destination.
+Taps on locations, character pieces, dice, landmarks, scenic stops, or the city
+background are returned to Flutter for facts, portfolios, card draws, city
+introductions, and gameplay actions.
 
 The miniature city models are from Kenney's CC0 City Kit (Commercial). See the
 license file next to the model assets.
@@ -60,6 +67,7 @@ license file next to the model assets.
   --script res://tests/bridge_smoke.gd
 ```
 
-The smoke suite rebuilds every city, verifies its landmarks, 52-stop route,
-localized Flutter labels, players, dice, camera bridge, movement completion,
-and water-only boat lanes.
+The smoke suite rebuilds every city and verifies its landmarks, 52-stop route,
+localized Flutter labels, special-space metadata, ownership/development
+markers, object picking, players, dice, camera bridge, movement completion, and
+water-only boat lanes.

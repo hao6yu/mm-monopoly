@@ -34,6 +34,7 @@ import '../widgets/dialogs/ai_action_dialog.dart';
 import '../widgets/dialogs/auction_dialog.dart';
 import '../widgets/dialogs/trade_dialog.dart';
 import '../widgets/dialogs/property_management_dialog.dart';
+import '../widgets/dialogs/property_portfolio_dialog.dart';
 import '../widgets/dialogs/tile_info_dialog.dart';
 import '../widgets/dialogs/card_pick_dialog.dart';
 import '../widgets/dialogs/free_house_dialog.dart';
@@ -94,6 +95,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   bool _isMusicPlaying = true; // Track music state
   bool _isProcessingTurn = false; // Prevent dice rolls while processing
   late final GodotBoardController _godotBoardController;
+  StreamSubscription<GodotBoardSelection>? _godotSelectionSubscription;
   bool _show3DBoard = false;
   ui.Offset _last3DGestureFocalPoint = ui.Offset.zero;
   double _last3DGestureScale = 1;
@@ -122,6 +124,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _loadLocalizedCards();
     _godotBoardController = GodotBoardController();
     _godotBoardController.addListener(_onGodotBoardChanged);
+    _godotSelectionSubscription = _godotBoardController.selections.listen(
+      _handle3DBoardSelection,
+    );
     _initialize3DBoard();
   }
 
@@ -219,12 +224,271 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _bounceController.dispose();
     _glowController.dispose();
     _godotBoardController.removeListener(_onGodotBoardChanged);
+    _godotSelectionSubscription?.cancel();
     _godotBoardController.dispose();
     super.dispose();
   }
 
   void _showTileInfo(TileData tile) {
     showTileInfoDialog(context: context, tile: tile);
+  }
+
+  void _handle3DBoardSelection(GodotBoardSelection selection) {
+    if (!mounted) return;
+    switch (selection.kind) {
+      case 'tile':
+        final logicalIndex = selection.logicalIndex;
+        if (logicalIndex == null) return;
+        for (final tile in gameState.tiles) {
+          if (tile.index == logicalIndex) {
+            if (_waitingForCardPick &&
+                ((_isChanceCard && tile.type == TileType.chance) ||
+                    (!_isChanceCard && tile.type == TileType.communityChest))) {
+              _onCardDeckTap(_isChanceCard);
+              return;
+            }
+            _showTileInfo(tile);
+            return;
+          }
+        }
+        return;
+      case 'player':
+        Player? selectedPlayer;
+        for (final player in gameState.players) {
+          if (player.id == selection.playerId) {
+            selectedPlayer = player;
+            break;
+          }
+        }
+        final playerIndex = selection.playerIndex;
+        if (selectedPlayer == null &&
+            playerIndex != null &&
+            playerIndex >= 0 &&
+            playerIndex < gameState.players.length) {
+          selectedPlayer = gameState.players[playerIndex];
+        }
+        if (selectedPlayer != null) {
+          showPropertyPortfolioDialog(
+            context: context,
+            player: selectedPlayer,
+            tiles: gameState.tiles,
+            gameState: gameState,
+          );
+        }
+        return;
+      case 'dice':
+        if (gameState.canRoll && !_isProcessingTurn) {
+          _rollDice();
+        } else {
+          final value =
+              gameState.diceCount == 1
+                  ? '${gameState.die1Value}'
+                  : '${gameState.die1Value} + ${gameState.die2Value}';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _isProcessingTurn
+                    ? 'The dice are resolving this turn.'
+                    : 'Last roll: $value',
+              ),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(milliseconds: 1400),
+            ),
+          );
+        }
+        return;
+      case 'landmark':
+      case 'scenic':
+      case 'city':
+      default:
+        _showCityGuide(highlight: selection.title);
+    }
+  }
+
+  void _showCityGuide({String? highlight}) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final city = widget.cityBoard.localizedDisplayName(l10n);
+    final country = widget.cityBoard.country.localizedDisplayName(l10n);
+    final factTiles =
+        gameState.tiles
+            .where((tile) => tile.funFact?.isNotEmpty ?? false)
+            .toList();
+
+    TileData? matchedTile;
+    final query = _normalizeGuideText(highlight ?? '');
+    if (query.isNotEmpty) {
+      for (final tile in factTiles) {
+        final tileName = _normalizeGuideText(tile.name);
+        if (tileName.contains(query) || query.contains(tileName)) {
+          matchedTile = tile;
+          break;
+        }
+      }
+    }
+    final featuredTiles =
+        <TileData>[
+          if (matchedTile != null) matchedTile,
+          for (final tile in factTiles)
+            if (tile != matchedTile) tile,
+        ].take(3).toList();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            constraints: const BoxConstraints(maxWidth: 620),
+            decoration: BoxDecoration(
+              color: const Color(0xF5131C34),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white12),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black45,
+                  blurRadius: 30,
+                  offset: ui.Offset(0, 12),
+                ),
+              ],
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        widget.cityBoard.emoji,
+                        style: const TextStyle(fontSize: 38),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              highlight?.isNotEmpty == true ? highlight! : city,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              '$city • $country • ${widget.cityBoard.nativeName}',
+                              style: const TextStyle(
+                                color: Colors.white60,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Explore $city as a living 3D theme park. The 40 game '
+                    'locations keep the original rules, with extra scenic '
+                    'stops and interactive landmarks between them.',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      height: 1.4,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (featuredTiles.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    const Text(
+                      'QUICK FACTS',
+                      style: TextStyle(
+                        color: Color(0xFFFFD96A),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final tile in featuredTiles)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: CircleAvatar(
+                          backgroundColor: tile.color.withValues(alpha: 0.9),
+                          child: const Icon(
+                            Icons.location_on_rounded,
+                            color: Colors.white,
+                            size: 19,
+                          ),
+                        ),
+                        title: Text(
+                          tile.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        subtitle: Text(
+                          tile.funFact!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            height: 1.3,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white54,
+                        ),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) _showTileInfo(tile);
+                          });
+                        },
+                      ),
+                  ],
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap a location for its rules and fun fact, a character '
+                    'for their portfolio, or the dice to roll.',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _normalizeGuideText(String value) {
+    final normalized = StringBuffer();
+    for (final rune in value.toLowerCase().runes) {
+      final isAsciiLetter = rune >= 97 && rune <= 122;
+      final isDigit = rune >= 48 && rune <= 57;
+      final isNonAsciiLetter = rune > 127;
+      if (isAsciiLetter || isDigit || isNonAsciiLetter) {
+        normalized.writeCharCode(rune);
+      }
+    }
+    return normalized.toString();
   }
 
   void _toggleMusic() {
@@ -390,12 +654,6 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         child: SafeArea(
           child: Stack(
             children: [
-              Positioned(
-                top: 8,
-                left: 0,
-                right: 0,
-                child: Center(child: _buildCityBadge()),
-              ),
               LayoutBuilder(
                 builder: (context, constraints) {
                   if (_show3DBoard) {
@@ -408,8 +666,18 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                       : _buildPortraitLayout();
                 },
               ),
+              Positioned(
+                top: 8,
+                left: _show3DBoard ? null : 0,
+                right: _show3DBoard ? 8 : 0,
+                child:
+                    _show3DBoard
+                        ? _buildCityBadge()
+                        : Center(child: _buildCityBadge()),
+              ),
               // Power-up cards button (if has cards) - top left overlay
-              if (!gameState.currentPlayer.isAI &&
+              if (!_show3DBoard &&
+                  !gameState.currentPlayer.isAI &&
                   gameState.getPowerUps(gameState.currentPlayer.id).isNotEmpty)
                 Positioned(
                   top: 8,
@@ -441,8 +709,6 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                             .toList(),
                   ),
                 ),
-              if (_supports3DBoard && _godotBoardController.isAvailable)
-                Positioned(top: 8, right: 8, child: _buildBoardModeToggle()),
             ],
           ),
         ),
@@ -455,60 +721,44 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     final city = widget.cityBoard.localizedDisplayName(l10n);
     final country = widget.cityBoard.country.localizedDisplayName(l10n);
 
-    return IgnorePointer(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 240),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.35),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
-        ),
-        child: Text(
-          '$city • $country',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBoardModeToggle() {
     return Material(
-      color: const Color(0xDD111A33),
+      color: Colors.black.withValues(alpha: 0.42),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
-        onTap:
-            _isProcessingTurn
-                ? null
-                : () {
-                  setState(() => _show3DBoard = !_show3DBoard);
-                  if (_show3DBoard) _sync3DBoard();
-                },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        onTap: _showCityGuide,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(context).width < 600 ? 180 : 260,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                _show3DBoard ? Icons.view_in_ar : Icons.grid_view_rounded,
-                size: 18,
-                color: Colors.white,
-              ),
+              Text(widget.cityBoard.emoji),
               const SizedBox(width: 6),
-              Text(
-                _show3DBoard ? '3D' : '2D',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+              Flexible(
+                child: Text(
+                  '$city • $country',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
+              ),
+              const SizedBox(width: 5),
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 14,
+                color: Colors.white70,
               ),
             ],
           ),
@@ -532,31 +782,39 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                 onScaleStart: _on3DGestureStart,
                 onScaleUpdate: _on3DGestureUpdate,
                 onScaleEnd: _on3DGestureEnd,
+                onTapUp:
+                    (details) => _on3DBoardTap(details, constraints.biggest),
                 child: const SizedBox.expand(),
               ),
             ),
             Positioned(
               top: 12,
               left: 12,
-              child: _build3DOverlayButton(
-                icon: Icons.menu_rounded,
-                tooltip: 'Game menu',
-                onTap: _showGameMenu,
-              ),
+              child: _build3DActionBar(compact: constraints.maxWidth < 700),
             ),
             Positioned(
-              top: 12,
+              top: constraints.maxWidth < 700 ? 66 : 12,
               left: 68,
               right: 68,
               child: Center(child: _build3DCurrentPlayerHud()),
             ),
             if (constraints.maxWidth >= 700)
               Positioned(left: 14, bottom: 16, child: _build3DGestureHint()),
+            if (_waitingForCardPick)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 106,
+                child: Center(child: _build3DCardDeckPrompt()),
+              ),
             Positioned(
               left: 12,
               right: 12,
               bottom: 14,
-              child: Center(child: _build3DRollControl()),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: _build3DRollControl(),
+              ),
             ),
           ],
         );
@@ -597,6 +855,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   void _on3DGestureEnd(ScaleEndDetails details) {
     _last3DGestureScale = 1;
+  }
+
+  void _on3DBoardTap(TapUpDetails details, Size boardSize) {
+    if (boardSize.width <= 0 || boardSize.height <= 0) return;
+    unawaited(
+      _godotBoardController.pickBoardObject(
+        normalizedX: details.localPosition.dx / boardSize.width,
+        normalizedY: details.localPosition.dy / boardSize.height,
+      ),
+    );
   }
 
   Widget _build3DCurrentPlayerHud() {
@@ -644,6 +912,172 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
+  Widget _build3DActionBar({required bool compact}) {
+    final currentPlayer = gameState.currentPlayer;
+    final powerUpCount = gameState.getPowerUps(currentPlayer.id).length;
+    final hasMoreActions =
+        !currentPlayer.isAI &&
+        (widget.tradingEnabled || widget.bankEnabled || powerUpCount > 0);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _build3DOverlayButton(
+          icon: Icons.menu_rounded,
+          tooltip: 'Game menu',
+          onTap: _showGameMenu,
+        ),
+        const SizedBox(width: 7),
+        _build3DOverlayButton(
+          icon: _isMusicPlaying ? Icons.music_note : Icons.music_off,
+          tooltip: _isMusicPlaying ? 'Mute music' : 'Play music',
+          onTap: _toggleMusic,
+          color:
+              _isMusicPlaying
+                  ? const Color(0xE61D765F)
+                  : const Color(0xE6111A33),
+        ),
+        if (!compact && !currentPlayer.isAI && widget.tradingEnabled) ...[
+          const SizedBox(width: 7),
+          _build3DOverlayButton(
+            icon: Icons.swap_horiz_rounded,
+            tooltip: 'Trade',
+            onTap: _showTradeDialog,
+            color: const Color(0xE6197C78),
+          ),
+        ],
+        if (!compact && !currentPlayer.isAI && widget.bankEnabled) ...[
+          const SizedBox(width: 7),
+          _build3DOverlayButton(
+            icon: Icons.account_balance_rounded,
+            tooltip: 'Bank',
+            onTap: _showMortgageDialog,
+            color: const Color(0xE65A3B87),
+          ),
+        ],
+        if (!compact && !currentPlayer.isAI && powerUpCount > 0) ...[
+          const SizedBox(width: 7),
+          Badge.count(
+            count: powerUpCount,
+            child: _build3DOverlayButton(
+              icon: Icons.style_rounded,
+              tooltip: 'Power-up cards',
+              onTap: _showPowerUpHand,
+              color: const Color(0xE69A6C16),
+            ),
+          ),
+        ],
+        if (compact && hasMoreActions) ...[
+          const SizedBox(width: 7),
+          _build3DOverlayButton(
+            icon: Icons.more_horiz_rounded,
+            tooltip: 'More actions',
+            onTap: _show3DMoreActions,
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _show3DMoreActions() {
+    final player = gameState.currentPlayer;
+    final powerUpCount = gameState.getPowerUps(player.id).length;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF131C34),
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.tradingEnabled)
+                  ListTile(
+                    leading: const Icon(
+                      Icons.swap_horiz_rounded,
+                      color: Colors.tealAccent,
+                    ),
+                    title: const Text(
+                      'Trade',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _showTradeDialog();
+                    },
+                  ),
+                if (widget.bankEnabled)
+                  ListTile(
+                    leading: const Icon(
+                      Icons.account_balance_rounded,
+                      color: Colors.deepPurpleAccent,
+                    ),
+                    title: const Text(
+                      'Bank',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _showMortgageDialog();
+                    },
+                  ),
+                if (powerUpCount > 0)
+                  ListTile(
+                    leading: const Icon(
+                      Icons.style_rounded,
+                      color: Colors.amber,
+                    ),
+                    title: Text(
+                      'Power-up cards ($powerUpCount)',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _showPowerUpHand();
+                    },
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Widget _build3DCardDeckPrompt() {
+    final isChance = _isChanceCard;
+    final color = isChance ? Colors.orange : Colors.blue;
+    return Material(
+      color: color.shade700.withValues(alpha: 0.96),
+      borderRadius: BorderRadius.circular(16),
+      elevation: 12,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _onCardDeckTap(isChance),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isChance ? Icons.help_outline : Icons.inventory_2_rounded,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isChance ? 'DRAW A CHANCE CARD' : 'OPEN COMMUNITY CHEST',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _build3DRollControl() {
     final boardReady = _godotBoardController.isBoardReady;
     final canRoll = boardReady && gameState.canRoll && !_isProcessingTurn;
@@ -657,86 +1091,160 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             ? 'ROLLING…'
             : isMoving
             ? 'MOVING…'
-            : 'ROLL DICE';
+            : 'ROLL FOR ${gameState.currentPlayer.name.toUpperCase()}';
+    final diceValue =
+        gameState.die1Value <= 0
+            ? 'READY'
+            : gameState.diceCount == 1
+            ? '${gameState.die1Value}'
+            : '${gameState.die1Value} + ${gameState.die2Value}';
 
     return AnimatedBuilder(
       animation: _glowController,
       builder: (context, child) {
-        final glow = canRoll ? 0.18 + _glowController.value * 0.2 : 0.08;
-        return DecoratedBox(
+        final glow = canRoll ? 0.16 + _glowController.value * 0.22 : 0.05;
+        return Container(
+          constraints: const BoxConstraints(maxWidth: 520),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
+            color: const Color(0xEE111A33),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white12),
             boxShadow: [
               BoxShadow(
                 color: Colors.amber.withValues(alpha: glow),
-                blurRadius: 24,
+                blurRadius: 28,
                 spreadRadius: 1,
-                offset: const ui.Offset(0, 7),
+                offset: const ui.Offset(0, 8),
               ),
             ],
           ),
-          child: Material(
-            color: canRoll ? const Color(0xFFF2C452) : const Color(0xE6111A33),
-            borderRadius: BorderRadius.circular(999),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: canRoll ? _rollDice : null,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 11,
-                ),
-                child: Row(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 82,
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isRolling || isMoving)
-                      SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color:
-                              canRoll ? const Color(0xFF142033) : Colors.white,
-                        ),
-                      )
-                    else
-                      Icon(
-                        Icons.casino_rounded,
-                        size: 24,
-                        color:
-                            canRoll ? const Color(0xFF142033) : Colors.white54,
-                      ),
-                    const SizedBox(width: 10),
-                    Text(
-                      label,
+                    const Text(
+                      'DICE',
                       style: TextStyle(
-                        color:
-                            canRoll ? const Color(0xFF142033) : Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
+                        color: Color(0xFFFFE29A),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
                       ),
                     ),
-                    if (gameState.die1Value > 0) ...[
-                      const SizedBox(width: 10),
-                      Text(
-                        gameState.diceCount == 1
-                            ? '${gameState.die1Value}'
-                            : '${gameState.die1Value} + ${gameState.die2Value}',
-                        style: TextStyle(
-                          color:
-                              canRoll
-                                  ? const Color(0xFF142033)
-                                  : Colors.white54,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    const SizedBox(height: 3),
+                    Text(
+                      diceValue,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Material(
+                  color:
+                      canRoll
+                          ? const Color(0xFFF2C452)
+                          : const Color(0xFF26324E),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: canRoll ? _rollDice : null,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 190,
+                        minHeight: 58,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isRolling || isMoving)
+                            const SizedBox(
+                              width: 21,
+                              height: 21,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          else
+                            Icon(
+                              Icons.casino_rounded,
+                              size: 23,
+                              color:
+                                  canRoll
+                                      ? const Color(0xFF142033)
+                                      : Colors.white54,
+                            ),
+                          const SizedBox(width: 9),
+                          Flexible(
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color:
+                                    canRoll
+                                        ? const Color(0xFF142033)
+                                        : Colors.white70,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.45,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Reset view',
+                child: Material(
+                  color: const Color(0xFF26324E),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: _godotBoardController.resetCamera,
+                    child: const SizedBox(
+                      width: 58,
+                      height: 58,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.center_focus_strong_rounded,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'VIEW',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -758,7 +1266,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             Icon(Icons.pinch_rounded, size: 16, color: Colors.white70),
             SizedBox(width: 6),
             Text(
-              'Drag to rotate  •  Pinch to zoom',
+              'Tap to explore  •  Drag to rotate  •  Pinch to zoom',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 11,
@@ -775,9 +1283,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     required IconData icon,
     required String tooltip,
     required VoidCallback onTap,
+    Color color = const Color(0xE6111A33),
   }) {
     return Material(
-      color: const Color(0xE6111A33),
+      color: color,
       borderRadius: BorderRadius.circular(14),
       child: IconButton(
         tooltip: tooltip,
@@ -1586,12 +2095,6 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                         ),
                       ),
                     ),
-                    if (_supports3DBoard && _godotBoardController.isAvailable)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: _buildBoardModeToggle(),
-                      ),
                   ],
                 ),
               ),
@@ -2387,6 +2890,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       onAccept: () {
         offer.execute();
         setState(() {});
+        _sync3DBoard();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.tradeCompleted),
@@ -2420,11 +2924,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       onMortgage: (tile) {
         if (engine.mortgageProperty(currentPlayer, tile)) {
           setState(() {});
+          _sync3DBoard();
         }
       },
       onUnmortgage: (tile) {
         if (engine.unmortgageProperty(currentPlayer, tile)) {
           setState(() {});
+          _sync3DBoard();
         }
       },
     );

@@ -45,5 +45,43 @@ void main() {
         ),
       );
     });
+
+    test('serializes logical tile type and visual position for 3D parity', () {
+      const tile = GodotBoardTileState(
+        logicalIndex: 30,
+        visualPosition: 39,
+        name: 'GO TO JAIL',
+        type: 'goToJail',
+        colorArgb: 0xFFFF5252,
+      );
+
+      expect(tile.toJson(), {
+        'logicalIndex': 30,
+        'visualPosition': 39,
+        'name': 'GO TO JAIL',
+        'type': 'goToJail',
+        'colorArgb': 0xFFFF5252,
+        'price': 0,
+        'ownerId': null,
+        'ownerName': null,
+        'ownerColorArgb': 0,
+        'upgradeLevel': 0,
+        'isMortgaged': false,
+      });
+    });
+
+    test('deserializes all interactive 3D selection kinds', () {
+      final selection = GodotBoardSelection.fromMap({
+        'kind': 'tile',
+        'logicalIndex': 7,
+        'visualIndex': 9,
+        'title': 'Chance',
+      });
+
+      expect(selection.kind, 'tile');
+      expect(selection.logicalIndex, 7);
+      expect(selection.visualIndex, 9);
+      expect(selection.title, 'Chance');
+    });
   });
 }

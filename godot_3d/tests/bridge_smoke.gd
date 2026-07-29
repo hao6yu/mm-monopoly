@@ -13,10 +13,48 @@ func _run() -> void:
 	for _frame in 5:
 		await process_frame
 
+	var logical_names: Array[String] = []
+	var logical_tiles: Array[Dictionary] = []
+	for index in 40:
+		var tile_type := "property"
+		match index:
+			0:
+				tile_type = "start"
+			2, 17, 33:
+				tile_type = "communityChest"
+			7, 22, 36:
+				tile_type = "chance"
+			10:
+				tile_type = "jail"
+			20:
+				tile_type = "freeParking"
+			30:
+				tile_type = "goToJail"
+		var tile_name := "TILE %02d" % index
+		logical_names.append(tile_name)
+		var tile_payload := {
+			"logicalIndex": index,
+			"visualPosition": roundi(float(index) * 52.0 / 40.0) % 52,
+			"name": tile_name,
+			"type": tile_type,
+			"colorArgb": 0xffd65c5c,
+			"price": 120 if tile_type == "property" else 0,
+			"ownerColorArgb": 0,
+			"upgradeLevel": 0,
+			"isMortgaged": false,
+		}
+		if index == 1:
+			tile_payload["ownerColorArgb"] = 0xffff4f5e
+			tile_payload["upgradeLevel"] = 3
+			tile_payload["isMortgaged"] = true
+		logical_tiles.append(tile_payload)
+
 	var state := {
 		"currentPlayerIndex": 0,
 		"die1": 0,
 		"die2": 0,
+		"tileNames": logical_names,
+		"tiles": logical_tiles,
 		"players": [
 			{
 				"id": "player-one",
@@ -41,6 +79,9 @@ func _run() -> void:
 	_test_die_face_rotations(scene)
 	_test_boat_lanes(scene)
 	await _test_city_catalog(scene, state)
+	_test_special_tile_metadata(scene)
+	_test_property_development_metadata(scene)
+	_test_board_object_picking(scene)
 
 	var command := {
 		"commandId": "bridge-smoke",
@@ -73,6 +114,88 @@ func _run() -> void:
 
 	push_error("Timed out waiting for movementComplete.")
 	quit(1)
+
+
+func _test_special_tile_metadata(scene: Node) -> void:
+	var expected_types := {
+		0: "start",
+		3: "communityChest",
+		9: "chance",
+		13: "jail",
+		26: "freeParking",
+		39: "goToJail",
+		43: "communityChest",
+		47: "chance",
+	}
+	for visual_position in expected_types:
+		var payload: Dictionary = scene._visual_tile_payload(visual_position)
+		if str(payload.get("type", "")) != expected_types[visual_position]:
+			push_error(
+				"Special tile type missing at visual position %d." % visual_position
+			)
+			quit(1)
+			return
+		var tile: Node3D = scene.board_root.get_node(
+			"Tile%02d" % visual_position
+		) as Node3D
+		var icon := tile.get_node("TileIcon") as Label3D
+		if icon.text.is_empty():
+			push_error(
+				"Special tile icon missing at visual position %d." % visual_position
+			)
+			quit(1)
+			return
+	print("SPECIAL_TILE_METADATA_OK")
+
+
+func _test_property_development_metadata(scene: Node) -> void:
+	var visual_position := roundi(52.0 / 40.0) % 52
+	var tile: Node3D = scene.board_root.get_node(
+		"Tile%02d" % visual_position
+	) as Node3D
+	var markers := tile.get_node_or_null("DevelopmentMarkers")
+	if markers == null or markers.get_child_count() < 5:
+		push_error("3D property ownership and development markers are missing.")
+		quit(1)
+		return
+	var label := tile.get_node("TileLabel") as Label3D
+	if not label.text.contains("$120"):
+		push_error("3D property price is missing from its location label.")
+		quit(1)
+		return
+	print("PROPERTY_DEVELOPMENT_METADATA_OK")
+
+
+func _test_board_object_picking(scene: Node) -> void:
+	var logical_index := 7
+	var visual_index := roundi(float(logical_index) * 52.0 / 40.0) % 52
+	var viewport_size: Vector2 = scene.get_viewport().get_visible_rect().size
+	var world_position: Vector3 = scene.board_root.to_global(
+		scene.tile_positions[visual_index] + Vector3.UP * 0.3
+	)
+	var screen_position: Vector2 = scene.camera.unproject_position(world_position)
+	scene.host_receive_message({
+		"action": "board_tap",
+		"json": JSON.stringify({
+			"normalizedX": screen_position.x / viewport_size.x,
+			"normalizedY": screen_position.y / viewport_size.y,
+		}),
+	})
+	var message: Dictionary = scene.host_poll_message()
+	if message.get("method", "") != "boardObjectTapped":
+		push_error("3D board tap did not emit a Flutter selection.")
+		quit(1)
+		return
+	var arguments = JSON.parse_string(str(message.get("arguments", "{}")))
+	if (
+		typeof(arguments) != TYPE_DICTIONARY
+		or str(arguments.get("kind", "")) != "tile"
+		or int(arguments.get("logicalIndex", -1)) != logical_index
+	):
+		push_error("3D board tap did not preserve the logical tile index.")
+		quit(1)
+		return
+	print("BOARD_OBJECT_PICKING_OK")
 
 
 func _test_pinch_zoom(scene: Node) -> void:
