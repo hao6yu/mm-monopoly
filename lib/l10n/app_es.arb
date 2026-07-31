@@ -14,6 +14,11 @@
   "shop": "Tienda",
 
   "howManyPlayers": "¿Cuántos Jugadores?",
+  "gameSetupTitle": "Crea tu partida",
+  "gameSetupSubtitle": "Elige una ciudad, el número de jugadores y el estilo de movimiento.",
+  "playerSetupSubtitle": "Dale a cada jugador un nombre, color y personaje.",
+  "gameSummary": "Resumen de la partida",
+  "readyToPlay": "Listo para jugar",
   "playerSetup": "Configuración de Jugadores",
   "chooseBoard": "Elige Tablero",
   "numberOfPlayers": "Número de Jugadores",
@@ -52,6 +57,9 @@
   "gotIt": "¡Entendido!",
 
   "startingCash": "Dinero Inicial",
+  "gameOptions": "Opciones de Juego",
+  "soundAndLanguage": "Sonido e Idioma",
+  "settingsSubtitle": "Prepara tu mesa antes de la próxima partida",
   "playerTrading": "Intercambio entre Jugadores",
   "bankFeatures": "Funciones del Banco",
   "propertyAuctions": "Subastas de Propiedades",

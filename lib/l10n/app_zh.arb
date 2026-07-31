@@ -14,6 +14,11 @@
   "shop": "商店",
 
   "howManyPlayers": "几位玩家？",
+  "gameSetupTitle": "创建你的游戏",
+  "gameSetupSubtitle": "选择城市、玩家人数和移动方式。",
+  "playerSetupSubtitle": "为每位玩家设置名字、颜色和角色。",
+  "gameSummary": "游戏概要",
+  "readyToPlay": "准备开始",
   "playerSetup": "玩家设置",
   "chooseBoard": "选择棋盘",
   "numberOfPlayers": "玩家人数",
@@ -52,6 +57,9 @@
   "gotIt": "知道了！",
 
   "startingCash": "初始资金",
+  "gameOptions": "游戏选项",
+  "soundAndLanguage": "声音与语言",
+  "settingsSubtitle": "在下一场游戏前调整你的桌面",
   "playerTrading": "玩家交易",
   "bankFeatures": "银行功能",
   "propertyAuctions": "地产拍卖",

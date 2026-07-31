@@ -33,9 +33,7 @@ class DieWidget extends StatelessWidget {
     }
 
     if (isRolling && animationController != null) {
-      return _AnimatedDie(
-        controller: animationController!,
-      );
+      return _AnimatedDie(controller: animationController!);
     }
 
     return _StaticDie(value: value);
@@ -56,24 +54,22 @@ class _StaticDie extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 5,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 5),
         ],
       ),
-      child: value == 0
-          ? const Center(
-              child: Text(
-                '?',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+      child:
+          value == 0
+              ? const Center(
+                child: Text(
+                  '?',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
                 ),
-              ),
-            )
-          : _DotPattern(value: value),
+              )
+              : _DotPattern(value: value),
     );
   }
 }
@@ -88,10 +84,7 @@ class _DotPattern extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: _buildPattern(),
-    );
+    return Padding(padding: const EdgeInsets.all(8.0), child: _buildPattern());
   }
 
   Widget _buildPattern() {
@@ -377,15 +370,16 @@ class RollButton extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            boxShadow: isDisabled
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.amber.withValues(alpha: glow),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                  ],
+            boxShadow:
+                isDisabled
+                    ? []
+                    : [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: glow),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
           ),
           child: ElevatedButton(
             onPressed: isDisabled ? null : onPressed,
@@ -403,8 +397,8 @@ class RollButton extends StatelessWidget {
               isRolling
                   ? 'ROLLING...'
                   : isMoving
-                      ? 'MOVING...'
-                      : 'ROLL DICE',
+                  ? 'MOVING...'
+                  : 'ROLL DICE',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -466,7 +460,8 @@ class _CenterControlsState extends State<CenterControls>
 
   @override
   Widget build(BuildContext context) {
-    final canRoll = !widget.isRolling && !widget.isMoving && widget.onRoll != null;
+    final canRoll =
+        !widget.isRolling && !widget.isMoving && widget.onRoll != null;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -476,14 +471,22 @@ class _CenterControlsState extends State<CenterControls>
           onTap: canRoll ? widget.onRoll : null,
           behavior: HitTestBehavior.opaque, // Makes entire area tappable
           child: AnimatedBuilder(
-            animation: Listenable.merge([_pulseController, widget.glowController]),
+            animation: Listenable.merge([
+              _pulseController,
+              widget.glowController,
+            ]),
             builder: (context, child) {
-              final pulseScale = canRoll ? 1.0 + _pulseController.value * 0.05 : 1.0;
-              final glowIntensity = canRoll ? 0.3 + widget.glowController.value * 0.4 : 0.0;
+              final pulseScale =
+                  canRoll ? 1.0 + _pulseController.value * 0.05 : 1.0;
+              final glowIntensity =
+                  canRoll ? 0.3 + widget.glowController.value * 0.4 : 0.0;
 
               return Container(
                 // Padding creates larger clickable area around dice
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30,
+                  vertical: 20,
+                ),
                 child: Transform.scale(
                   scale: pulseScale,
                   child: _GlowingDice(
@@ -536,7 +539,9 @@ class _GlowingDice extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildSingleGlowingDie(die1),
-        const SizedBox(width: 40), // Increased spacing to prevent overlap during animation
+        const SizedBox(
+          width: 40,
+        ), // Increased spacing to prevent overlap during animation
         _buildSingleGlowingDie(die2),
       ],
     );
@@ -544,28 +549,29 @@ class _GlowingDice extends StatelessWidget {
 
   Widget _buildSingleGlowingDie(int value) {
     return Container(
-      decoration: canRoll
-          ? BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.amber.withOpacity(glowIntensity),
-                  blurRadius: 20,
-                  spreadRadius: 4,
-                ),
-                BoxShadow(
-                  color: Colors.orange.withOpacity(glowIntensity * 0.5),
-                  blurRadius: 30,
-                  spreadRadius: 8,
-                ),
-              ],
-            )
-          : null,
+      decoration:
+          canRoll
+              ? BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amber.withOpacity(glowIntensity),
+                    blurRadius: 20,
+                    spreadRadius: 4,
+                  ),
+                  BoxShadow(
+                    color: Colors.orange.withOpacity(glowIntensity * 0.5),
+                    blurRadius: 30,
+                    spreadRadius: 8,
+                  ),
+                ],
+              )
+              : null,
       child: Dice3D(
         value: value,
         isRolling: isRolling,
         animationController: diceController,
-        size: 80.0,  // Increased from 68
+        size: 80.0, // Increased from 68
       ),
     );
   }
@@ -592,8 +598,7 @@ class CardDeck extends StatefulWidget {
   State<CardDeck> createState() => _CardDeckState();
 }
 
-class _CardDeckState extends State<CardDeck>
-    with TickerProviderStateMixin {
+class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
   late AnimationController _hoverController;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -680,10 +685,7 @@ class _CardDeckState extends State<CardDeck>
             return Positioned(
               left: baseOffset,
               top: baseOffset,
-              child: _build3DCard(
-                isTop: isTop,
-                depth: cardCount - 1 - index,
-              ),
+              child: _build3DCard(isTop: isTop, depth: cardCount - 1 - index),
             );
           }),
           // Glow effect when highlighted
@@ -713,7 +715,7 @@ class _CardDeckState extends State<CardDeck>
   }
 
   Widget _build3DCard({required bool isTop, required int depth}) {
-    const cardWidth = 90.0;  // Increased from 80
+    const cardWidth = 90.0; // Increased from 80
     const cardHeight = 125.0; // Increased from 110
 
     // Calculate opacity and color based on depth
@@ -721,13 +723,15 @@ class _CardDeckState extends State<CardDeck>
     final darkenAmount = depth * 0.08;
 
     // Create a darker shade for cards below
-    final cardColor = isTop
-        ? widget.color
-        : HSLColor.fromColor(widget.color)
-            .withLightness(
-                (HSLColor.fromColor(widget.color).lightness - darkenAmount)
-                    .clamp(0.1, 0.9))
-            .toColor();
+    final cardColor =
+        isTop
+            ? widget.color
+            : HSLColor.fromColor(widget.color)
+                .withLightness(
+                  (HSLColor.fromColor(widget.color).lightness - darkenAmount)
+                      .clamp(0.1, 0.9),
+                )
+                .toColor();
 
     return Container(
       width: cardWidth,
@@ -738,49 +742,55 @@ class _CardDeckState extends State<CardDeck>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isTop
-              ? [
-                  cardColor,
-                  HSLColor.fromColor(cardColor)
-                      .withLightness(
-                          (HSLColor.fromColor(cardColor).lightness - 0.1)
-                              .clamp(0.0, 1.0))
-                      .toColor(),
-                ]
-              : [
-                  cardColor.withOpacity(opacity),
-                  cardColor.withOpacity(opacity * 0.8),
-                ],
+          colors:
+              isTop
+                  ? [
+                    cardColor,
+                    HSLColor.fromColor(cardColor)
+                        .withLightness(
+                          (HSLColor.fromColor(cardColor).lightness - 0.1).clamp(
+                            0.0,
+                            1.0,
+                          ),
+                        )
+                        .toColor(),
+                  ]
+                  : [
+                    cardColor.withOpacity(opacity),
+                    cardColor.withOpacity(opacity * 0.8),
+                  ],
         ),
         border: Border.all(
-          color: isTop
-              ? (widget.isHighlighted
-                  ? Colors.amber
-                  : Colors.white.withOpacity(0.6))
-              : Colors.white.withOpacity(0.2 * opacity),
+          color:
+              isTop
+                  ? (widget.isHighlighted
+                      ? Colors.amber
+                      : Colors.white.withOpacity(0.6))
+                  : Colors.white.withOpacity(0.2 * opacity),
           width: isTop ? (widget.isHighlighted ? 3 : 2) : 1,
         ),
-        boxShadow: isTop
-            ? [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 6,
-                  offset: const Offset(2, 3),
-                ),
-                if (widget.isHighlighted)
+        boxShadow:
+            isTop
+                ? [
                   BoxShadow(
-                    color: Colors.amber.withOpacity(0.5),
-                    blurRadius: 12,
-                    spreadRadius: 2,
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 6,
+                    offset: const Offset(2, 3),
                   ),
-              ]
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 2,
-                  offset: const Offset(1, 1),
-                ),
-              ],
+                  if (widget.isHighlighted)
+                    BoxShadow(
+                      color: Colors.amber.withOpacity(0.5),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                ]
+                : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 2,
+                    offset: const Offset(1, 1),
+                  ),
+                ],
       ),
       child: isTop ? _buildTopCardContent() : _buildBackCardPattern(opacity),
     );
@@ -814,76 +824,81 @@ class _CardDeckState extends State<CardDeck>
         ),
         // Main content
         Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icon with decorative circle
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.2),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.5),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  widget.icon,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Label
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  widget.label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              // Tap hint when highlighted
-              if (widget.isHighlighted) ...[
-                const SizedBox(height: 6),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Icon with decorative circle
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.amber,
-                    borderRadius: BorderRadius.circular(10),
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.2),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.5),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'TAP',
-                    style: TextStyle(
-                      fontSize: 10,
+                  child: Icon(widget.icon, color: Colors.white, size: 28),
+                ),
+                const SizedBox(height: 8),
+                // Label
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    widget.label,
+                    style: const TextStyle(
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
+                // Tap hint when highlighted
+                if (widget.isHighlighted) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      'TAP',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ],
@@ -910,10 +925,11 @@ class _CardPatternPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..color = color
+          ..strokeWidth = 1
+          ..style = PaintingStyle.stroke;
 
     // Draw diagonal lines
     const spacing = 6.0;

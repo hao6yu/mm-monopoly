@@ -79,13 +79,24 @@ void main() {
         await tester.pump(const Duration(milliseconds: 250));
 
         expect(find.byType(CityThemeBackground), findsOneWidget);
-        expect(find.text('How Many Players?'), findsOneWidget);
+        expect(find.text('Create Your Game'), findsOneWidget);
+        expect(
+          find.byKey(const Key('setup-destination-panel')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('setup-rules-panel')), findsOneWidget);
+        expect(find.byKey(const Key('setup-summary')), findsOneWidget);
+        if (size.width < 700 && size.height > size.width) {
+          expect(find.byType(Scrollbar), findsOneWidget);
+          expect(find.text('One Die'), findsOneWidget);
+          expect(find.text('Classic style'), findsOneWidget);
+        }
 
         await tester.tap(find.text('Next'));
         await tester.pump(const Duration(milliseconds: 250));
 
         expect(tester.takeException(), isNull);
-        expect(find.text('Player Setup'), findsOneWidget);
+        expect(find.text('Player Setup'), findsWidgets);
       },
     );
   }

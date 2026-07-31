@@ -42,6 +42,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get howManyPlayers => '几位玩家？';
 
   @override
+  String get gameSetupTitle => '创建你的游戏';
+
+  @override
+  String get gameSetupSubtitle => '选择城市、玩家人数和移动方式。';
+
+  @override
+  String get playerSetupSubtitle => '为每位玩家设置名字、颜色和角色。';
+
+  @override
+  String get gameSummary => '游戏概要';
+
+  @override
+  String get readyToPlay => '准备开始';
+
+  @override
   String get playerSetup => '玩家设置';
 
   @override
@@ -150,6 +165,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get startingCash => '初始资金';
+
+  @override
+  String get gameOptions => '游戏选项';
+
+  @override
+  String get soundAndLanguage => '声音与语言';
+
+  @override
+  String get settingsSubtitle => '在下一场游戏前调整你的桌面';
 
   @override
   String get playerTrading => '玩家交易';

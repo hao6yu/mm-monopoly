@@ -42,6 +42,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get howManyPlayers => 'プレイヤーは何人？';
 
   @override
+  String get gameSetupTitle => 'ゲームを作成';
+
+  @override
+  String get gameSetupSubtitle => '都市、プレイヤー数、移動スタイルを選びます。';
+
+  @override
+  String get playerSetupSubtitle => '各プレイヤーの名前、色、キャラクターを設定します。';
+
+  @override
+  String get gameSummary => 'ゲーム概要';
+
+  @override
+  String get readyToPlay => '準備完了';
+
+  @override
   String get playerSetup => 'プレイヤー設定';
 
   @override
@@ -150,6 +165,15 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get startingCash => '初期資金';
+
+  @override
+  String get gameOptions => 'ゲームオプション';
+
+  @override
+  String get soundAndLanguage => 'サウンドと言語';
+
+  @override
+  String get settingsSubtitle => '次のゲームの前にテーブルを調整しましょう';
 
   @override
   String get playerTrading => 'プレイヤー間取引';

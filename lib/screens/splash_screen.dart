@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../l10n/app_localizations.dart';
 import '../widgets/city_theme/city_theme.dart';
 
@@ -20,13 +23,14 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _bounceAnimation;
+  Timer? _completionTimer;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1100),
     );
     _bounceController = AnimationController(
       vsync: this,
@@ -53,13 +57,14 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Future.delayed(const Duration(milliseconds: 2500), () {
+    _completionTimer = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) widget.onComplete();
     });
   }
 
   @override
   void dispose() {
+    _completionTimer?.cancel();
     _controller.dispose();
     _bounceController.dispose();
     super.dispose();
@@ -71,132 +76,170 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: const Color(0xFF071427),
       body: CityThemeBackground(
         animation: _bounceController,
-        child: Center(
-          child: AnimatedBuilder(
-            animation: Listenable.merge([_controller, _bounceController]),
-            builder: (context, child) {
-              return FadeTransition(
-                opacity: _fadeAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: CityGlassPanel(
-                    accent: const Color(0xFF35D5C5),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 44,
-                      vertical: 34,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Bouncing Logo
-                        Transform.translate(
-                          offset: Offset(0, -_bounceAnimation.value),
-                          child: Container(
-                            width: 140,
-                            height: 140,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(28),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                                BoxShadow(
-                                  color: Colors.white.withOpacity(0.2),
-                                  blurRadius: 20,
-                                  spreadRadius: -5,
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(28),
-                              child: Image.asset(
-                                'assets/icon/icon.png',
-                                width: 140,
-                                height: 140,
-                                fit: BoxFit.cover,
+        imageAsset: 'assets/images/home_city_dusk.jpg',
+        imageAlignment: const Alignment(0.08, 0),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact =
+                  constraints.maxHeight < 500 || constraints.maxWidth < 430;
+              final logoSize = compact ? 78.0 : 120.0;
+
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: AnimatedBuilder(
+                      animation: Listenable.merge([
+                        _controller,
+                        _bounceController,
+                      ]),
+                      builder: (context, child) {
+                        return FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: ScaleTransition(
+                            scale: _scaleAnimation,
+                            child: CityGlassPanel(
+                              accent: const Color(0xFF35D5C5),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: compact ? 24 : 40,
+                                vertical: compact ? 20 : 30,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      -_bounceAnimation.value *
+                                          (compact ? 0.5 : 1),
+                                    ),
+                                    child: Container(
+                                      width: logoSize,
+                                      height: logoSize,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          compact ? 20 : 26,
+                                        ),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x66000000),
+                                            blurRadius: 20,
+                                            offset: Offset(0, 10),
+                                          ),
+                                          BoxShadow(
+                                            color: Color(0x3335D5C5),
+                                            blurRadius: 22,
+                                            spreadRadius: -5,
+                                          ),
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          compact ? 20 : 26,
+                                        ),
+                                        child: Image.asset(
+                                          'assets/icon/icon.png',
+                                          fit: BoxFit.cover,
+                                          filterQuality: FilterQuality.high,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 12 : 22),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildColorfulLetter(
+                                        'M',
+                                        const Color(0xFFFF6B6B),
+                                        fontSize: compact ? 32 : 42,
+                                      ),
+                                      _buildColorfulLetter(
+                                        '&',
+                                        const Color(0xFFFFE66D),
+                                        fontSize: compact ? 24 : 32,
+                                      ),
+                                      _buildColorfulLetter(
+                                        'M',
+                                        const Color(0xFF4ECDC4),
+                                        fontSize: compact ? 32 : 42,
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: compact ? 3 : 6),
+                                  ShaderMask(
+                                    shaderCallback:
+                                        (bounds) => const LinearGradient(
+                                          colors: [
+                                            Color(0xFFFFFFFF),
+                                            Color(0xFFFFE66D),
+                                            Color(0xFFFFFFFF),
+                                          ],
+                                        ).createShader(bounds),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.propertyTycoon,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: compact ? 21 : 28,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: compact ? 2 : 3,
+                                          shadows: const [
+                                            Shadow(
+                                              color: Colors.black26,
+                                              offset: Offset(2, 2),
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 8 : 12),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: compact ? 14 : 20,
+                                      vertical: compact ? 6 : 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0x4035D5C5),
+                                          Color(0x1A35D5C5),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: const Color(0x8035D5C5),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.familyEdition,
+                                      style: TextStyle(
+                                        color: const Color(0xFFB9F7F0),
+                                        fontSize: compact ? 11 : 14,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: compact ? 2 : 3,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 18 : 30),
+                                  _buildLoadingDots(compact: compact),
+                                ],
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 32),
-                        // M&M Title with fun colors
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildColorfulLetter('M', const Color(0xFFFF6B6B)),
-                            _buildColorfulLetter(
-                              '&',
-                              const Color(0xFFFFE66D),
-                              fontSize: 32,
-                            ),
-                            _buildColorfulLetter('M', const Color(0xFF4ECDC4)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // PROPERTY TYCOON with gradient effect
-                        ShaderMask(
-                          shaderCallback:
-                              (bounds) => const LinearGradient(
-                                colors: [
-                                  Color(0xFFFFFFFF),
-                                  Color(0xFFFFE66D),
-                                  Color(0xFFFFFFFF),
-                                ],
-                              ).createShader(bounds),
-                          child: Text(
-                            AppLocalizations.of(context)!.propertyTycoon,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 3,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black26,
-                                  offset: Offset(2, 2),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Family Edition badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.white.withOpacity(0.3),
-                                Colors.white.withOpacity(0.1),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.5),
-                              width: 2,
-                            ),
-                          ),
-                          child: Text(
-                            AppLocalizations.of(context)!.familyEdition,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 3,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 50),
-                        // Fun loading dots
-                        _buildLoadingDots(),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -221,7 +264,7 @@ class _SplashScreenState extends State<SplashScreen>
         fontWeight: FontWeight.w900,
         shadows: [
           Shadow(
-            color: color.withOpacity(0.5),
+            color: color.withValues(alpha: 0.5),
             offset: const Offset(2, 2),
             blurRadius: 8,
           ),
@@ -235,7 +278,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildLoadingDots() {
+  Widget _buildLoadingDots({required bool compact}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(3, (index) {
@@ -251,8 +294,8 @@ class _SplashScreenState extends State<SplashScreen>
               child: Transform.translate(
                 offset: Offset(0, value * 8),
                 child: Container(
-                  width: 12,
-                  height: 12,
+                  width: compact ? 9 : 12,
+                  height: compact ? 9 : 12,
                   decoration: BoxDecoration(
                     color:
                         [
@@ -267,7 +310,7 @@ class _SplashScreenState extends State<SplashScreen>
                           const Color(0xFFFF6B6B),
                           const Color(0xFFFFE66D),
                           const Color(0xFF4ECDC4),
-                        ][index].withOpacity(0.5),
+                        ][index].withValues(alpha: 0.5),
                         blurRadius: 8,
                         spreadRadius: 2,
                       ),

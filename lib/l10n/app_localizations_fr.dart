@@ -42,6 +42,23 @@ class AppLocalizationsFr extends AppLocalizations {
   String get howManyPlayers => 'Combien de Joueurs ?';
 
   @override
+  String get gameSetupTitle => 'Créez votre partie';
+
+  @override
+  String get gameSetupSubtitle =>
+      'Choisissez une ville, le nombre de joueurs et le style de déplacement.';
+
+  @override
+  String get playerSetupSubtitle =>
+      'Donnez à chaque joueur un nom, une couleur et un personnage.';
+
+  @override
+  String get gameSummary => 'Résumé de la partie';
+
+  @override
+  String get readyToPlay => 'Prêt à jouer';
+
+  @override
   String get playerSetup => 'Configuration des Joueurs';
 
   @override
@@ -155,6 +172,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get startingCash => 'Argent de Départ';
+
+  @override
+  String get gameOptions => 'Options de Jeu';
+
+  @override
+  String get soundAndLanguage => 'Son et Langue';
+
+  @override
+  String get settingsSubtitle =>
+      'Préparez votre table avant la prochaine partie';
 
   @override
   String get playerTrading => 'Échanges entre Joueurs';

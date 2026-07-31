@@ -14,6 +14,11 @@
   "shop": "Shop",
 
   "howManyPlayers": "How Many Players?",
+  "gameSetupTitle": "Create Your Game",
+  "gameSetupSubtitle": "Choose a city, game size, and movement style.",
+  "playerSetupSubtitle": "Give every player a name, color, and character.",
+  "gameSummary": "Game Summary",
+  "readyToPlay": "Ready to play",
   "playerSetup": "Player Setup",
   "chooseBoard": "Choose Board",
   "numberOfPlayers": "Number of Players",
@@ -53,6 +58,9 @@
   "gotIt": "Got it!",
 
   "startingCash": "Starting Cash",
+  "gameOptions": "Game Options",
+  "soundAndLanguage": "Sound & Language",
+  "settingsSubtitle": "Tune your table before the next game",
   "playerTrading": "Player Trading",
   "bankFeatures": "Bank Features",
   "propertyAuctions": "Property Auctions",

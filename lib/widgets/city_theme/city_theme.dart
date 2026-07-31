@@ -9,12 +9,16 @@ class CityThemeBackground extends StatelessWidget {
   final Animation<double> animation;
   final Widget child;
   final Color accent;
+  final String? imageAsset;
+  final Alignment imageAlignment;
 
   const CityThemeBackground({
     super.key,
     required this.animation,
     required this.child,
     this.accent = const Color(0xFF35D5C5),
+    this.imageAsset,
+    this.imageAlignment = Alignment.center,
   });
 
   @override
@@ -34,14 +38,52 @@ class CityThemeBackground extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              IgnorePointer(
-                child: CustomPaint(
-                  painter: _MiniatureCityPainter(
-                    progress: animation.value,
-                    accent: accent,
+              if (imageAsset != null)
+                IgnorePointer(
+                  child: Transform.scale(
+                    scale:
+                        1.035 + math.sin(animation.value * math.pi * 2) * 0.004,
+                    child: Transform.translate(
+                      offset: Offset(
+                        math.sin(animation.value * math.pi * 2) * 3,
+                        math.cos(animation.value * math.pi * 2) * 2,
+                      ),
+                      child: Image.asset(
+                        imageAsset!,
+                        fit: BoxFit.cover,
+                        alignment: imageAlignment,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                IgnorePointer(
+                  child: CustomPaint(
+                    painter: _MiniatureCityPainter(
+                      progress: animation.value,
+                      accent: accent,
+                    ),
                   ),
                 ),
-              ),
+              if (imageAsset != null)
+                const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Color(0x87030A16),
+                          Color(0x16030A16),
+                          Color(0x24030A16),
+                          Color(0x5C030A16),
+                        ],
+                        stops: [0, 0.38, 0.67, 1],
+                      ),
+                    ),
+                  ),
+                ),
               const IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
@@ -49,9 +91,9 @@ class CityThemeBackground extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Color(0x14000000),
+                        Color(0x35000000),
                         Color(0x00101B2C),
-                        Color(0x66030A14),
+                        Color(0x7A030A14),
                       ],
                       stops: [0, 0.58, 1],
                     ),
@@ -93,7 +135,7 @@ class CityGlassPanel extends StatelessWidget {
           colors: [Color(0xEE111D33), Color(0xD9081224)],
         ),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: borderColor.withOpacity(0.55)),
+        border: Border.all(color: borderColor.withValues(alpha: 0.55)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x73000000),
@@ -146,12 +188,14 @@ class CityChromeButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color:
-                  primary ? const Color(0xFFFFE6A1) : accent.withOpacity(0.45),
+                  primary
+                      ? const Color(0xFFFFE6A1)
+                      : accent.withValues(alpha: 0.45),
             ),
             boxShadow: [
               BoxShadow(
-                color: (primary ? const Color(0xFFF1AD35) : accent).withOpacity(
-                  0.22,
+                color: (primary ? const Color(0xFFF1AD35) : accent).withValues(
+                  alpha: 0.22,
                 ),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
@@ -166,7 +210,7 @@ class CityChromeButton extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: foreground.withOpacity(primary ? 0.12 : 0.08),
+                    color: foreground.withValues(alpha: primary ? 0.12 : 0.08),
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(icon, color: foreground, size: 24),
@@ -185,7 +229,7 @@ class CityChromeButton extends StatelessWidget {
                 ),
                 Icon(
                   Icons.arrow_forward_rounded,
-                  color: foreground.withOpacity(0.75),
+                  color: foreground.withValues(alpha: 0.75),
                 ),
               ],
             ),
@@ -419,7 +463,7 @@ class _MiniatureCityPainter extends CustomPainter {
           ..lineTo(front.right + width * 0.28, front.bottom - width * 0.2)
           ..lineTo(front.right, front.bottom)
           ..close();
-    canvas.drawPath(side, Paint()..color = color.withOpacity(0.62));
+    canvas.drawPath(side, Paint()..color = color.withValues(alpha: 0.62));
     final top =
         Path()
           ..moveTo(front.left, front.top)
@@ -427,7 +471,7 @@ class _MiniatureCityPainter extends CustomPainter {
           ..lineTo(front.right + width * 0.28, front.top - width * 0.2)
           ..lineTo(front.right, front.top)
           ..close();
-    canvas.drawPath(top, Paint()..color = color.withOpacity(0.92));
+    canvas.drawPath(top, Paint()..color = color.withValues(alpha: 0.92));
     final windows = Paint()..color = const Color(0xB0FFE19A);
     for (var floor = 1; floor < 5; floor++) {
       final y = front.bottom - rise * floor / 5;
@@ -469,7 +513,7 @@ class _MiniatureCityPainter extends CustomPainter {
           ..color =
               index % 5 == 0
                   ? const Color(0xFFFFCF59)
-                  : accent.withOpacity(0.82),
+                  : accent.withValues(alpha: 0.82),
       );
     }
   }

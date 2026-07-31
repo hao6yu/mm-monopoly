@@ -42,6 +42,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get howManyPlayers => 'How Many Players?';
 
   @override
+  String get gameSetupTitle => 'Create Your Game';
+
+  @override
+  String get gameSetupSubtitle =>
+      'Choose a city, game size, and movement style.';
+
+  @override
+  String get playerSetupSubtitle =>
+      'Give every player a name, color, and character.';
+
+  @override
+  String get gameSummary => 'Game Summary';
+
+  @override
+  String get readyToPlay => 'Ready to play';
+
+  @override
   String get playerSetup => 'Player Setup';
 
   @override
@@ -155,6 +172,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get startingCash => 'Starting Cash';
+
+  @override
+  String get gameOptions => 'Game Options';
+
+  @override
+  String get soundAndLanguage => 'Sound & Language';
+
+  @override
+  String get settingsSubtitle => 'Tune your table before the next game';
 
   @override
   String get playerTrading => 'Player Trading';

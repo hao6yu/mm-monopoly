@@ -1173,10 +1173,16 @@ func _create_city_landmark(parent: Node3D, descriptor: Dictionary) -> void:
 			_add_box(landmark, Vector3(1.1, 1.2, 1.1), Vector3(0.0, 0.6, 0.0), stone)
 			_add_cylinder(landmark, 0.12, 0.3, 2.5, Vector3(0.0, 2.25, 0.0), accent)
 
+	var label_height := 5.1
+	match kind:
+		"tower", "modern_tower", "clock_tower", "eiffel", "lighthouse":
+			label_height = 6.55
+		"stadium", "park", "dome", "pyramid":
+			label_height = 3.65
 	_add_landmark_label(
 		landmark,
 		label_text,
-		Vector3(0.0, 5.1, 0.0),
+		Vector3(0.0, label_height, 0.0),
 		accent_color.lightened(0.25)
 	)
 
@@ -1407,8 +1413,32 @@ func _make_harbor_boat(kind: String, accent: Color) -> Node3D:
 	var hull_dark := _material(Color("#1d4054"), 0.18, 0.26)
 	var accent_material := _material(accent, 0.08, 0.34)
 	var glass := _material(Color("#76d4eb"), 0.2, 0.16, Color("#76d4eb"), 0.22)
-	_add_box(boat, Vector3(0.58, 0.24, 1.5), Vector3(0.0, 0.2, 0.0), hull_dark)
-	_add_box(boat, Vector3(0.5, 0.18, 1.25), Vector3(0.0, 0.36, -0.02), hull)
+	# A pointed plan-view hull and visible wake make these read as boats even
+	# from the board's high camera, instead of road vehicles on blue terrain.
+	var lower_hull := _add_triangular_prism(
+		boat,
+		Vector3(1.18, 0.3, 2.35),
+		Vector3(0.0, 0.2, -0.08),
+		hull_dark
+	)
+	lower_hull.rotation_degrees.y = 180.0
+	var upper_hull := _add_triangular_prism(
+		boat,
+		Vector3(1.02, 0.18, 2.0),
+		Vector3(0.0, 0.4, -0.12),
+		hull
+	)
+	upper_hull.rotation_degrees.y = 180.0
+	var wake_material := _material(Color(1.0, 1.0, 1.0, 0.48), 0.0, 0.82)
+	wake_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	for wake_x in [-0.34, 0.34]:
+		var wake := _add_box(
+			boat,
+			Vector3(0.13, 0.025, 1.35),
+			Vector3(wake_x, 0.04, 1.25),
+			wake_material
+		)
+		wake.rotation_degrees.y = -10.0 if wake_x < 0.0 else 10.0
 
 	if kind == "sailboat":
 		_add_cylinder(
@@ -1427,16 +1457,25 @@ func _make_harbor_boat(kind: String, accent: Color) -> Node3D:
 		)
 		sail.rotation_degrees.x = -9.0
 	else:
-		_add_box(boat, Vector3(0.43, 0.34, 0.7), Vector3(0.0, 0.62, -0.08), hull)
-		_add_box(boat, Vector3(0.46, 0.14, 0.42), Vector3(0.0, 0.66, -0.44), glass)
-		_add_box(boat, Vector3(0.5, 0.08, 0.72), Vector3(0.0, 0.84, -0.08), accent_material)
+		_add_box(boat, Vector3(0.76, 0.38, 0.92), Vector3(0.0, 0.66, 0.02), hull)
+		_add_box(boat, Vector3(0.78, 0.16, 0.48), Vector3(0.0, 0.7, -0.38), glass)
+		_add_box(boat, Vector3(0.86, 0.08, 0.98), Vector3(0.0, 0.9, 0.02), accent_material)
 		if kind == "ferry":
 			_add_box(
 				boat,
-				Vector3(0.36, 0.13, 0.5),
-				Vector3(0.0, 0.95, 0.03),
+				Vector3(0.58, 0.2, 0.62),
+				Vector3(0.0, 1.04, 0.08),
 				hull
 			)
+			var ferry_label := Label3D.new()
+			ferry_label.text = "FERRY"
+			ferry_label.font_size = 28
+			ferry_label.pixel_size = 0.006
+			ferry_label.position = Vector3(0.0, 0.73, -0.5)
+			ferry_label.modulate = Color("#122e41")
+			ferry_label.outline_modulate = Color.WHITE
+			ferry_label.outline_size = 3
+			boat.add_child(ferry_label)
 	return boat
 
 
@@ -1699,12 +1738,15 @@ func _add_landmark_label(
 ) -> void:
 	var label := Label3D.new()
 	label.text = text
-	label.font_size = 44
-	label.pixel_size = 0.006
+	label.font_size = 36
+	label.pixel_size = 0.0054
 	label.position = position
 	label.modulate = color
 	label.outline_modulate = Color("#07101e")
-	label.outline_size = 10
+	label.outline_size = 12
+	label.width = 410.0
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	parent.add_child(label)
 	board_tap_targets.append({
@@ -5260,8 +5302,10 @@ func _token_offset_for_tile(index: int, player_index: int = 0) -> Vector3:
 	var following := tile_positions[(index + 1) % BOARD_SPOT_COUNT]
 	var tangent := (following - previous).normalized()
 	var normal := Vector3(tangent.z, 0.0, -tangent.x)
-	var lateral := (float(player_index) - 1.5) * 0.14
-	return normal * lateral
+	var slot := player_index % 4
+	var lateral := -0.24 if slot % 2 == 0 else 0.24
+	var longitudinal := -0.18 if slot < 2 else 0.18
+	return normal * lateral + tangent * longitudinal
 
 
 func _material(

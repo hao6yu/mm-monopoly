@@ -92,7 +92,8 @@ class AnimatedPlayerToken extends StatelessWidget {
     return AnimatedBuilder(
       animation: bounceAnimation,
       builder: (context, child) {
-        final bounce = isCurrentPlayer ? sin(bounceAnimation.value * pi) * 10 : 0.0;
+        final bounce =
+            isCurrentPlayer ? sin(bounceAnimation.value * pi) * 10 : 0.0;
 
         // 3D pawn is 1.5x height, offset to place base at position
         final pawnHeight = size * 1.5;
@@ -177,7 +178,8 @@ class _ArcAnimatedPlayerToken2D extends StatefulWidget {
   });
 
   @override
-  State<_ArcAnimatedPlayerToken2D> createState() => _ArcAnimatedPlayerToken2DState();
+  State<_ArcAnimatedPlayerToken2D> createState() =>
+      _ArcAnimatedPlayerToken2DState();
 }
 
 class _ArcAnimatedPlayerToken2DState extends State<_ArcAnimatedPlayerToken2D>
@@ -237,13 +239,17 @@ class _ArcAnimatedPlayerToken2DState extends State<_ArcAnimatedPlayerToken2D>
     // Arc height (parabola)
     _arcAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0, end: 1)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 0,
+          end: 1,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 50,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1, end: 0)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween<double>(
+          begin: 1,
+          end: 0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 50,
       ),
     ]).animate(_moveController);
@@ -251,18 +257,24 @@ class _ArcAnimatedPlayerToken2DState extends State<_ArcAnimatedPlayerToken2D>
     // Landing bounce (up then settle)
     _landingBounceAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0, end: -8)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 0,
+          end: -8,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 30,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: -8, end: 3)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: -8,
+          end: 3,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 35,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 3, end: 0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: 3,
+          end: 0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 35,
       ),
     ]).animate(_bounceController);
@@ -270,18 +282,24 @@ class _ArcAnimatedPlayerToken2DState extends State<_ArcAnimatedPlayerToken2D>
     // Squash on landing
     _landingSquashAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.15)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.15,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 20,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.15, end: 0.9)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: 1.15,
+          end: 0.9,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 30,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.9, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 0.9,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 50,
       ),
     ]).animate(_bounceController);
@@ -323,7 +341,9 @@ class _ArcAnimatedPlayerToken2DState extends State<_ArcAnimatedPlayerToken2D>
 
     // Handle current player changes
     if (widget.isCurrentPlayer != oldWidget.isCurrentPlayer) {
-      if (widget.isCurrentPlayer && !_moveController.isAnimating && !_bounceController.isAnimating) {
+      if (widget.isCurrentPlayer &&
+          !_moveController.isAnimating &&
+          !_bounceController.isAnimating) {
         _idleBounceController.repeat();
       } else if (!widget.isCurrentPlayer) {
         _idleBounceController.stop();
@@ -358,23 +378,29 @@ class _ArcAnimatedPlayerToken2DState extends State<_ArcAnimatedPlayerToken2D>
 
         if (_moveController.isAnimating) {
           // Arc movement
-          x = _startPosition.dx +
-              (_moveAnimation.value * (widget.targetPosition.dx - _startPosition.dx));
-          y = _startPosition.dy +
-              (_moveAnimation.value * (widget.targetPosition.dy - _startPosition.dy)) -
+          x =
+              _startPosition.dx +
+              (_moveAnimation.value *
+                  (widget.targetPosition.dx - _startPosition.dx));
+          y =
+              _startPosition.dy +
+              (_moveAnimation.value *
+                  (widget.targetPosition.dy - _startPosition.dy)) -
               (_arcAnimation.value * 30); // Arc height of 30 pixels
         } else if (_hasLanded && _bounceController.isAnimating) {
           // Landing bounce
           x = widget.targetPosition.dx;
           y = widget.targetPosition.dy + _landingBounceAnimation.value;
           scaleX = _landingSquashAnimation.value;
-          scaleY = 2.0 - _landingSquashAnimation.value; // Inverse for squash effect
+          scaleY =
+              2.0 - _landingSquashAnimation.value; // Inverse for squash effect
         } else {
           // Idle position with gentle bounce
           x = widget.targetPosition.dx;
-          final idleBounce = widget.isCurrentPlayer
-              ? sin(_idleBounceAnimation.value * pi) * 6
-              : 0.0;
+          final idleBounce =
+              widget.isCurrentPlayer
+                  ? sin(_idleBounceAnimation.value * pi) * 6
+                  : 0.0;
           y = widget.targetPosition.dy - idleBounce;
         }
 
@@ -482,13 +508,17 @@ class _HoppingPlayerToken2DState extends State<_HoppingPlayerToken2D>
 
     _hopAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0, end: 1)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 0,
+          end: 1,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 50,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1, end: 0)
-            .chain(CurveTween(curve: Curves.bounceOut)),
+        tween: Tween<double>(
+          begin: 1,
+          end: 0,
+        ).chain(CurveTween(curve: Curves.bounceOut)),
         weight: 50,
       ),
     ]).animate(_controller);
@@ -503,8 +533,10 @@ class _HoppingPlayerToken2DState extends State<_HoppingPlayerToken2D>
         weight: 40,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.1, end: 1.0)
-            .chain(CurveTween(curve: Curves.elasticOut)),
+        tween: Tween<double>(
+          begin: 1.1,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
         weight: 50,
       ),
     ]).animate(_controller);
@@ -551,8 +583,12 @@ class _HoppingPlayerToken2DState extends State<_HoppingPlayerToken2D>
         if (_isHopping) {
           // Interpolate position
           final progress = _controller.value;
-          x = _previousPosition.dx + (progress * (_currentPosition.dx - _previousPosition.dx));
-          y = _previousPosition.dy + (progress * (_currentPosition.dy - _previousPosition.dy));
+          x =
+              _previousPosition.dx +
+              (progress * (_currentPosition.dx - _previousPosition.dx));
+          y =
+              _previousPosition.dy +
+              (progress * (_currentPosition.dy - _previousPosition.dy));
 
           // Add hop arc
           y -= _hopAnimation.value * 20;
@@ -660,9 +696,8 @@ class TokenPositionCalculator {
     final basePos = getBasePosition(player.position);
 
     // Find all players on the same tile
-    final playersOnSameTile = allPlayers
-        .where((p) => p.position == player.position)
-        .toList();
+    final playersOnSameTile =
+        allPlayers.where((p) => p.position == player.position).toList();
 
     if (playersOnSameTile.length <= 1) {
       return basePos;
@@ -676,10 +711,14 @@ class TokenPositionCalculator {
       indexOnTile,
       playersOnSameTile.length,
     );
+    // The legacy offsets were fixed pixels and became too small once the
+    // board moved to a large logical canvas. Scale the formation with each
+    // tile so four character pieces remain individually visible.
+    final formationScale = tileWidth / 42.0;
 
     return Offset(
-      basePos.dx + stackOffset.dx,
-      basePos.dy + stackOffset.dy,
+      basePos.dx + stackOffset.dx * formationScale,
+      basePos.dy + stackOffset.dy * formationScale,
     );
   }
 }

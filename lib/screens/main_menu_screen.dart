@@ -43,8 +43,8 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     )..forward();
     _worldController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 18),
-    )..repeat();
+      duration: const Duration(milliseconds: 3000),
+    )..repeat(reverse: true);
     _heroAnimation = CurvedAnimation(
       parent: _entranceController,
       curve: const Interval(0, 0.66, curve: Curves.easeOutCubic),
@@ -68,6 +68,8 @@ class _MainMenuScreenState extends State<MainMenuScreen>
       backgroundColor: const Color(0xFF071427),
       body: CityThemeBackground(
         animation: _worldController,
+        imageAsset: 'assets/images/home_city_dusk.jpg',
+        imageAlignment: const Alignment(0.08, 0),
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -221,7 +223,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                   AppLocalizations.of(context)!.familyEdition.toUpperCase(),
                   textAlign: isWide ? TextAlign.left : TextAlign.center,
                   style: TextStyle(
-                    color: const Color(0xFFD8E7F4).withOpacity(0.86),
+                    color: const Color(0xFFD8E7F4).withValues(alpha: 0.86),
                     fontSize: isWide ? 15 : 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 3,

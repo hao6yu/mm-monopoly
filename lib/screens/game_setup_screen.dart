@@ -36,6 +36,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   );
   final List<PlayerConfig> _playerConfigs = [];
   final List<TextEditingController> _nameControllers = [];
+  final ScrollController _setupScrollController = ScrollController();
   int _currentStep = 0;
   late AnimationController _floatController;
   bool _didInitConfigs = false;
@@ -92,6 +93,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   @override
   void dispose() {
     _floatController.dispose();
+    _setupScrollController.dispose();
     for (final controller in _nameControllers) {
       controller.dispose();
     }
@@ -137,7 +139,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
       _showError(AppLocalizations.of(context)!.allPlayersNeedName);
       return false;
     }
-    final colors = _playerConfigs.map((c) => c.color.value).toSet();
+    final colors = _playerConfigs.map((c) => c.color.toARGB32()).toSet();
     if (colors.length != _playerConfigs.length) {
       _showError(AppLocalizations.of(context)!.uniqueColorError);
       return false;
@@ -168,6 +170,8 @@ class _GameSetupScreenState extends State<GameSetupScreen>
       backgroundColor: const Color(0xFF071427),
       body: CityThemeBackground(
         animation: _floatController,
+        imageAsset: 'assets/images/home_city_dusk.jpg',
+        imageAlignment: const Alignment(0.08, 0),
         child: SafeArea(
           child: Column(
             children: [
@@ -191,72 +195,93 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     final screenSize = MediaQuery.sizeOf(context);
     final isCompactLandscape =
         screenSize.width > screenSize.height && screenSize.height < 500;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding:
           isCompactLandscape
-              ? const EdgeInsets.fromLTRB(10, 6, 10, 2)
-              : const EdgeInsets.fromLTRB(16, 14, 16, 6),
+              ? const EdgeInsets.fromLTRB(12, 8, 12, 3)
+              : const EdgeInsets.fromLTRB(20, 18, 20, 5),
       child: CityGlassPanel(
         padding: EdgeInsets.symmetric(
-          horizontal: isCompactLandscape ? 6 : 10,
-          vertical: isCompactLandscape ? 4 : 8,
+          horizontal: isCompactLandscape ? 7 : 12,
+          vertical: isCompactLandscape ? 5 : 10,
         ),
-        radius: isCompactLandscape ? 14 : 18,
+        radius: isCompactLandscape ? 16 : 22,
         child: Row(
           children: [
             _buildBackButton(compact: isCompactLandscape),
-            SizedBox(width: isCompactLandscape ? 10 : 14),
+            SizedBox(width: isCompactLandscape ? 11 : 16),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!isCompactLandscape) ...[
-                    CitySectionLabel(
-                      icon:
-                          _currentStep == 0
-                              ? Icons.public_rounded
-                              : Icons.groups_rounded,
-                      label:
-                          _currentStep == 0
-                              ? AppLocalizations.of(context)!.chooseBoard
-                              : AppLocalizations.of(context)!.setupStep,
-                    ),
-                    const SizedBox(height: 3),
-                  ],
                   Text(
-                    _currentStep == 0
-                        ? AppLocalizations.of(context)!.howManyPlayers
-                        : AppLocalizations.of(context)!.playerSetup,
+                    _currentStep == 0 ? l10n.gameSetupTitle : l10n.playerSetup,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: isCompactLandscape ? 16 : 20,
-                      fontWeight: FontWeight.w800,
+                      fontSize: isCompactLandscape ? 17 : 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
                     ),
                   ),
+                  if (!isCompactLandscape) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      _currentStep == 0
+                          ? l10n.gameSetupSubtitle
+                          : l10n.playerSetupSubtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isCompactLandscape ? 9 : 12,
-                vertical: isCompactLandscape ? 6 : 8,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B2B48),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0x5535D5C5)),
-              ),
-              child: Text(
-                '${_currentStep + 1}/2',
-                style: const TextStyle(
-                  color: Color(0xFFFFD86B),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
+            SizedBox(width: isCompactLandscape ? 8 : 12),
+            _buildHeaderStepBadge(compact: isCompactLandscape),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderStepBadge({required bool compact}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 9 : 12,
+        vertical: compact ? 6 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF172640),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: const Color(0x6635D5C5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.auto_awesome_rounded,
+            color: Color(0xFFFFD86B),
+            size: 15,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${_currentStep + 1} / 2',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -293,80 +318,96 @@ class _GameSetupScreenState extends State<GameSetupScreen>
       return const SizedBox(height: 4);
     }
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Row(
-        children: [
-          _buildStepIndicator(0, AppLocalizations.of(context)!.playersStep),
-          Expanded(
-            child: Container(
-              height: 3,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(2),
-                color:
-                    _currentStep >= 1
-                        ? const Color(0xFF4ECDC4)
-                        : Colors.white.withOpacity(0.3),
-              ),
-            ),
+      padding: const EdgeInsets.fromLTRB(20, 7, 20, 8),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 540),
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: const Color(0xD90A1426),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0x3D8CB4CC)),
           ),
-          _buildStepIndicator(1, AppLocalizations.of(context)!.setupStep),
-        ],
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildStepIndicator(
+                  0,
+                  AppLocalizations.of(context)!.chooseBoard,
+                  Icons.map_rounded,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: _buildStepIndicator(
+                  1,
+                  AppLocalizations.of(context)!.playerSetup,
+                  Icons.groups_rounded,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildStepIndicator(int step, String label) {
-    final isActive = _currentStep >= step;
-    final color =
-        isActive ? const Color(0xFF4ECDC4) : Colors.white.withOpacity(0.5);
-    return Column(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isActive ? color : Colors.white.withOpacity(0.2),
-            border: Border.all(color: color, width: 2),
-            boxShadow:
-                isActive
-                    ? [
-                      BoxShadow(
-                        color: color.withOpacity(0.5),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Center(
-            child:
-                isActive
-                    ? const Icon(
-                      Icons.check_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    )
-                    : Text(
-                      '${step + 1}',
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-          ),
+  Widget _buildStepIndicator(int step, String label, IconData icon) {
+    final isSelected = _currentStep == step;
+    final isComplete = _currentStep > step;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        gradient:
+            isSelected
+                ? const LinearGradient(
+                  colors: [Color(0xFF1C786F), Color(0xFF185A61)],
+                )
+                : null,
+        color: isSelected ? null : const Color(0x4DFFFFFF),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(
+          color: isSelected ? const Color(0xFF6BE2D7) : Colors.transparent,
         ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.white70,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color:
+                  isSelected || isComplete
+                      ? const Color(0xFF35D5C5)
+                      : Colors.white12,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isComplete ? Icons.check_rounded : icon,
+              size: 14,
+              color:
+                  isSelected || isComplete
+                      ? const Color(0xFF071427)
+                      : Colors.white54,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white60,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -376,41 +417,23 @@ class _GameSetupScreenState extends State<GameSetupScreen>
         final availableHeight = constraints.maxHeight;
         final availableWidth = constraints.maxWidth;
         final isLandscape = availableWidth > availableHeight;
-        final isCompact = availableHeight < 500;
+        final isCompact = availableHeight < 500 || availableWidth < 500;
 
-        // In landscape, use a two-column layout
         if (isLandscape) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.only(top: 8, bottom: 8),
+                padding: const EdgeInsets.only(top: 7, bottom: 10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Left column: Board + City
                     Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildCountrySection(isCompact: true),
-                          const SizedBox(height: 8),
-                          _buildCitySection(isCompact: true),
-                        ],
-                      ),
+                      flex: 11,
+                      child: _buildDestinationPanel(isCompact: true),
                     ),
-                    const SizedBox(width: 12),
-                    // Right column: Players + Dice
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildPlayersSection(isCompact: true),
-                          const SizedBox(height: 8),
-                          _buildDiceSection(isCompact: true),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(width: 14),
+                    Expanded(flex: 9, child: _buildRulesPanel(isCompact: true)),
                   ],
                 ),
               ),
@@ -418,22 +441,23 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           );
         }
 
-        // Portrait layout - single column, scrollable
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                SizedBox(height: isCompact ? 8 : 16),
-                _buildCountrySection(isCompact: isCompact),
-                SizedBox(height: isCompact ? 6 : 10),
-                _buildCitySection(isCompact: isCompact),
-                SizedBox(height: isCompact ? 6 : 10),
-                _buildPlayersSection(isCompact: isCompact),
-                SizedBox(height: isCompact ? 8 : 16),
-                _buildDiceSection(isCompact: isCompact),
-                SizedBox(height: isCompact ? 8 : 16),
-              ],
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Scrollbar(
+            controller: _setupScrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: _setupScrollController,
+              padding: const EdgeInsets.only(right: 8),
+              child: Column(
+                children: [
+                  SizedBox(height: isCompact ? 6 : 12),
+                  _buildDestinationPanel(isCompact: isCompact),
+                  SizedBox(height: isCompact ? 10 : 14),
+                  _buildRulesPanel(isCompact: isCompact),
+                  SizedBox(height: isCompact ? 10 : 16),
+                ],
+              ),
             ),
           ),
         );
@@ -441,30 +465,132 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     );
   }
 
+  Widget _buildDestinationPanel({required bool isCompact}) {
+    final l10n = AppLocalizations.of(context)!;
+    return _buildSectionContainer(
+      key: const Key('setup-destination-panel'),
+      isCompact: isCompact,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildPanelHeading(
+            icon: Icons.location_city_rounded,
+            title: l10n.chooseBoard,
+            value:
+                '${_selectedCountry.flag} ${_selectedCityBoard.localizedDisplayName(l10n)}',
+          ),
+          SizedBox(height: isCompact ? 12 : 18),
+          _buildCountrySection(isCompact: isCompact),
+          SizedBox(height: isCompact ? 12 : 18),
+          Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+          SizedBox(height: isCompact ? 12 : 18),
+          _buildCitySection(isCompact: isCompact),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRulesPanel({required bool isCompact}) {
+    final l10n = AppLocalizations.of(context)!;
+    return _buildSectionContainer(
+      key: const Key('setup-rules-panel'),
+      isCompact: isCompact,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildPanelHeading(
+            icon: Icons.tune_rounded,
+            title: l10n.setupStep,
+            value:
+                '$_playerCount ${l10n.players} · ${_diceCount == 1 ? l10n.oneDie : l10n.twoDice}',
+          ),
+          SizedBox(height: isCompact ? 12 : 18),
+          _buildPlayersSection(isCompact: isCompact),
+          SizedBox(height: isCompact ? 12 : 18),
+          Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+          SizedBox(height: isCompact ? 12 : 18),
+          _buildDiceSection(isCompact: isCompact),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPanelHeading({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2A756F), Color(0xFF1B4B5B)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: const Color(0xFF9AF1E8), size: 21),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFAEC4D5),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSectionContainer({
+    Key? key,
     required Widget child,
     required bool isCompact,
     double borderRadius = 24,
   }) {
     return Container(
+      key: key,
       width: double.infinity,
-      padding: EdgeInsets.all(isCompact ? 12 : 20),
+      padding: EdgeInsets.all(isCompact ? 14 : 22),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF14223B).withOpacity(0.95),
-            const Color(0xFF091426).withOpacity(0.92),
-          ],
+          colors: [Color(0xF2182741), Color(0xF20A1426)],
         ),
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: const Color(0x665F91B5)),
+        borderRadius: BorderRadius.circular(borderRadius + 2),
+        border: Border.all(color: const Color(0x596B9CB8)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x4D000000),
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            color: Color(0x73000000),
+            blurRadius: 26,
+            offset: Offset(0, 14),
           ),
         ],
       ),
@@ -473,38 +599,26 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   }
 
   Widget _buildCountrySection({required bool isCompact}) {
-    return _buildSectionContainer(
-      isCompact: isCompact,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('🌍', style: TextStyle(fontSize: isCompact ? 18 : 24)),
-              const SizedBox(width: 10),
-              Text(
-                AppLocalizations.of(context)!.chooseBoard,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isCompact ? 15 : 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isCompact ? 8 : 16),
-          ..._buildCountryRows(isCompact),
-        ],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CitySectionLabel(
+          icon: Icons.public_rounded,
+          label: AppLocalizations.of(context)!.chooseBoard,
+        ),
+        SizedBox(height: isCompact ? 9 : 13),
+        ..._buildCountryRows(isCompact),
+      ],
     );
   }
 
   List<Widget> _buildCountryRows(bool isCompact) {
     final countries = Country.values;
+    final columns = MediaQuery.sizeOf(context).width < 500 ? 2 : 3;
     final List<Widget> rows = [];
-    for (int rowStart = 0; rowStart < countries.length; rowStart += 3) {
-      final rowEnd = (rowStart + 3).clamp(0, countries.length);
+    for (int rowStart = 0; rowStart < countries.length; rowStart += columns) {
+      final rowEnd = (rowStart + columns).clamp(0, countries.length);
       final rowCountries = countries.sublist(rowStart, rowEnd);
       if (rowStart > 0) rows.add(SizedBox(height: isCompact ? 6 : 8));
       rows.add(
@@ -514,8 +628,8 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               if (i > 0) SizedBox(width: isCompact ? 6 : 8),
               Expanded(child: _buildCountryCard(rowCountries[i], isCompact)),
             ],
-            // Fill remaining space if row has < 3 items
-            for (int i = rowCountries.length; i < 3; i++) ...[
+            // Keep the final row aligned with the selected column count.
+            for (int i = rowCountries.length; i < columns; i++) ...[
               SizedBox(width: isCompact ? 6 : 8),
               const Expanded(child: SizedBox()),
             ],
@@ -528,348 +642,348 @@ class _GameSetupScreenState extends State<GameSetupScreen>
 
   Widget _buildCountryCard(Country country, bool isCompact) {
     final isSelected = _selectedCountry == country;
-    final colors = [
-      const Color(0xFFFF6B6B),
-      const Color(0xFF4ECDC4),
-      const Color(0xFFFFE66D),
-    ];
-    final color = colors[country.index % colors.length];
-    return GestureDetector(
-      onTap:
-          () => setState(() {
-            _selectedCountry = country;
-            _selectedCityBoard = CityBoardRegistry.defaultForCountry(country);
-          }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          vertical: isCompact ? 8 : 10,
-          horizontal: 4,
-        ),
-        decoration: BoxDecoration(
-          gradient:
-              isSelected
-                  ? LinearGradient(colors: [color, color.withOpacity(0.7)])
-                  : null,
-          color: isSelected ? null : Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(isCompact ? 12 : 16),
-          border: Border.all(
-            color: isSelected ? color : Colors.white24,
-            width: isSelected ? 3 : 2,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap:
+            () => setState(() {
+              _selectedCountry = country;
+              _selectedCityBoard = CityBoardRegistry.defaultForCountry(country);
+            }),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(
+            vertical: isCompact ? 9 : 11,
+            horizontal: isCompact ? 8 : 10,
           ),
-          boxShadow:
-              isSelected
-                  ? [
-                    BoxShadow(
-                      color: color.withOpacity(0.5),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                  : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(country.flag, style: TextStyle(fontSize: isCompact ? 22 : 28)),
-            SizedBox(width: isCompact ? 6 : 8),
-            Flexible(
-              child: Text(
-                country.localizedDisplayName(AppLocalizations.of(context)!),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isCompact ? 12 : 14,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          decoration: BoxDecoration(
+            gradient:
+                isSelected
+                    ? const LinearGradient(
+                      colors: [Color(0xFF247C73), Color(0xFF185963)],
+                    )
+                    : null,
+            color: isSelected ? null : const Color(0x8F22314B),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF6BE2D7) : Colors.white12,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow:
+                isSelected
+                    ? const [
+                      BoxShadow(
+                        color: Color(0x4535D5C5),
+                        blurRadius: 13,
+                        offset: Offset(0, 5),
+                      ),
+                    ]
+                    : null,
+          ),
+          child: Row(
+            children: [
+              Text(
+                country.flag,
+                style: TextStyle(fontSize: isCompact ? 20 : 24),
+              ),
+              SizedBox(width: isCompact ? 7 : 9),
+              Expanded(
+                child: Text(
+                  country.localizedDisplayName(AppLocalizations.of(context)!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isCompact ? 11 : 13,
+                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-          ],
+              if (isSelected) ...[
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF9AF1E8),
+                  size: 17,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildCitySection({required bool isCompact}) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 10 : 16,
-        vertical: isCompact ? 8 : 12,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF14223B).withOpacity(0.95),
-            const Color(0xFF091426).withOpacity(0.92),
-          ],
+    final cities = CityBoardRegistry.forCountry(_selectedCountry);
+    final isNarrow = MediaQuery.sizeOf(context).width < 500;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CitySectionLabel(
+          icon: Icons.place_rounded,
+          label: AppLocalizations.of(context)!.chooseCity,
+          color: const Color(0xFFFFD86B),
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x665F91B5)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+        SizedBox(height: isCompact ? 9 : 13),
+        if (isNarrow)
+          SizedBox(
+            height: isCompact ? 58 : 64,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: cities.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder:
+                  (_, index) => SizedBox(
+                    width: 150,
+                    child: _buildCityCard(cities[index], isCompact),
+                  ),
+            ),
+          )
+        else
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('🏙️', style: TextStyle(fontSize: isCompact ? 14 : 16)),
-              const SizedBox(width: 8),
-              Text(
-                AppLocalizations.of(context)!.chooseCity,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isCompact ? 13 : 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              for (var index = 0; index < cities.length; index++) ...[
+                if (index > 0) const SizedBox(width: 8),
+                Expanded(child: _buildCityCard(cities[index], isCompact)),
+              ],
             ],
           ),
-          SizedBox(height: isCompact ? 6 : 8),
-          Row(
-            children:
-                CityBoardRegistry.forCountry(_selectedCountry).map((city) {
-                  final isSelected = _selectedCityBoard == city;
-                  final color = const Color(0xFFFFBE0B);
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selectedCityBoard = city),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: EdgeInsets.symmetric(
-                            vertical: isCompact ? 8 : 10,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient:
-                                isSelected
-                                    ? LinearGradient(
-                                      colors: [color, color.withOpacity(0.7)],
-                                    )
-                                    : null,
-                            color:
-                                isSelected
-                                    ? null
-                                    : Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected ? color : Colors.white24,
-                              width: isSelected ? 2.5 : 1.5,
-                            ),
-                            boxShadow:
-                                isSelected
-                                    ? [
-                                      BoxShadow(
-                                        color: color.withOpacity(0.4),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                    : null,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                city.emoji,
-                                style: TextStyle(fontSize: isCompact ? 14 : 16),
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  city.localizedDisplayName(
-                                    AppLocalizations.of(context)!,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: isCompact ? 11 : 13,
-                                    fontWeight:
-                                        isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildCityCard(CityBoard city, bool isCompact) {
+    final isSelected = _selectedCityBoard == city;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => setState(() => _selectedCityBoard = city),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: isCompact ? 10 : 12,
           ),
-        ],
+          decoration: BoxDecoration(
+            gradient:
+                isSelected
+                    ? const LinearGradient(
+                      colors: [Color(0xFFF2C452), Color(0xFFD98B2D)],
+                    )
+                    : null,
+            color: isSelected ? null : const Color(0x8F22314B),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? const Color(0xFFFFE6A1) : Colors.white12,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow:
+                isSelected
+                    ? const [
+                      BoxShadow(
+                        color: Color(0x55F1AD35),
+                        blurRadius: 13,
+                        offset: Offset(0, 5),
+                      ),
+                    ]
+                    : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color:
+                      isSelected
+                          ? const Color(0x24FFFFFF)
+                          : Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  city.emoji,
+                  style: TextStyle(fontSize: isCompact ? 16 : 18),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  city.localizedDisplayName(AppLocalizations.of(context)!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? const Color(0xFF15213A) : Colors.white,
+                    fontSize: isCompact ? 11 : 12,
+                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF15213A),
+                  size: 17,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildPlayersSection({required bool isCompact}) {
-    return _buildSectionContainer(
-      isCompact: isCompact,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.people_alt_rounded,
-                color: Colors.white70,
-                size: isCompact ? 20 : 24,
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    AppLocalizations.of(context)!.numberOfPlayers,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isCompact ? 15 : 20,
-                      fontWeight: FontWeight.bold,
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CitySectionLabel(
+          icon: Icons.groups_rounded,
+          label: l10n.numberOfPlayers,
+        ),
+        SizedBox(height: isCompact ? 9 : 13),
+        Row(
+          children: List.generate(GameConstants.maxPlayers - 1, (index) {
+            final count = index + 2;
+            final isSelected = _playerCount == count;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(left: index == 0 ? 0 : 8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _updatePlayerCount(count),
+                    child: AnimatedContainer(
+                      key: Key('setup-player-count-$count'),
+                      duration: const Duration(milliseconds: 200),
+                      padding: EdgeInsets.symmetric(
+                        vertical: isCompact ? 10 : 14,
+                        horizontal: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient:
+                            isSelected
+                                ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFFF2C452),
+                                    Color(0xFFD98B2D),
+                                  ],
+                                )
+                                : null,
+                        color: isSelected ? null : const Color(0x8F22314B),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color:
+                              isSelected
+                                  ? const Color(0xFFFFE6A1)
+                                  : Colors.white12,
+                          width: isSelected ? 2 : 1,
+                        ),
+                        boxShadow:
+                            isSelected
+                                ? const [
+                                  BoxShadow(
+                                    color: Color(0x55F1AD35),
+                                    blurRadius: 14,
+                                    offset: Offset(0, 6),
+                                  ),
+                                ]
+                                : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            count == 2
+                                ? Icons.people_alt_rounded
+                                : Icons.groups_rounded,
+                            color:
+                                isSelected
+                                    ? const Color(0xFF15213A)
+                                    : Colors.white70,
+                            size: isCompact ? 20 : 24,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$count',
+                            style: TextStyle(
+                              color:
+                                  isSelected
+                                      ? const Color(0xFF15213A)
+                                      : Colors.white,
+                              fontSize: isCompact ? 25 : 31,
+                              height: 1,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            l10n.players,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color:
+                                  isSelected
+                                      ? const Color(0xCC15213A)
+                                      : Colors.white54,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: isCompact ? 10 : 20),
-          IntrinsicHeight(
-            child: Row(
-              children: List.generate(GameConstants.maxPlayers - 1, (index) {
-                final count = index + 2;
-                final isSelected = _playerCount == count;
-                final colors = [
-                  const Color(0xFFFF6B6B),
-                  const Color(0xFF4ECDC4),
-                  const Color(0xFFFFE66D),
-                ];
-                final color = colors[index % colors.length];
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: index == 0 ? 0 : 6,
-                      right: index == 2 ? 0 : 6,
-                    ),
-                    child: GestureDetector(
-                      onTap: () => _updatePlayerCount(count),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: EdgeInsets.symmetric(
-                          vertical: isCompact ? 10 : 16,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient:
-                              isSelected
-                                  ? LinearGradient(
-                                    colors: [color, color.withOpacity(0.7)],
-                                  )
-                                  : null,
-                          color:
-                              isSelected ? null : Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected ? color : Colors.white24,
-                            width: isSelected ? 3 : 2,
-                          ),
-                          boxShadow:
-                              isSelected
-                                  ? [
-                                    BoxShadow(
-                                      color: color.withOpacity(0.5),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ]
-                                  : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '$count',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: isCompact ? 32 : 48,
-                              fontWeight: FontWeight.bold,
-                              shadows:
-                                  isSelected
-                                      ? [
-                                        const Shadow(
-                                          color: Colors.black26,
-                                          blurRadius: 4,
-                                          offset: Offset(1, 1),
-                                        ),
-                                      ]
-                                      : null,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
+            );
+          }),
+        ),
+      ],
     );
   }
 
   Widget _buildDiceSection({required bool isCompact}) {
-    return _buildSectionContainer(
-      isCompact: isCompact,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('🎲', style: TextStyle(fontSize: isCompact ? 16 : 20)),
-              const SizedBox(width: 8),
-              Text(
-                AppLocalizations.of(context)!.numberOfDice,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isCompact ? 14 : 18,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CitySectionLabel(
+          icon: Icons.casino_rounded,
+          label: AppLocalizations.of(context)!.numberOfDice,
+          color: const Color(0xFFFFD86B),
+        ),
+        SizedBox(height: isCompact ? 9 : 13),
+        Row(
+          children: [
+            Expanded(
+              child: _buildDiceCard(
+                1,
+                '🎲',
+                AppLocalizations.of(context)!.oneDie,
+                AppLocalizations.of(context)!.classicStyle,
+                const Color(0xFF35D5C5),
               ),
-            ],
-          ),
-          SizedBox(height: isCompact ? 8 : 12),
-          IntrinsicHeight(
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildDiceCard(
-                    1,
-                    '🎲',
-                    AppLocalizations.of(context)!.oneDie,
-                    AppLocalizations.of(context)!.classicStyle,
-                    const Color(0xFF95E1D3),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildDiceCard(
-                    2,
-                    '🎲🎲',
-                    AppLocalizations.of(context)!.twoDice,
-                    AppLocalizations.of(context)!.standardRules,
-                    const Color(0xFFFFB347),
-                  ),
-                ),
-              ],
             ),
-          ),
-        ],
-      ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildDiceCard(
+                2,
+                '🎲🎲',
+                AppLocalizations.of(context)!.twoDice,
+                AppLocalizations.of(context)!.standardRules,
+                const Color(0xFFF2C452),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -881,34 +995,79 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     Color color,
   ) {
     final isSelected = _diceCount == count;
-    return GestureDetector(
-      onTap: () => setState(() => _diceCount = count),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          gradient:
-              isSelected
-                  ? LinearGradient(colors: [color, color.withOpacity(0.7)])
-                  : null,
-          color: isSelected ? null : Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? color : Colors.white24,
-            width: isSelected ? 3 : 2,
+    final foreground =
+        isSelected ? const Color(0xFF15213A) : const Color(0xFFF3F7FB);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => setState(() => _diceCount = count),
+        child: AnimatedContainer(
+          key: Key('setup-dice-count-$count'),
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          decoration: BoxDecoration(
+            gradient:
+                isSelected
+                    ? LinearGradient(
+                      colors: [color, color.withValues(alpha: 0.76)],
+                    )
+                    : null,
+            color: isSelected ? null : const Color(0x8F22314B),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color:
+                  isSelected ? color.withValues(alpha: 0.95) : Colors.white12,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.3),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                    : null,
           ),
-          boxShadow:
-              isSelected
-                  ? [
-                    BoxShadow(
-                      color: color.withOpacity(0.5),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+          child: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 25)),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ]
-                  : null,
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: foreground.withValues(alpha: 0.7),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                Icon(Icons.check_circle_rounded, color: foreground, size: 18),
+            ],
+          ),
         ),
-        child: Center(child: Text(emoji, style: const TextStyle(fontSize: 36))),
       ),
     );
   }
@@ -996,16 +1155,19 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            config.color.withOpacity(0.3),
-            const Color(0xFF101C33).withOpacity(0.96),
-            const Color(0xFF071223).withOpacity(0.96),
+            config.color.withValues(alpha: 0.3),
+            const Color(0xFF101C33).withValues(alpha: 0.96),
+            const Color(0xFF071223).withValues(alpha: 0.96),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: config.color.withOpacity(0.6), width: 2),
+        border: Border.all(
+          color: config.color.withValues(alpha: 0.6),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: config.color.withOpacity(0.3),
+            color: config.color.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1025,7 +1187,10 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [config.color, config.color.withOpacity(0.7)],
+                      colors: [
+                        config.color,
+                        config.color.withValues(alpha: 0.7),
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -1074,7 +1239,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                       Text(
                         AppLocalizations.of(context)!.ai,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 12,
                         ),
                       ),
@@ -1091,7 +1256,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                                         isAI: value,
                                       ),
                                 ),
-                            activeColor: const Color(0xFF4ECDC4),
+                            activeThumbColor: const Color(0xFF4ECDC4),
                           ),
                         ),
                       ),
@@ -1121,7 +1286,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: config.color.withOpacity(0.6),
+                                  color: config.color.withValues(alpha: 0.6),
                                   blurRadius: 20,
                                   spreadRadius: 6,
                                 ),
@@ -1144,7 +1309,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                                 gradient: LinearGradient(
                                   colors: [
                                     config.color,
-                                    config.color.withOpacity(0.7),
+                                    config.color.withValues(alpha: 0.7),
                                   ],
                                 ),
                                 shape: BoxShape.circle,
@@ -1193,9 +1358,11 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                 ),
                 decoration: InputDecoration(
                   hintText: AppLocalizations.of(context)!.name,
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                  hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
+                  fillColor: Colors.white.withValues(alpha: 0.1),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 10,
@@ -1203,7 +1370,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -1247,7 +1414,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                             margin: const EdgeInsets.symmetric(horizontal: 3),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [color, color.withOpacity(0.7)],
+                                colors: [color, color.withValues(alpha: 0.7)],
                               ),
                               shape: BoxShape.circle,
                               border:
@@ -1261,7 +1428,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                                   isSelected
                                       ? [
                                         BoxShadow(
-                                          color: color.withOpacity(0.6),
+                                          color: color.withValues(alpha: 0.6),
                                           blurRadius: 8,
                                         ),
                                       ]
@@ -1271,7 +1438,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                                 isUsed && !isSelected
                                     ? Icon(
                                       Icons.close,
-                                      color: Colors.white.withOpacity(0.5),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       size: dotSize * 0.5,
                                     )
                                     : isSelected
@@ -1407,7 +1576,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -1453,89 +1622,186 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     final screenSize = MediaQuery.sizeOf(context);
     final isCompactLandscape =
         screenSize.width > screenSize.height && screenSize.height < 500;
+    final isWide = screenSize.width >= 720;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding:
           isCompactLandscape
-              ? const EdgeInsets.fromLTRB(10, 4, 10, 7)
-              : const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _previousStep,
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    vertical: isCompactLandscape ? 10 : 16,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+              ? const EdgeInsets.fromLTRB(12, 3, 12, 8)
+              : const EdgeInsets.fromLTRB(20, 8, 20, 18),
+      child: Container(
+        key: const Key('setup-summary'),
+        padding: EdgeInsets.all(isCompactLandscape ? 6 : 9),
+        decoration: BoxDecoration(
+          color: const Color(0xF20A1426),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0x596B9CB8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x73000000),
+              blurRadius: 22,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            if (isWide)
+              SizedBox(
+                width: 138,
+                child: _buildNavigationAction(
+                  icon: Icons.arrow_back_rounded,
+                  label: _currentStep == 0 ? l10n.back : l10n.previous,
+                  onTap: _previousStep,
+                  compact: isCompactLandscape,
+                ),
+              )
+            else
+              Expanded(
+                child: _buildNavigationAction(
+                  icon: Icons.arrow_back_rounded,
+                  label: _currentStep == 0 ? l10n.back : l10n.previous,
+                  onTap: _previousStep,
+                  compact: isCompactLandscape,
+                ),
+              ),
+            if (!isWide) const SizedBox(width: 9),
+            if (isWide) ...[
+              const SizedBox(width: 14),
+              Expanded(child: _buildGameSummary()),
+              const SizedBox(width: 14),
+            ],
+            if (isWide)
+              ConstrainedBox(
+                constraints: BoxConstraints(minWidth: 230, maxWidth: 280),
+                child: _buildNavigationAction(
+                  icon:
+                      _currentStep == 0
+                          ? Icons.arrow_forward_rounded
+                          : Icons.rocket_launch_rounded,
+                  label: _currentStep == 0 ? l10n.next : l10n.startGame,
+                  onTap: _nextStep,
+                  primary: true,
+                  compact: isCompactLandscape,
+                ),
+              )
+            else
+              Expanded(
+                child: _buildNavigationAction(
+                  icon:
+                      _currentStep == 0
+                          ? Icons.arrow_forward_rounded
+                          : Icons.rocket_launch_rounded,
+                  label: _currentStep == 0 ? l10n.next : l10n.startGame,
+                  onTap: _nextStep,
+                  primary: true,
+                  compact: isCompactLandscape,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGameSummary() {
+    final l10n = AppLocalizations.of(context)!;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _currentStep == 0 ? l10n.gameSummary : l10n.readyToPlay,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF8CEDE2),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '${_selectedCountry.flag} ${_selectedCityBoard.localizedDisplayName(l10n)}  ·  $_playerCount ${l10n.players}  ·  ${_diceCount == 1 ? l10n.oneDie : l10n.twoDice}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNavigationAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool primary = false,
+    bool compact = false,
+  }) {
+    final foreground = primary ? const Color(0xFF122039) : Colors.white;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 11 : 16,
+            vertical: compact ? 9 : 13,
+          ),
+          decoration: BoxDecoration(
+            gradient:
+                primary
+                    ? const LinearGradient(
+                      colors: [Color(0xFFFFD86B), Color(0xFFF1AD35)],
+                    )
+                    : const LinearGradient(
                       colors: [Color(0xFF243657), Color(0xFF162541)],
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0x555F91B5)),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _currentStep == 0
-                          ? AppLocalizations.of(context)!.back
-                          : AppLocalizations.of(context)!.previous,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color:
+                  primary ? const Color(0xFFFFE6A1) : const Color(0x555F91B5),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (!primary) ...[
+                Icon(icon, color: foreground, size: 19),
+                const SizedBox(width: 7),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: compact ? 13 : 15,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
-            ),
+              if (primary) ...[
+                const SizedBox(width: 8),
+                Icon(icon, color: foreground, size: 19),
+              ],
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 2,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _nextStep,
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    vertical: isCompactLandscape ? 10 : 16,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFD86B), Color(0xFFF1AD35)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFFFE6A1)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x55F1AD35),
-                        blurRadius: 12,
-                        offset: Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      _currentStep == 0
-                          ? AppLocalizations.of(context)!.next
-                          : AppLocalizations.of(context)!.startGame,
-                      style: const TextStyle(
-                        color: Color(0xFF122039),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

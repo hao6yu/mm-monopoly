@@ -170,6 +170,36 @@ abstract class AppLocalizations {
   /// **'How Many Players?'**
   String get howManyPlayers;
 
+  /// No description provided for @gameSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Your Game'**
+  String get gameSetupTitle;
+
+  /// No description provided for @gameSetupSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a city, game size, and movement style.'**
+  String get gameSetupSubtitle;
+
+  /// No description provided for @playerSetupSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Give every player a name, color, and character.'**
+  String get playerSetupSubtitle;
+
+  /// No description provided for @gameSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Summary'**
+  String get gameSummary;
+
+  /// No description provided for @readyToPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to play'**
+  String get readyToPlay;
+
   /// No description provided for @playerSetup.
   ///
   /// In en, this message translates to:
@@ -385,6 +415,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Starting Cash'**
   String get startingCash;
+
+  /// No description provided for @gameOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Options'**
+  String get gameOptions;
+
+  /// No description provided for @soundAndLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound & Language'**
+  String get soundAndLanguage;
+
+  /// No description provided for @settingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tune your table before the next game'**
+  String get settingsSubtitle;
 
   /// No description provided for @playerTrading.
   ///

@@ -499,6 +499,11 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   void _showGameMenu() {
+    final canPersistTurn =
+        !_isProcessingTurn &&
+        !_waitingForCardPick &&
+        gameState.logicPhase == TurnLogicPhase.preRoll &&
+        gameState.animationState == TurnAnimationState.idle;
     _isPaused = true;
     showGameMenuDialog(
       context: context,
@@ -522,8 +527,14 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         widget.onQuit();
       },
       onRules: widget.onHowToPlay,
-      onSave: _saveGame,
-      onLoad: SaveService.instance.hasSavedGame() ? _loadGame : null,
+      // Saving or replacing the board while a roll, dialog, or card draw is
+      // unresolved leaves an old async turn attached to the new state. Only
+      // expose persistence at the clean boundary before a roll.
+      onSave: canPersistTurn ? _saveGame : null,
+      onLoad:
+          canPersistTurn && SaveService.instance.hasSavedGame()
+              ? _loadGame
+              : null,
     );
   }
 
@@ -565,13 +576,29 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Future<void> _loadGame() async {
+    if (_isProcessingTurn || _waitingForCardPick) return;
     final loadedState = await SaveService.instance.loadGame();
 
     if (loadedState != null && mounted) {
+      // Older saves could be created in the middle of a turn. They cannot
+      // safely recreate an open Flutter dialog, so recover them at a stable
+      // pre-roll boundary for the same player.
+      final recoveredState =
+          loadedState.canRoll
+              ? loadedState
+              : loadedState.copyWith(
+                logicPhase: TurnLogicPhase.preRoll,
+                animationState: TurnAnimationState.idle,
+              );
       setState(() {
-        gameState = loadedState;
+        gameState = recoveredState;
         engine = GameEngine(gameState);
         _isPaused = false;
+        _isProcessingTurn = false;
+        _waitingForCardPick = false;
+        _isChanceCard = false;
+        _cardPickPlayer = null;
+        _cardPickCompleter = null;
       });
       _sync3DBoard();
 
@@ -599,9 +626,6 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           duration: const Duration(seconds: 2),
         ),
       );
-
-      // Delete the save after successful load
-      await SaveService.instance.deleteSave();
 
       // If it's AI turn, trigger their action
       if (gameState.currentPlayer.isAI && gameState.canRoll) {
@@ -661,9 +685,15 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                   }
                   final useLandscape =
                       constraints.maxWidth > constraints.maxHeight * 1.08;
-                  return useLandscape
-                      ? _buildLandscapeLayout()
-                      : _buildPortraitLayout();
+                  return Padding(
+                    // The city guide is an overlay. Reserve its row so it
+                    // never covers a player card on four-player layouts.
+                    padding: const EdgeInsets.only(top: 46),
+                    child:
+                        useLandscape
+                            ? _buildLandscapeLayout()
+                            : _buildPortraitLayout(),
+                  );
                 },
               ),
               Positioned(
@@ -707,6 +737,18 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                               ),
                             )
                             .toList(),
+                  ),
+                ),
+              if (!_show3DBoard && _waitingForCardPick)
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: MediaQuery.sizeOf(context).width < 700 ? 76 : 14,
+                  child: Center(
+                    child: KeyedSubtree(
+                      key: const Key('card-pick-prompt'),
+                      child: _build3DCardDeckPrompt(),
+                    ),
                   ),
                 ),
             ],
@@ -869,45 +911,76 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   Widget _build3DCurrentPlayerHud() {
     final player = gameState.currentPlayer;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      constraints: const BoxConstraints(maxWidth: 230),
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xE6111A33),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: player.color, width: 1.5),
-        boxShadow: [
-          BoxShadow(color: player.color.withValues(alpha: 0.3), blurRadius: 16),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(player.icon.iconData, size: 17, color: player.color),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(
-              '${player.name}’s turn',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+    return Semantics(
+      button: true,
+      label: 'Open ${player.name} portfolio',
+      child: Tooltip(
+        message: 'View ${player.name} portfolio',
+        child: AnimatedContainer(
+          key: const Key('3d-current-player-hud'),
+          duration: const Duration(milliseconds: 220),
+          constraints: const BoxConstraints(maxWidth: 230),
+          decoration: BoxDecoration(
+            color: const Color(0xE6111A33),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: player.color, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: player.color.withValues(alpha: 0.3),
+                blurRadius: 16,
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap:
+                  () => showPropertyPortfolioDialog(
+                    context: context,
+                    player: player,
+                    tiles: gameState.tiles,
+                    gameState: gameState,
+                  ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(player.icon.iconData, size: 17, color: player.color),
+                    const SizedBox(width: 7),
+                    Flexible(
+                      child: Text(
+                        '${player.name}’s turn',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '\$${player.cash}',
+                      style: TextStyle(
+                        color: player.color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            '\$${player.cash}',
-            style: TextStyle(
-              color: player.color,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1297,12 +1370,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
-  Widget _build2DBoardViewport(double boardSize) {
+  Widget _build2DBoardViewport(double boardSize, {bool interactive = false}) {
     // The original 2D board contains rich fixed-size details. Lay it out at a
     // comfortable logical canvas and scale the complete board on small phones.
     // This preserves every control without RenderFlex overflows.
     final logicalBoardSize = max(boardSize, 1100.0);
-    return SizedBox(
+    final scaledBoard = SizedBox(
       width: boardSize,
       height: boardSize,
       child: FittedBox(
@@ -1336,6 +1409,255 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         ),
       ),
     );
+
+    if (!interactive) return scaledBoard;
+
+    return InteractiveViewer(
+      key: const Key('compact-2d-board-zoom'),
+      minScale: 1,
+      maxScale: 4.5,
+      boundaryMargin: const EdgeInsets.all(80),
+      clipBehavior: Clip.hardEdge,
+      child: scaledBoard,
+    );
+  }
+
+  Widget _buildCompactPlayerPill(Player player, {bool vertical = false}) {
+    final isCurrent = player.id == gameState.currentPlayer.id;
+    return Material(
+      color:
+          isCurrent
+              ? player.color.withValues(alpha: 0.28)
+              : const Color(0xC9142038),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap:
+            () => showPropertyPortfolioDialog(
+              context: context,
+              player: player,
+              tiles: gameState.tiles,
+              gameState: gameState,
+            ),
+        child: Container(
+          width: vertical ? double.infinity : 104,
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isCurrent ? player.color : Colors.white12,
+              width: isCurrent ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(player.icon.iconData, color: player.color, size: 20),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      player.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '\$${player.cash}',
+                      style: TextStyle(
+                        color: isCurrent ? player.color : Colors.white70,
+                        fontSize: 11,
+                        height: 1,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactPlayerStrip() {
+    final players =
+        gameState.players
+            .where((p) => p.status == PlayerStatus.active)
+            .toList();
+    return SizedBox(
+      key: const Key('compact-2d-hud'),
+      height: 58,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        itemCount: players.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 7),
+        itemBuilder: (_, index) => _buildCompactPlayerPill(players[index]),
+      ),
+    );
+  }
+
+  Widget _buildCompact2DActionBar() {
+    final player = gameState.currentPlayer;
+    final canRoll = gameState.canRoll && !_isProcessingTurn;
+    final powerUpCount = gameState.getPowerUps(player.id).length;
+    final hasMoreActions =
+        !player.isAI &&
+        (widget.tradingEnabled || widget.bankEnabled || powerUpCount > 0);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 5, 8, 8),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: const Color(0xE6111A33),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            key: const Key('compact-menu-button'),
+            tooltip: 'Game menu',
+            onPressed: _showGameMenu,
+            color: Colors.white,
+            icon: const Icon(Icons.menu_rounded),
+          ),
+          IconButton(
+            tooltip: _isMusicPlaying ? 'Mute music' : 'Play music',
+            onPressed: _toggleMusic,
+            color: Colors.white,
+            icon: Icon(
+              _isMusicPlaying ? Icons.music_note_rounded : Icons.music_off,
+            ),
+          ),
+          if (hasMoreActions)
+            IconButton(
+              tooltip: 'More actions',
+              onPressed: _show3DMoreActions,
+              color: Colors.white,
+              icon: const Icon(Icons.more_horiz_rounded),
+            ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: FilledButton.icon(
+              key: const Key('compact-roll-button'),
+              onPressed: canRoll ? _rollDice : null,
+              icon: const Icon(Icons.casino_rounded),
+              label: Text(
+                canRoll
+                    ? AppLocalizations.of(context)!.rollDice
+                    : gameState.animationState == TurnAnimationState.movingToken
+                    ? 'MOVING…'
+                    : 'PLEASE WAIT…',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF2BD49),
+                foregroundColor: const Color(0xFF111A33),
+                disabledBackgroundColor: Colors.white12,
+                disabledForegroundColor: Colors.white54,
+                minimumSize: const Size(0, 46),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactPortraitLayout(BoxConstraints constraints) {
+    final boardSize = max(
+      0.0,
+      min(constraints.maxWidth - 16, constraints.maxHeight - 136),
+    );
+    return Column(
+      children: [
+        _buildCompactPlayerStrip(),
+        Expanded(
+          child: Center(
+            child: Stack(
+              children: [
+                _build2DBoardViewport(boardSize, interactive: true),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xC9142038),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        'Pinch to zoom • drag to explore',
+                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        _buildCompact2DActionBar(),
+      ],
+    );
+  }
+
+  Widget _buildCompactLandscapeLayout(BoxConstraints constraints) {
+    final players =
+        gameState.players
+            .where((p) => p.status == PlayerStatus.active)
+            .toList();
+    final sidebarWidth = min(196.0, max(164.0, constraints.maxWidth * 0.24));
+    final boardSize = max(
+      0.0,
+      min(constraints.maxHeight - 16, constraints.maxWidth - sidebarWidth - 24),
+    );
+    return Row(
+      key: const Key('compact-2d-hud'),
+      children: [
+        SizedBox(
+          width: sidebarWidth,
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                  itemCount: players.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 6),
+                  itemBuilder:
+                      (_, index) => _buildCompactPlayerPill(
+                        players[index],
+                        vertical: true,
+                      ),
+                ),
+              ),
+              _buildCompact2DActionBar(),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: _build2DBoardViewport(boardSize, interactive: true),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildLandscapeLayout() {
@@ -1347,6 +1669,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (constraints.maxHeight < 600 || constraints.maxWidth < 700) {
+          return _buildCompactLandscapeLayout(constraints);
+        }
         final boardSize = max(
           0.0,
           min(constraints.maxHeight - 16, constraints.maxWidth - 16),
@@ -1395,6 +1720,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (constraints.maxWidth < 700) {
+          return _buildCompactPortraitLayout(constraints);
+        }
         final boardSize = max(
           0.0,
           min(constraints.maxWidth - 16, constraints.maxHeight - 16),
