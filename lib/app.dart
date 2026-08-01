@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
 import 'config/theme.dart';
 import 'screens/splash_screen.dart';
@@ -18,7 +17,6 @@ import 'config/city_board_registry.dart';
 import 'services/audio_service.dart';
 import 'services/save_service.dart';
 import 'services/locale_service.dart';
-import 'services/game_content_loader.dart';
 
 /// Main app widget with navigation
 class MonopolyApp extends StatelessWidget {
@@ -54,7 +52,8 @@ class AppNavigator extends StatefulWidget {
   State<AppNavigator> createState() => _AppNavigatorState();
 }
 
-class _AppNavigatorState extends State<AppNavigator> {
+class _AppNavigatorState extends State<AppNavigator>
+    with WidgetsBindingObserver {
   AppScreen _currentScreen = AppScreen.splash;
   AppScreen? _previousScreen; // Track where user came from
   GameState? _gameState;
@@ -63,6 +62,37 @@ class _AppNavigatorState extends State<AppNavigator> {
   CityBoard _selectedCityBoard = CityBoardRegistry.defaultForCountry(
     Country.usa,
   ); // Track selected city board
+
+  @override
+  void initState() {
+    super.initState();
+    final audio = AudioService.instance;
+    _settings = _settings.copyWith(
+      musicEnabled: audio.musicEnabled,
+      sfxEnabled: audio.sfxEnabled,
+      musicVolume: audio.musicVolume,
+      sfxVolume: audio.sfxVolume,
+    );
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      AudioService.instance.resumeBgm();
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      AudioService.instance.pauseBgm();
+    }
+  }
 
   void _navigateTo(AppScreen screen) {
     setState(() {
@@ -85,7 +115,7 @@ class _AppNavigatorState extends State<AppNavigator> {
         break;
       case AppScreen.game:
         // Play game music when entering game
-        audio.playGameMusic();
+        audio.playGameMusic(boardId: _selectedCityBoard.boardId);
         break;
       case AppScreen.splash:
         // No music on splash
@@ -135,7 +165,7 @@ class _AppNavigatorState extends State<AppNavigator> {
     });
 
     // Play game music
-    AudioService.instance.playGameMusic();
+    AudioService.instance.playGameMusic(boardId: board.boardId);
   }
 
   void _quitGame() {
@@ -194,7 +224,7 @@ class _AppNavigatorState extends State<AppNavigator> {
         _currentScreen = AppScreen.game;
       });
       // Play game music
-      AudioService.instance.playGameMusic();
+      AudioService.instance.playGameMusic(boardId: _selectedCityBoard.boardId);
     } else {
       // Show error if load failed
       if (mounted) {

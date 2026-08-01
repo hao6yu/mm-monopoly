@@ -1,8 +1,12 @@
-import 'dart:math';
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Sound effect types used throughout the game
+import 'audio_catalog.dart';
+
+/// Sound effect types used throughout the game.
 enum SfxType {
   diceRoll,
   diceHit,
@@ -27,42 +31,58 @@ enum SfxType {
   notification,
 }
 
-/// Audio service singleton for managing all game audio
+/// Coordinates music, adaptive mixing, and concurrent game sound effects.
 class AudioService {
-  // Singleton pattern
   static final AudioService _instance = AudioService._internal();
   static AudioService get instance => _instance;
+
   AudioService._internal();
 
-  // Audio players
-  final AudioPlayer _bgmPlayer = AudioPlayer();
-  final AudioPlayer _sfxPlayer = AudioPlayer();
+  static const _crossFadeDuration = Duration(milliseconds: 1400);
+  static const _crossFadeSteps = 20;
+  static const _sfxVoiceCount = 6;
 
-  // Settings
+  final List<AudioPlayer> _bgmPlayers = List.generate(2, (_) => AudioPlayer());
+  final List<AudioPlayer> _sfxPlayers = List.generate(
+    _sfxVoiceCount,
+    (_) => AudioPlayer(),
+  );
+  final List<StreamSubscription<void>> _bgmCompletionSubscriptions = [];
+  final NoRepeatPlaylist _playlist = NoRepeatPlaylist();
+
   bool _musicEnabled = true;
   bool _sfxEnabled = true;
   double _musicVolume = 0.5;
   double _sfxVolume = 0.7;
 
-  // State
   bool _initialized = false;
-  String? _currentBgm;
-
-  // Playlist state for shuffled game music
-  List<String> _shuffledPlaylist = [];
-  int _currentTrackIndex = 0;
+  bool _disposed = false;
   bool _isPlaylistMode = false;
+  String? _currentBgm;
+  String? _currentBoardId;
+  ReleaseMode _currentReleaseMode = ReleaseMode.loop;
+  MusicIntensity _musicIntensity = MusicIntensity.standard;
 
-  // Getters
+  int _activeBgmIndex = 0;
+  int _sfxCursor = 0;
+  int _musicTransitionGeneration = 0;
+  int _duckGeneration = 0;
+  double _duckGain = 1;
+  final List<double> _bgmMix = [0, 0];
+  final List<double> _bgmTrackGain = [1, 1];
+
   bool get musicEnabled => _musicEnabled;
   bool get sfxEnabled => _sfxEnabled;
   double get musicVolume => _musicVolume;
   double get sfxVolume => _sfxVolume;
-  bool get isPlaying => _bgmPlayer.state == PlayerState.playing;
+  bool get isPlaying =>
+      _bgmPlayers.any((player) => player.state == PlayerState.playing);
+  String? get currentBgm => _currentBgm;
+  String? get currentBoardId => _currentBoardId;
+  MusicIntensity get musicIntensity => _musicIntensity;
 
-  /// Initialize the audio service and load saved preferences
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized || _disposed) return;
 
     final prefs = await SharedPreferences.getInstance();
     _musicEnabled = prefs.getBool('audio_music_enabled') ?? true;
@@ -70,22 +90,29 @@ class AudioService {
     _musicVolume = prefs.getDouble('audio_music_volume') ?? 0.5;
     _sfxVolume = prefs.getDouble('audio_sfx_volume') ?? 0.7;
 
-    // Configure players
-    await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    await _bgmPlayer.setVolume(_musicVolume);
-    await _sfxPlayer.setVolume(_sfxVolume);
-
-    // Listen for track completion to play next track in playlist mode
-    _bgmPlayer.onPlayerComplete.listen((_) {
-      if (_isPlaylistMode && _musicEnabled) {
-        _playNextTrack();
-      }
-    });
+    for (var index = 0; index < _bgmPlayers.length; index++) {
+      final player = _bgmPlayers[index];
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.setVolume(0);
+      _bgmCompletionSubscriptions.add(
+        player.onPlayerComplete.listen((_) {
+          if (_activeBgmIndex == index &&
+              _isPlaylistMode &&
+              _musicEnabled &&
+              !_disposed) {
+            unawaited(_playNextTrack());
+          }
+        }),
+      );
+    }
+    for (final player in _sfxPlayers) {
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.setVolume(_sfxVolume);
+    }
 
     _initialized = true;
   }
 
-  /// Save current settings to preferences
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('audio_music_enabled', _musicEnabled);
@@ -94,303 +121,322 @@ class AudioService {
     await prefs.setDouble('audio_sfx_volume', _sfxVolume);
   }
 
-  // ============================================================================
-  // Settings Control
-  // ============================================================================
-
-  /// Toggle background music on/off
   Future<void> setMusicEnabled(bool enabled) async {
     _musicEnabled = enabled;
+    _musicTransitionGeneration++;
+
     if (!enabled) {
-      await _bgmPlayer.pause();
+      await Future.wait(
+        _bgmPlayers
+            .where((player) => player.state == PlayerState.playing)
+            .map((player) => player.pause()),
+      );
     } else if (_currentBgm != null) {
-      await _bgmPlayer.resume();
+      final track = _currentBgm!;
+      _currentBgm = null;
+      await _crossFadeTo(
+        track,
+        releaseMode: _currentReleaseMode,
+        duration: const Duration(milliseconds: 350),
+      );
     }
     await _saveSettings();
   }
 
-  /// Toggle sound effects on/off
   Future<void> setSfxEnabled(bool enabled) async {
     _sfxEnabled = enabled;
+    if (!enabled) {
+      await Future.wait(
+        _sfxPlayers
+            .where((player) => player.state == PlayerState.playing)
+            .map((player) => player.stop()),
+      );
+    }
     await _saveSettings();
   }
 
-  /// Set background music volume (0.0 - 1.0)
   Future<void> setMusicVolume(double volume) async {
     _musicVolume = volume.clamp(0.0, 1.0);
-    await _bgmPlayer.setVolume(_musicVolume);
+    await _applyBgmVolumes();
     await _saveSettings();
   }
 
-  /// Set sound effects volume (0.0 - 1.0)
   Future<void> setSfxVolume(double volume) async {
     _sfxVolume = volume.clamp(0.0, 1.0);
-    await _sfxPlayer.setVolume(_sfxVolume);
+    await Future.wait(
+      _sfxPlayers.map((player) => player.setVolume(_sfxVolume)),
+    );
     await _saveSettings();
   }
 
-  // ============================================================================
-  // Background Music
-  // ============================================================================
+  Future<void> setMusicIntensity(MusicIntensity intensity) async {
+    if (_musicIntensity == intensity) return;
+    _musicIntensity = intensity;
+    await _applyBgmVolumes();
+  }
 
-  /// Play background music (loops automatically)
   Future<void> playBgm(String trackName) async {
-    if (!_musicEnabled) {
-      _currentBgm = trackName;
-      return;
-    }
-    
-    try {
-      _currentBgm = trackName;
-      await _bgmPlayer.play(AssetSource('audio/music/$trackName'));
-    } catch (e) {
-      // Audio file not found - silently fail
-      print('BGM not found: $trackName');
-    }
-  }
-
-  /// Play the main menu music (loops single track)
-  Future<void> playMenuMusic() async {
     _isPlaylistMode = false;
-    await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    await playBgm('menu_theme.mp3');
+    await _crossFadeTo(trackName, releaseMode: ReleaseMode.loop);
   }
 
-  /// Available game music tracks
-  static const List<String> _gameThemes = [
-    'game_theme.mp3',
-    'game_theme_2.mp3',
-    'game_theme_3.mp3',
-    'game_theme_4.mp3',
-  ];
-
-  static final Random _random = Random();
-
-  /// Create a shuffled playlist starting with a random track
-  void _createShuffledPlaylist() {
-    // Copy and shuffle the playlist
-    _shuffledPlaylist = List<String>.from(_gameThemes);
-    _shuffledPlaylist.shuffle(_random);
-    _currentTrackIndex = 0;
+  Future<void> playMenuMusic() async {
+    _currentBoardId = null;
+    _musicIntensity = MusicIntensity.relaxed;
+    _isPlaylistMode = false;
+    await _crossFadeTo(AudioCatalog.menuTrack, releaseMode: ReleaseMode.loop);
   }
 
-  /// Play the next track in the shuffled playlist
-  Future<void> _playNextTrack() async {
-    if (_shuffledPlaylist.isEmpty) return;
-
-    // Move to next track
-    _currentTrackIndex++;
-
-    // If we've played all tracks, reshuffle and start over
-    if (_currentTrackIndex >= _shuffledPlaylist.length) {
-      _shuffledPlaylist.shuffle(_random);
-      _currentTrackIndex = 0;
-    }
-
-    final nextTrack = _shuffledPlaylist[_currentTrackIndex];
-    await _playTrackWithoutLoop(nextTrack);
-  }
-
-  /// Play a track without looping (for playlist mode)
-  Future<void> _playTrackWithoutLoop(String trackName) async {
-    if (!_musicEnabled) {
-      _currentBgm = trackName;
-      return;
-    }
-
-    try {
-      _currentBgm = trackName;
-      await _bgmPlayer.setReleaseMode(ReleaseMode.stop);
-      await _bgmPlayer.play(AssetSource('audio/music/$trackName'));
-    } catch (e) {
-      // Audio file not found - try next track
-      print('BGM not found: $trackName');
-      _playNextTrack();
-    }
-  }
-
-  /// Play the in-game music (starts with random track, then shuffles through all)
-  Future<void> playGameMusic() async {
+  Future<void> playGameMusic({String? boardId}) async {
+    _currentBoardId = boardId;
+    _musicIntensity = MusicIntensity.standard;
     _isPlaylistMode = true;
 
-    // Create a shuffled playlist
-    _createShuffledPlaylist();
-
-    // Start playing the first track (which is random due to shuffle)
-    final firstTrack = _shuffledPlaylist[_currentTrackIndex];
-    await _playTrackWithoutLoop(firstTrack);
+    final profile = AudioCatalog.profileForBoard(boardId);
+    _playlist.reset(profile.tracks, lastTrack: _currentBgm);
+    final firstTrack = _playlist.next();
+    if (firstTrack != null) {
+      await _crossFadeTo(firstTrack, releaseMode: ReleaseMode.stop);
+    }
   }
 
-  /// Play victory music (one-shot, not looped)
+  Future<void> _playNextTrack() async {
+    if (!_isPlaylistMode || !_musicEnabled || _disposed) return;
+    final nextTrack = _playlist.next();
+    if (nextTrack != null) {
+      await _crossFadeTo(nextTrack, releaseMode: ReleaseMode.stop);
+    }
+  }
+
   Future<void> playVictoryMusic() async {
     _isPlaylistMode = false;
-    if (!_musicEnabled) return;
-    await _bgmPlayer.setReleaseMode(ReleaseMode.stop);
-    await playBgm('victory_theme.mp3');
+    _musicIntensity = MusicIntensity.standard;
+    await _crossFadeTo(
+      AudioCatalog.victoryTrack,
+      releaseMode: ReleaseMode.stop,
+    );
   }
 
-  /// Stop background music
-  Future<void> stopBgm() async {
-    _isPlaylistMode = false;
-    _shuffledPlaylist.clear();
-    _currentTrackIndex = 0;
-    await _bgmPlayer.stop();
-    _currentBgm = null;
-  }
+  Future<void> _crossFadeTo(
+    String trackName, {
+    required ReleaseMode releaseMode,
+    Duration duration = _crossFadeDuration,
+  }) async {
+    if (_disposed) return;
+    _currentReleaseMode = releaseMode;
 
-  /// Pause background music
-  Future<void> pauseBgm() async {
-    await _bgmPlayer.pause();
-  }
-
-  /// Resume background music
-  Future<void> resumeBgm() async {
-    if (_musicEnabled && _currentBgm != null) {
-      await _bgmPlayer.resume();
+    if (!_musicEnabled) {
+      _currentBgm = trackName;
+      return;
     }
-  }
+    if (_currentBgm == trackName &&
+        _bgmPlayers[_activeBgmIndex].state == PlayerState.playing) {
+      await _applyBgmVolumes();
+      return;
+    }
 
-  // ============================================================================
-  // Sound Effects
-  // ============================================================================
+    final generation = ++_musicTransitionGeneration;
+    final outgoingIndex = _activeBgmIndex;
+    final incomingIndex = 1 - outgoingIndex;
+    final incoming = _bgmPlayers[incomingIndex];
+    final outgoing = _bgmPlayers[outgoingIndex];
+    final hadOutgoingTrack =
+        _currentBgm != null &&
+        (outgoing.state == PlayerState.playing ||
+            outgoing.state == PlayerState.paused);
 
-  /// Play a sound effect
-  Future<void> playSfx(SfxType type) async {
-    if (!_sfxEnabled) return;
-    
-    final filename = _getSfxFilename(type);
-    if (filename == null) return;
-    
     try {
-      await _sfxPlayer.play(AssetSource('audio/sfx/$filename'));
-    } catch (e) {
-      // Audio file not found - silently fail
-      print('SFX not found: $filename');
+      await incoming.stop();
+      await incoming.setReleaseMode(releaseMode);
+      _bgmMix[incomingIndex] = 0;
+      _bgmTrackGain[incomingIndex] = AudioCatalog.playbackGainFor(trackName);
+      await incoming.play(AssetSource('audio/music/$trackName'), volume: 0);
+    } catch (error) {
+      debugPrint('BGM not found: $trackName ($error)');
+      return;
+    }
+
+    _activeBgmIndex = incomingIndex;
+    _currentBgm = trackName;
+    final stepDelay = Duration(
+      microseconds: duration.inMicroseconds ~/ _crossFadeSteps,
+    );
+
+    for (var step = 1; step <= _crossFadeSteps; step++) {
+      if (generation != _musicTransitionGeneration || _disposed) return;
+      final progress = step / _crossFadeSteps;
+      _bgmMix[incomingIndex] = progress;
+      _bgmMix[outgoingIndex] = hadOutgoingTrack ? 1 - progress : 0;
+      await _applyBgmVolumes();
+      if (step < _crossFadeSteps) {
+        await Future<void>.delayed(stepDelay);
+      }
+    }
+
+    if (generation != _musicTransitionGeneration || _disposed) return;
+    await outgoing.stop();
+    _bgmMix[outgoingIndex] = 0;
+    _bgmMix[incomingIndex] = 1;
+    await _applyBgmVolumes();
+  }
+
+  Future<void> _applyBgmVolumes() async {
+    if (_disposed) return;
+    final intensityGain = switch (_musicIntensity) {
+      MusicIntensity.relaxed => 0.84,
+      MusicIntensity.standard => 0.94,
+      MusicIntensity.tense => 1.0,
+    };
+    await Future.wait([
+      for (var index = 0; index < _bgmPlayers.length; index++)
+        _bgmPlayers[index].setVolume(
+          (_musicVolume *
+                  intensityGain *
+                  _duckGain *
+                  _bgmMix[index] *
+                  _bgmTrackGain[index])
+              .clamp(0.0, 1.0),
+        ),
+    ]);
+  }
+
+  Future<void> _duckMusic({
+    Duration duration = const Duration(milliseconds: 800),
+    double gain = 0.5,
+  }) async {
+    final generation = ++_duckGeneration;
+    _duckGain = gain;
+    await _applyBgmVolumes();
+    await Future<void>.delayed(duration);
+    if (generation != _duckGeneration || _disposed) return;
+    _duckGain = 1;
+    await _applyBgmVolumes();
+  }
+
+  Future<void> stopBgm() async {
+    _musicTransitionGeneration++;
+    _isPlaylistMode = false;
+    _playlist.reset(const []);
+    await Future.wait(_bgmPlayers.map((player) => player.stop()));
+    _bgmMix
+      ..[0] = 0
+      ..[1] = 0;
+    _currentBgm = null;
+    _currentBoardId = null;
+  }
+
+  Future<void> pauseBgm() async {
+    await Future.wait(
+      _bgmPlayers
+          .where((player) => player.state == PlayerState.playing)
+          .map((player) => player.pause()),
+    );
+  }
+
+  Future<void> resumeBgm() async {
+    if (!_musicEnabled || _currentBgm == null) return;
+    final active = _bgmPlayers[_activeBgmIndex];
+    if (active.state == PlayerState.paused) {
+      await active.resume();
     }
   }
 
-  /// Get the filename for a sound effect type
-  String? _getSfxFilename(SfxType type) {
-    switch (type) {
-      case SfxType.diceRoll:
-        return 'dice_roll.mp3';
-      case SfxType.diceHit:
-        return 'dice_hit.mp3';
-      case SfxType.tokenMove:
-        return 'token_move.mp3';
-      case SfxType.tokenLand:
-        return 'token_land.mp3';
-      case SfxType.buyProperty:
-        return 'buy_property.mp3';
-      case SfxType.payMoney:
-        return 'pay_money.mp3';
-      case SfxType.collectMoney:
-        return 'collect_money.mp3';
-      case SfxType.cardDraw:
-        return 'card_draw.mp3';
-      case SfxType.cardFlip:
-        return 'card_flip.mp3';
-      case SfxType.jailDoor:
-        return 'jail_door.mp3';
-      case SfxType.passGo:
-        return 'pass_go.mp3';
-      case SfxType.victory:
-        return 'victory.mp3';
-      case SfxType.defeat:
-        return 'defeat.mp3';
-      case SfxType.powerUp:
-        return 'power_up.mp3';
-      case SfxType.spinWheel:
-        return 'spin_wheel.mp3';
-      case SfxType.spinResult:
-        return 'spin_result.mp3';
-      case SfxType.buttonTap:
-        return 'button_tap.mp3';
-      case SfxType.upgrade:
-        return 'upgrade.mp3';
-      case SfxType.auction:
-        return 'auction.mp3';
-      case SfxType.trade:
-        return 'trade.mp3';
-      case SfxType.notification:
-        return 'notification.mp3';
+  Future<void> playSfx(SfxType type) async {
+    if (!_sfxEnabled || _disposed) return;
+
+    if (_shouldDuckMusic(type)) {
+      unawaited(_duckMusic());
+    }
+
+    final filename = _getSfxFilename(type);
+    final player = _nextSfxPlayer();
+    try {
+      if (player.state == PlayerState.playing ||
+          player.state == PlayerState.paused) {
+        await player.stop();
+      }
+      await player.play(AssetSource('audio/sfx/$filename'), volume: _sfxVolume);
+    } catch (error) {
+      debugPrint('SFX not found: $filename ($error)');
     }
   }
 
-  // ============================================================================
-  // Convenience Methods for Game Events
-  // ============================================================================
+  AudioPlayer _nextSfxPlayer() {
+    for (final player in _sfxPlayers) {
+      if (player.state != PlayerState.playing) return player;
+    }
+    final player = _sfxPlayers[_sfxCursor % _sfxPlayers.length];
+    _sfxCursor = (_sfxCursor + 1) % _sfxPlayers.length;
+    return player;
+  }
 
-  /// Called when dice are rolled
+  bool _shouldDuckMusic(SfxType type) =>
+      type == SfxType.cardDraw ||
+      type == SfxType.jailDoor ||
+      type == SfxType.passGo ||
+      type == SfxType.victory ||
+      type == SfxType.defeat ||
+      type == SfxType.spinResult;
+
+  String _getSfxFilename(SfxType type) {
+    return switch (type) {
+      SfxType.diceRoll => 'dice_roll.mp3',
+      SfxType.diceHit => 'dice_hit.mp3',
+      SfxType.tokenMove => 'token_move.mp3',
+      SfxType.tokenLand => 'token_land.mp3',
+      SfxType.buyProperty => 'buy_property.mp3',
+      SfxType.payMoney => 'pay_money.mp3',
+      SfxType.collectMoney => 'collect_money.mp3',
+      SfxType.cardDraw => 'card_draw.mp3',
+      SfxType.cardFlip => 'card_flip.mp3',
+      SfxType.jailDoor => 'jail_door.mp3',
+      SfxType.passGo => 'pass_go.mp3',
+      SfxType.victory => 'victory.mp3',
+      SfxType.defeat => 'defeat.mp3',
+      SfxType.powerUp => 'power_up.mp3',
+      SfxType.spinWheel => 'spin_wheel.mp3',
+      SfxType.spinResult => 'spin_result.mp3',
+      SfxType.buttonTap => 'button_tap.mp3',
+      SfxType.upgrade => 'upgrade.mp3',
+      SfxType.auction => 'auction.mp3',
+      SfxType.trade => 'trade.mp3',
+      SfxType.notification => 'notification.mp3',
+    };
+  }
+
   Future<void> onDiceRoll() => playSfx(SfxType.diceRoll);
-
-  /// Called when dice land
   Future<void> onDiceLand() => playSfx(SfxType.diceHit);
-
-  /// Called when token moves one step
   Future<void> onTokenStep() => playSfx(SfxType.tokenMove);
-
-  /// Called when token lands on final tile
   Future<void> onTokenLand() => playSfx(SfxType.tokenLand);
-
-  /// Called when player buys a property
   Future<void> onBuyProperty() => playSfx(SfxType.buyProperty);
-
-  /// Called when player pays rent/tax
   Future<void> onPayMoney() => playSfx(SfxType.payMoney);
-
-  /// Called when player collects money (GO, rent received)
   Future<void> onCollectMoney() => playSfx(SfxType.collectMoney);
-
-  /// Called when drawing a card
   Future<void> onDrawCard() => playSfx(SfxType.cardDraw);
-
-  /// Called when card is revealed
   Future<void> onFlipCard() => playSfx(SfxType.cardFlip);
-
-  /// Called when going to jail
   Future<void> onJail() => playSfx(SfxType.jailDoor);
-
-  /// Called when passing GO
   Future<void> onPassGo() => playSfx(SfxType.passGo);
-
-  /// Called when player wins
   Future<void> onVictory() => playSfx(SfxType.victory);
-
-  /// Called when player loses/bankrupts
   Future<void> onDefeat() => playSfx(SfxType.defeat);
-
-  /// Called when power-up is activated
   Future<void> onPowerUp() => playSfx(SfxType.powerUp);
-
-  /// Called when spin wheel starts
   Future<void> onSpinWheel() => playSfx(SfxType.spinWheel);
-
-  /// Called when spin wheel lands
   Future<void> onSpinResult() => playSfx(SfxType.spinResult);
-
-  /// Called on button tap (optional UI feedback)
   Future<void> onButtonTap() => playSfx(SfxType.buttonTap);
-
-  /// Called when property is upgraded
   Future<void> onUpgrade() => playSfx(SfxType.upgrade);
-
-  /// Called during auction
   Future<void> onAuction() => playSfx(SfxType.auction);
-
-  /// Called on successful trade
   Future<void> onTrade() => playSfx(SfxType.trade);
-
-  /// Called for notifications/alerts
   Future<void> onNotification() => playSfx(SfxType.notification);
 
-  // ============================================================================
-  // Cleanup
-  // ============================================================================
-
-  /// Dispose of audio players (call when app closes)
   Future<void> dispose() async {
-    await _bgmPlayer.dispose();
-    await _sfxPlayer.dispose();
+    if (_disposed) return;
+    _disposed = true;
+    _musicTransitionGeneration++;
+    _duckGeneration++;
+    await Future.wait(
+      _bgmCompletionSubscriptions.map((subscription) => subscription.cancel()),
+    );
+    await Future.wait([
+      ..._bgmPlayers.map((player) => player.dispose()),
+      ..._sfxPlayers.map((player) => player.dispose()),
+    ]);
   }
 }

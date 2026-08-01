@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import '../engine/card_effect_engine.dart';
 
 /// Service for loading localized game content (board tiles, cards) from JSON assets
 class GameContentLoader {
@@ -15,7 +16,10 @@ class GameContentLoader {
 
   /// Load localized tile text overlays for a board
   /// Returns list of {index, name, subtext, funFact} maps
-  Future<List<Map<String, dynamic>>> loadBoardTiles(String boardId, Locale locale) async {
+  Future<List<Map<String, dynamic>>> loadBoardTiles(
+    String boardId,
+    Locale locale,
+  ) async {
     final lang = locale.languageCode;
     final cacheKey = '${lang}_$boardId';
 
@@ -24,7 +28,9 @@ class GameContentLoader {
     }
 
     try {
-      final jsonStr = await rootBundle.loadString('assets/l10n/boards/$lang/$boardId.json');
+      final jsonStr = await rootBundle.loadString(
+        'assets/l10n/boards/$lang/$boardId.json',
+      );
       final data = json.decode(jsonStr) as Map<String, dynamic>;
       final tiles = (data['tiles'] as List).cast<Map<String, dynamic>>();
       _boardCache[cacheKey] = tiles;
@@ -40,7 +46,9 @@ class GameContentLoader {
 
   /// Load localized chance and community chest cards
   /// Returns {"chance": [...], "communityChest": [...]}
-  Future<Map<String, List<Map<String, dynamic>>>> loadCards(Locale locale) async {
+  Future<Map<String, List<Map<String, dynamic>>>> loadCards(
+    Locale locale,
+  ) async {
     final lang = locale.languageCode;
 
     if (_cardCache.containsKey(lang)) {
@@ -48,12 +56,17 @@ class GameContentLoader {
     }
 
     try {
-      final jsonStr = await rootBundle.loadString('assets/l10n/cards/$lang.json');
+      final jsonStr = await rootBundle.loadString(
+        'assets/l10n/cards/$lang.json',
+      );
       final data = json.decode(jsonStr) as Map<String, dynamic>;
       final result = <String, List<Map<String, dynamic>>>{
-        'chance': (data['chance'] as List).cast<Map<String, dynamic>>(),
-        'communityChest': (data['communityChest'] as List).cast<Map<String, dynamic>>(),
+        'chance': _validatedCardDeck(data['chance']),
+        'communityChest': _validatedCardDeck(data['communityChest']),
       };
+      if (result['chance']!.isEmpty || result['communityChest']!.isEmpty) {
+        throw const FormatException('Card decks must not be empty');
+      }
       _cardCache[lang] = result;
       return result;
     } catch (_) {
@@ -69,5 +82,24 @@ class GameContentLoader {
   void clearCache() {
     _boardCache.clear();
     _cardCache.clear();
+  }
+
+  static List<Map<String, dynamic>> _validatedCardDeck(Object? rawDeck) {
+    if (rawDeck is! List) return [];
+
+    return rawDeck
+        .whereType<Map<String, dynamic>>()
+        .where((card) {
+          final text = card['text'];
+          final effect = card['effect'];
+          final action = card['action'];
+          return text is String &&
+              text.isNotEmpty &&
+              effect is String &&
+              effect.isNotEmpty &&
+              action is String &&
+              CardEffectEngine.supportsAction(action);
+        })
+        .toList(growable: false);
   }
 }

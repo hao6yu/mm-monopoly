@@ -440,6 +440,19 @@ class _SettingsScreenState extends State<SettingsScreen>
               AudioService.instance.setMusicEnabled(value);
             },
           ),
+          if (_settings.musicEnabled) ...[
+            const SizedBox(height: 6),
+            _buildVolumeSlider(
+              key: const Key('settings-music-volume'),
+              label: l10n.backgroundMusic,
+              value: _settings.musicVolume,
+              color: const Color(0xFF59B8F5),
+              onChanged: (value) {
+                _updateSettings(_settings.copyWith(musicVolume: value));
+                AudioService.instance.setMusicVolume(value);
+              },
+            ),
+          ],
           const SizedBox(height: 8),
           _buildSettingTile(
             key: const Key('settings-sfx-tile'),
@@ -453,9 +466,87 @@ class _SettingsScreenState extends State<SettingsScreen>
               AudioService.instance.setSfxEnabled(value);
             },
           ),
+          if (_settings.sfxEnabled) ...[
+            const SizedBox(height: 6),
+            _buildVolumeSlider(
+              key: const Key('settings-sfx-volume'),
+              label: l10n.gameSounds,
+              value: _settings.sfxVolume,
+              color: const Color(0xFF59B8F5),
+              onChanged: (value) {
+                _updateSettings(_settings.copyWith(sfxVolume: value));
+                AudioService.instance.setSfxVolume(value);
+              },
+            ),
+          ],
           const SizedBox(height: 8),
           _buildLanguageTile(l10n),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVolumeSlider({
+    required Key key,
+    required String label,
+    required double value,
+    required Color color,
+    required ValueChanged<double> onChanged,
+  }) {
+    final percentage = (value * 100).round();
+    return Semantics(
+      label: label,
+      value: '$percentage%',
+      child: Container(
+        key: key,
+        padding: const EdgeInsets.fromLTRB(12, 7, 10, 5),
+        decoration: BoxDecoration(
+          color: const Color(0x5C22314B),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.28)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  '$percentage%',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: color,
+                inactiveTrackColor: Colors.white12,
+                thumbColor: Colors.white,
+                overlayColor: color.withValues(alpha: 0.12),
+                trackHeight: 3,
+              ),
+              child: Slider(
+                value: value,
+                min: 0,
+                max: 1,
+                divisions: 20,
+                onChanged: onChanged,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

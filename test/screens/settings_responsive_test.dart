@@ -49,6 +49,8 @@ void main() {
         find.byKey(const Key('settings-language-dropdown')),
         findsOneWidget,
       );
+      expect(find.byKey(const Key('settings-music-volume')), findsOneWidget);
+      expect(find.byKey(const Key('settings-sfx-volume')), findsOneWidget);
       expect(find.byKey(const Key('settings-reset-button')), findsOneWidget);
       expect(find.byKey(const Key('settings-done-button')), findsOneWidget);
       expect(tester.takeException(), isNull);

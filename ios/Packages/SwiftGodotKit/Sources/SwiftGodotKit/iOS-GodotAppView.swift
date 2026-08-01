@@ -69,6 +69,8 @@ public class UIGodotAppView: UIView {
     private var callbackToken: UUID?
     private weak var callbackApp: GodotApp?
     private var didEmitDisplayServerNotEmbeddedWarning = false
+    private var lastWindowPixelWidth: Int32?
+    private var lastWindowPixelHeight: Int32?
     
     public var app: GodotApp?
     public var source: String?
@@ -95,30 +97,55 @@ public class UIGodotAppView: UIView {
     }
     
     deinit {
+        displayLink?.invalidate()
+        displayLink = nil
         renderingLayer?.removeFromSuperlayer()
         unregisterCallbacks()
     }
     
     public override var bounds: CGRect {
         didSet {
-            resizeWindow()
+            // Resize only after layoutSubviews has applied these bounds to the
+            // CAMetalLayer. Calling into Godot here can resize a swap chain
+            // while its native layer is detached or still has the old frame.
+            setNeedsLayout()
         }
     }
     
     func resizeWindow() {
-        guard let embedded else {
-            logger.error("UIGodotApPView.resizeWindow invoked with no embedded window")
+        guard superview != nil, renderingLayer != nil else {
             return
         }
-        
-        DisplayServerAppleEmbeddedBridge.resizeWindow(
-            embedded,
-            size: Vector2i(x: Int32(self.bounds.size.width * self.contentScaleFactor), y: Int32(self.bounds.size.height * self.contentScaleFactor)),
-            id: Int32(DisplayServer.mainWindowId)
+        guard let embedded else {
+            return
+        }
+
+        let pixelWidth = Int32(
+            (bounds.size.width * contentScaleFactor).rounded(.toNearestOrAwayFromZero)
         )
+        let pixelHeight = Int32(
+            (bounds.size.height * contentScaleFactor).rounded(.toNearestOrAwayFromZero)
+        )
+        guard pixelWidth > 0, pixelHeight > 0 else {
+            return
+        }
+        guard pixelWidth != lastWindowPixelWidth || pixelHeight != lastWindowPixelHeight else {
+            return
+        }
+
+        guard DisplayServerAppleEmbeddedBridge.resizeWindow(
+            embedded,
+            size: Vector2i(x: pixelWidth, y: pixelHeight),
+            id: Int32(DisplayServer.mainWindowId)
+        ) else {
+            return
+        }
+        lastWindowPixelWidth = pixelWidth
+        lastWindowPixelHeight = pixelHeight
     }
 
     public override func layoutSubviews() {
+        super.layoutSubviews()
         if let renderingLayer {
             renderingLayer.frame = self.bounds
         }
@@ -136,7 +163,6 @@ public class UIGodotAppView: UIView {
                 }
             }
         }
-        super.layoutSubviews()
     }
     
     public func startGodotInstance() {
@@ -156,6 +182,8 @@ public class UIGodotAppView: UIView {
                 layer: UInt(bitPattern: Unmanaged.passUnretained(renderingLayer).toOpaque())
             )
             DisplayServerAppleEmbeddedBridge.setNativeSurface(rendererNativeSurface)
+            lastWindowPixelWidth = nil
+            lastWindowPixelHeight = nil
             if !instance.isStarted() {
                 instance.start()
                 app.startPending()
@@ -332,6 +360,8 @@ public class UIGodotAppView: UIView {
     public override func removeFromSuperview() {
         displayLink?.invalidate()
         displayLink = nil
+        lastWindowPixelWidth = nil
+        lastWindowPixelHeight = nil
         unregisterCallbacks()
         super.removeFromSuperview()
     }

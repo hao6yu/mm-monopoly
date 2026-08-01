@@ -19,7 +19,17 @@
     {"text": "アイスクリーム屋さんだ！食べなきゃ！", "effect": "-$15", "action": "pay15"},
     {"text": "四つ葉のクローバーを見つけたら…$100もついてきた！", "effect": "+$100", "action": "collect100"},
     {"text": "手作りクッキーがバザーで完売！パティシエだね！", "effect": "+$50", "action": "collect50"},
-    {"text": "ゲーム大会でチャンピオンになった！最強！", "effect": "+$200", "action": "collect200"}
+    {"text": "ゲーム大会でチャンピオンになった！最強！", "effect": "+$200", "action": "collect200"},
+    {"text": "キミの名前が書かれたナゾの封筒を発見！ラッキー！", "effect": "+$75", "action": "collect75"},
+    {"text": "暴走ロボットがお花屋さんにぶつかった！", "effect": "-$25", "action": "pay25"},
+    {"text": "ロケットスケボーで一気に進もう！", "effect": "5マス進む", "action": "forward5"},
+    {"text": "宝の地図がさかさまだった！もどろう！", "effect": "5マス戻る", "action": "back5"},
+    {"text": "ミステリー列車に乗りこもう！", "effect": "いちばん近い駅へ", "action": "nearestRailroad"},
+    {"text": "ピカピカ光る道をたどって公共施設へ！", "effect": "いちばん近い公共施設へ", "action": "nearestUtility"},
+    {"text": "いたずらで学校の警報が鳴った！刑務所へ！", "effect": "刑務所へ行く", "action": "goToJail"},
+    {"text": "町内チャレンジで優勝！みんながお祝いしてくれるよ。", "effect": "全員から$20もらう", "action": "collect20FromEach"},
+    {"text": "大あらしで建物がこわれちゃった！", "effect": "アップグレード1つにつき$25払う", "action": "repairs25"},
+    {"text": "親切な大工さんが手伝ってくれるよ！", "effect": "建物を1回無料アップグレード", "action": "freeUpgrade"}
   ],
   "communityChest": [
     {"text": "貯金がふえたよ！チャリーン！", "effect": "+$100", "action": "collect100"},
@@ -41,6 +51,16 @@
     {"text": "歯の妖精がやってきた！乳歯ぜんぶにごほうび！", "effect": "+$50", "action": "collect50"},
     {"text": "リサイクルでお金ゲット！地球にもおさいふにもやさしい！", "effect": "+$25", "action": "collect25"},
     {"text": "手作りブレスレットがネットで売れたよ！", "effect": "+$50", "action": "collect50"},
-    {"text": "まちのヒーロー賞！キミはすごいぞ！", "effect": "+$150", "action": "collect150"}
+    {"text": "まちのヒーロー賞！キミはすごいぞ！", "effect": "+$150", "action": "collect150"},
+    {"text": "みんなの菜園が賞をとったよ！", "effect": "+$75", "action": "collect75"},
+    {"text": "サッカーチームのなくしたボールを買ってあげた！", "effect": "-$25", "action": "pay25"},
+    {"text": "パレードの先頭でみんなをGOへつれていこう！", "effect": "GOボーナスをもらう", "action": "advanceGo"},
+    {"text": "近所の人が公園の近道を教えてくれた！", "effect": "3マス進む", "action": "forward3"},
+    {"text": "募金箱を忘れた！取りにもどろう！", "effect": "5マス戻る", "action": "back5"},
+    {"text": "今日はキミの誕生日！みんなからお祝いをもらおう。", "effect": "全員から$20もらう", "action": "collect20FromEach"},
+    {"text": "みんなの町内パーティーを応援しよう！", "effect": "全員に$20払う", "action": "pay20Each"},
+    {"text": "町内会から土地ボーナスが出たよ！", "effect": "物件1つにつき$25もらう", "action": "propertyBonus25"},
+    {"text": "地域のおそうじで建物を修理しよう！", "effect": "アップグレード1つにつき$25払う", "action": "repairs25"},
+    {"text": "ボランティアが物件をよくしてくれるよ！", "effect": "建物を1回無料アップグレード", "action": "freeUpgrade"}
   ]
 }

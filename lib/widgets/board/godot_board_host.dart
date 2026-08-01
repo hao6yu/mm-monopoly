@@ -64,7 +64,7 @@ class _GodotBoardHostState extends State<GodotBoardHost> {
                   CircularProgressIndicator(color: Color(0xFFE4B64E)),
                   SizedBox(height: 16),
                   Text(
-                    'Preparing Manhattan…',
+                    'Preparing 3D board…',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,

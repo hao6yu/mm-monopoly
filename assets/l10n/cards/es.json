@@ -99,7 +99,17 @@
       "text": "¡CAMPEÓN del torneo de videojuegos!",
       "effect": "+$200",
       "action": "collect200"
-    }
+    },
+    {"text": "¡Un sobre misterioso tiene tu nombre! ¡Qué suerte!", "effect": "+$75", "action": "collect75"},
+    {"text": "¡Tu robot descontrolado chocó con un puesto de flores!", "effect": "-$25", "action": "pay25"},
+    {"text": "¡Un monopatín cohete te lanza hacia delante!", "effect": "Avanza 5 casillas", "action": "forward5"},
+    {"text": "El mapa del tesoro estaba al revés. ¡Vuelve atrás!", "effect": "Retrocede 5 casillas", "action": "back5"},
+    {"text": "¡Todos a bordo del expreso misterioso!", "effect": "Ve al ferrocarril más cercano", "action": "nearestRailroad"},
+    {"text": "¡Sigue las luces hasta el servicio público más cercano!", "effect": "Ve al servicio público más cercano", "action": "nearestUtility"},
+    {"text": "Tu broma activó la alarma del cole. ¡A la cárcel!", "effect": "Ve a la cárcel", "action": "goToJail"},
+    {"text": "¡Ganaste el reto del barrio! Todos colaboran.", "effect": "Cobra $20 a cada jugador", "action": "collect20FromEach"},
+    {"text": "El mal tiempo dañó tus edificios.", "effect": "Paga $25 por mejora", "action": "repairs25"},
+    {"text": "¡Un constructor voluntario viene a ayudarte!", "effect": "Una mejora gratis", "action": "freeUpgrade"}
   ],
   "communityChest": [
     {
@@ -201,6 +211,16 @@
       "text": "¡Premio al héroe de la comunidad! ¡Eres increíble!",
       "effect": "+$150",
       "action": "collect150"
-    }
+    },
+    {"text": "¡El huerto comunitario ganó un premio!", "effect": "+$75", "action": "collect75"},
+    {"text": "Compraste un balón nuevo para el equipo de fútbol.", "effect": "-$25", "action": "pay25"},
+    {"text": "El jefe del desfile dice: ¡lleva a todos a la SALIDA!", "effect": "Cobra la bonificación de SALIDA", "action": "advanceGo"},
+    {"text": "¡Un vecino te enseña un atajo por el parque!", "effect": "Avanza 3 casillas", "action": "forward3"},
+    {"text": "Olvidaste las cajas de donaciones. ¡Vuelve por ellas!", "effect": "Retrocede 5 casillas", "action": "back5"},
+    {"text": "¡Es tu cumpleaños! Todos te traen dinero de regalo.", "effect": "Cobra $20 a cada jugador", "action": "collect20FromEach"},
+    {"text": "¡Ayuda con la fiesta del barrio de cada jugador!", "effect": "Paga $20 a cada jugador", "action": "pay20Each"},
+    {"text": "¡La asociación del barrio paga un bono por propiedad!", "effect": "Cobra $25 por propiedad", "action": "propertyBonus25"},
+    {"text": "El día de limpieza comunitaria llega a tus edificios.", "effect": "Paga $25 por mejora", "action": "repairs25"},
+    {"text": "¡Los voluntarios mejoran una de tus propiedades!", "effect": "Una mejora gratis", "action": "freeUpgrade"}
   ]
 }

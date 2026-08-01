@@ -11,6 +11,7 @@ import 'godot_board_contract.dart';
 
 class GodotBoardController extends ChangeNotifier {
   static const _channel = MethodChannel('property_tycoon/godot_board_bridge');
+  static GodotBoardController? _channelOwner;
 
   final Map<String, Completer<GodotMovementComplete>> _pendingMoves = {};
   final StreamController<GodotBoardSelection> _selections =
@@ -32,7 +33,8 @@ class GodotBoardController extends ChangeNotifier {
           defaultTargetPlatform == TargetPlatform.iOS);
 
   Future<void> initialize() async {
-    _channel.setMethodCallHandler(_handleNativeCall);
+    _channelOwner = this;
+    _channel.setMethodCallHandler(_dispatchNativeCall);
     if (!canUseNativeBoard) {
       _isAvailable = false;
       notifyListeners();
@@ -47,6 +49,12 @@ class GodotBoardController extends ChangeNotifier {
       _isAvailable = false;
     }
     if (!_disposed) notifyListeners();
+  }
+
+  static Future<Object?> _dispatchNativeCall(MethodCall call) async {
+    final owner = _channelOwner;
+    if (owner == null || owner._disposed) return false;
+    return owner._handleNativeCall(call);
   }
 
   void markViewCreated() {
@@ -229,10 +237,18 @@ class GodotBoardController extends ChangeNotifier {
   Future<void> updateCameraGesture({
     double orbitDeltaX = 0,
     double orbitDeltaY = 0,
+    double panDeltaX = 0,
+    double panDeltaY = 0,
     double zoomScale = 1,
   }) async {
     if (!_isAvailable || !_isBoardReady) return;
-    if (orbitDeltaX == 0 && orbitDeltaY == 0 && zoomScale == 1) return;
+    if (orbitDeltaX == 0 &&
+        orbitDeltaY == 0 &&
+        panDeltaX == 0 &&
+        panDeltaY == 0 &&
+        zoomScale == 1) {
+      return;
+    }
 
     try {
       await _channel.invokeMethod<bool>(
@@ -240,6 +256,8 @@ class GodotBoardController extends ChangeNotifier {
         jsonEncode({
           'orbitDeltaX': orbitDeltaX,
           'orbitDeltaY': orbitDeltaY,
+          'panDeltaX': panDeltaX,
+          'panDeltaY': panDeltaY,
           'zoomScale': zoomScale,
         }),
       );
@@ -334,7 +352,10 @@ class GodotBoardController extends ChangeNotifier {
     }
     _pendingMoves.clear();
     _selections.close();
-    _channel.setMethodCallHandler(null);
+    if (identical(_channelOwner, this)) {
+      _channelOwner = null;
+      _channel.setMethodCallHandler(null);
+    }
     super.dispose();
   }
 }

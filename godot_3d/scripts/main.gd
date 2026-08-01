@@ -7,6 +7,7 @@ const CORNER := 9.55
 const EDGE_STEP := 1.91
 const BOARD_TOP := 1.34
 const BOARD_WORLD_SCALE := 1.0
+const TILE_ROUTE_GAP_RATIO := 0.88
 const TABLE_PLAYER_SCALE := 3.0
 const TABLE_WIDTH := 37.0
 const TABLE_DEPTH := 40.0
@@ -19,6 +20,12 @@ const PINCH_ZOOM_SENSITIVITY := 0.035
 const CAMERA_HORIZONTAL_FOV := 69.0
 const CAMERA_DEFAULT_DISTANCE := 36.0
 const CAMERA_PORTRAIT_DISTANCE := 28.0
+const CAMERA_PAN_DISTANCE_CAP := 12.0
+const CAMERA_PAN_SENSITIVITY := 0.0035
+const CAMERA_TARGET_MIN_X := -11.0
+const CAMERA_TARGET_MAX_X := 11.0
+const CAMERA_TARGET_MIN_Z := -20.0
+const CAMERA_TARGET_MAX_Z := 18.0
 # Retained only as dormant source for a possible later RPG prototype.
 const RPG_ENTER_DISTANCE := 22.0
 const RPG_WALK_SPEED := 7.5
@@ -509,10 +516,11 @@ func _create_tile(index: int, position: Vector3) -> void:
 		tile_type in ["start", "jail", "freeParking", "goToJail"]
 		or (payload.is_empty() and index % 13 == 0)
 	)
-	var tile_size := (
-		Vector3(1.34, 0.2, 1.1)
-		if is_corner
-		else Vector3(1.06, 0.2, 0.88)
+	var tile_length := _tile_route_length(index, is_corner)
+	var tile_size := Vector3(
+		tile_length,
+		0.2,
+		1.1 if is_corner else 0.88
 	)
 
 	var tile_color := _tile_surface_color(index)
@@ -551,9 +559,8 @@ func _create_tile(index: int, position: Vector3) -> void:
 	label.modulate = Color("#172238") if tile_color.get_luminance() > 0.5 else Color.WHITE
 	label.outline_modulate = Color(1.0, 1.0, 1.0, 0.18) if tile_color.get_luminance() < 0.5 else Color.TRANSPARENT
 	label.outline_size = 5
-	label.position = Vector3(0.0, 0.17, -0.12)
 	label.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
-	label.width = 125.0
+	label.width = minf(125.0, tile_length * 0.86 / label.pixel_size)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -569,9 +576,24 @@ func _create_tile(index: int, position: Vector3) -> void:
 	icon.modulate = Color.WHITE if tile_color.get_luminance() < 0.55 else INK
 	icon.outline_modulate = Color("#07101e")
 	icon.outline_size = 5
-	icon.visible = not icon.text.is_empty()
+	icon.visible = _should_show_tile_icon(index, tile_type)
+	label.position = Vector3(0.0, 0.17, -0.12 if icon.visible else 0.02)
 	tile.add_child(icon)
 	_refresh_tile_development(tile, index)
+
+
+func _tile_route_length(index: int, is_corner: bool) -> float:
+	var previous := tile_positions[
+		(index + BOARD_SPOT_COUNT - 1) % BOARD_SPOT_COUNT
+	]
+	var current := tile_positions[index]
+	var following := tile_positions[(index + 1) % BOARD_SPOT_COUNT]
+	var available_spacing := minf(
+		current.distance_to(previous),
+		current.distance_to(following)
+	)
+	var preferred_length := 1.2 if is_corner else 1.02
+	return minf(preferred_length, available_spacing * TILE_ROUTE_GAP_RATIO)
 
 
 func _visual_tile_payload(index: int) -> Dictionary:
@@ -638,6 +660,15 @@ func _tile_icon_text(tile_type: String) -> String:
 			return "⚡"
 		_:
 			return ""
+
+
+func _should_show_tile_icon(index: int, tile_type: String) -> bool:
+	var icon_text := _tile_icon_text(tile_type)
+	if icon_text.is_empty():
+		return false
+	if icon_text.length() < 2:
+		return true
+	return not _tile_label_text(index).to_upper().contains(icon_text.to_upper())
 
 
 func _tile_label_text(index: int) -> String:
@@ -2769,12 +2800,14 @@ func _refresh_tile_style(
 	var icon := tile.get_node_or_null("TileIcon") as Label3D
 	if icon != null:
 		icon.text = _tile_icon_text(tile_type)
-		icon.visible = not icon.text.is_empty()
+		icon.visible = _should_show_tile_icon(index, tile_type)
 		icon.modulate = (
 			Color.WHITE
 			if tile_color.get_luminance() < 0.55
 			else INK
 		)
+	if label != null:
+		label.position.z = -0.12 if icon != null and icon.visible else 0.02
 	_refresh_tile_development(tile, index, previous_payload)
 
 
@@ -4071,10 +4104,14 @@ func _apply_camera_gesture_json(json: String) -> void:
 		return
 	var orbit_delta_x := float(gesture.get("orbitDeltaX", 0.0))
 	var orbit_delta_y := float(gesture.get("orbitDeltaY", 0.0))
+	var pan_delta_x := float(gesture.get("panDeltaX", 0.0))
+	var pan_delta_y := float(gesture.get("panDeltaY", 0.0))
 	var zoom_scale := float(gesture.get("zoomScale", 1.0))
 	if (
 		orbit_delta_x != 0.0
 		or orbit_delta_y != 0.0
+		or pan_delta_x != 0.0
+		or pan_delta_y != 0.0
 		or (zoom_scale > 0.0 and not is_equal_approx(zoom_scale, 1.0))
 	):
 		_cancel_camera_cinematic()
@@ -4086,6 +4123,8 @@ func _apply_camera_gesture_json(json: String) -> void:
 			deg_to_rad(27.0),
 			deg_to_rad(72.0)
 		)
+	if pan_delta_x != 0.0 or pan_delta_y != 0.0:
+		_pan_camera(pan_delta_x, pan_delta_y)
 	if zoom_scale > 0.0 and not is_equal_approx(zoom_scale, 1.0):
 		camera_distance = clampf(
 			camera_distance / zoom_scale,
@@ -4093,6 +4132,36 @@ func _apply_camera_gesture_json(json: String) -> void:
 			CAMERA_MAX_DISTANCE
 		)
 	_update_camera()
+
+
+func _pan_camera(delta_x: float, delta_y: float) -> void:
+	if camera == null:
+		return
+	var screen_right := camera.global_transform.basis.x
+	var screen_up := camera.global_transform.basis.y
+	screen_right.y = 0.0
+	screen_up.y = 0.0
+	if screen_right.length_squared() < 0.001 or screen_up.length_squared() < 0.001:
+		return
+	screen_right = screen_right.normalized()
+	screen_up = screen_up.normalized()
+	var pan_scale := (
+		minf(camera_distance, CAMERA_PAN_DISTANCE_CAP)
+		* CAMERA_PAN_SENSITIVITY
+	)
+	var target_delta := (
+		-screen_right * delta_x + screen_up * delta_y
+	) * pan_scale
+	camera_target.x = clampf(
+		camera_target.x + target_delta.x,
+		CAMERA_TARGET_MIN_X,
+		CAMERA_TARGET_MAX_X
+	)
+	camera_target.z = clampf(
+		camera_target.z + target_delta.z,
+		CAMERA_TARGET_MIN_Z,
+		CAMERA_TARGET_MAX_Z
+	)
 
 
 func _pick_board_object_json(json: String) -> void:

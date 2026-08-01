@@ -19,7 +19,17 @@
     {"text": "Ice cream truck! You HAVE to get some!", "effect": "-$15", "action": "pay15"},
     {"text": "Found a four-leaf clover... and $100!", "effect": "+$100", "action": "collect100"},
     {"text": "Your cookies sold out at the bake sale!", "effect": "+$50", "action": "collect50"},
-    {"text": "Video game tournament CHAMPION!", "effect": "+$200", "action": "collect200"}
+    {"text": "Video game tournament CHAMPION!", "effect": "+$200", "action": "collect200"},
+    {"text": "A mystery envelope has your name on it! Lucky you!", "effect": "+$75", "action": "collect75"},
+    {"text": "Your runaway robot bumped into a flower stand!", "effect": "-$25", "action": "pay25"},
+    {"text": "A rocket-powered skateboard launches you ahead!", "effect": "Move forward 5", "action": "forward5"},
+    {"text": "The treasure map was upside down. Backtrack!", "effect": "Move back 5", "action": "back5"},
+    {"text": "All aboard the mystery express!", "effect": "Go to nearest railroad", "action": "nearestRailroad"},
+    {"text": "Follow the blinking lights to a utility!", "effect": "Go to nearest utility", "action": "nearestUtility"},
+    {"text": "Your prank set off the school alarm. Go to jail!", "effect": "Go to jail", "action": "goToJail"},
+    {"text": "You won the neighborhood challenge! Everyone chips in.", "effect": "Collect $20 from each player", "action": "collect20FromEach"},
+    {"text": "Wild weather damaged your buildings.", "effect": "Pay $25 per upgrade", "action": "repairs25"},
+    {"text": "A friendly builder volunteers for the day!", "effect": "Free property upgrade", "action": "freeUpgrade"}
   ],
   "communityChest": [
     {"text": "Your savings account grew! Cha-ching!", "effect": "+$100", "action": "collect100"},
@@ -41,6 +51,16 @@
     {"text": "Tooth fairy came... for ALL your baby teeth!", "effect": "+$50", "action": "collect50"},
     {"text": "Recycling paid off! Save the planet AND get $!", "effect": "+$25", "action": "collect25"},
     {"text": "Your handmade bracelet sold on Etsy!", "effect": "+$50", "action": "collect50"},
-    {"text": "Community hero award! You're awesome!", "effect": "+$150", "action": "collect150"}
+    {"text": "Community hero award! You're awesome!", "effect": "+$150", "action": "collect150"},
+    {"text": "The community garden won a prize!", "effect": "+$75", "action": "collect75"},
+    {"text": "You replaced the soccer team's missing ball.", "effect": "-$25", "action": "pay25"},
+    {"text": "Parade marshal says: lead everyone to GO!", "effect": "Collect GO bonus", "action": "advanceGo"},
+    {"text": "A neighbor gives you a shortcut through the park!", "effect": "Move forward 3", "action": "forward3"},
+    {"text": "You forgot the donation boxes. Go back for them!", "effect": "Move back 5", "action": "back5"},
+    {"text": "It's your birthday! Everyone brought cash gifts.", "effect": "Collect $20 from each player", "action": "collect20FromEach"},
+    {"text": "Pitch in for every player's block party!", "effect": "Pay each player $20", "action": "pay20Each"},
+    {"text": "Your neighborhood association pays a deed bonus!", "effect": "Collect $25 per property", "action": "propertyBonus25"},
+    {"text": "Community cleanup day reaches your buildings.", "effect": "Pay $25 per upgrade", "action": "repairs25"},
+    {"text": "Volunteer builders improve one of your properties!", "effect": "Free property upgrade", "action": "freeUpgrade"}
   ]
 }

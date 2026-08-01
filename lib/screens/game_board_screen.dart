@@ -10,6 +10,7 @@ import '../models/player_stats.dart';
 import '../models/city_board.dart';
 import '../config/theme.dart';
 import '../config/constants.dart';
+import '../services/audio_catalog.dart';
 import '../services/audio_service.dart';
 import '../services/save_service.dart';
 import '../services/stats_service.dart';
@@ -41,6 +42,7 @@ import '../widgets/dialogs/free_house_dialog.dart';
 import '../widgets/dialogs/teleport_dialog.dart';
 import '../widgets/cards/power_up_card_widget.dart';
 import '../engine/game_engine.dart';
+import '../engine/card_effect_engine.dart';
 import '../models/tile.dart';
 import '../models/spin_prize.dart';
 import '../models/event_card.dart';
@@ -121,6 +123,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _initializeAnimations();
     _initializeAIEngines();
     _isMusicPlaying = AudioService.instance.musicEnabled;
+    _updateMusicIntensity();
     _loadLocalizedCards();
     _godotBoardController = GodotBoardController();
     _godotBoardController.addListener(_onGodotBoardChanged);
@@ -871,8 +874,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   void _on3DGestureUpdate(ScaleUpdateDetails details) {
     final focalDelta = details.localFocalPoint - _last3DGestureFocalPoint;
-    var orbitDeltaX = 0.0;
-    var orbitDeltaY = 0.0;
+    var panDeltaX = 0.0;
+    var panDeltaY = 0.0;
     var zoomScale = 1.0;
 
     if (details.pointerCount >= 2) {
@@ -880,16 +883,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         zoomScale = (details.scale / _last3DGestureScale).clamp(0.82, 1.18);
       }
     } else {
-      orbitDeltaX = focalDelta.dx;
-      orbitDeltaY = focalDelta.dy;
+      panDeltaX = focalDelta.dx;
+      panDeltaY = focalDelta.dy;
     }
 
     _last3DGestureFocalPoint = details.localFocalPoint;
     _last3DGestureScale = details.scale;
     unawaited(
       _godotBoardController.updateCameraGesture(
-        orbitDeltaX: orbitDeltaX,
-        orbitDeltaY: orbitDeltaY,
+        panDeltaX: panDeltaX,
+        panDeltaY: panDeltaY,
         zoomScale: zoomScale,
       ),
     );
@@ -1339,7 +1342,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             Icon(Icons.pinch_rounded, size: 16, color: Colors.white70),
             SizedBox(width: 6),
             Text(
-              'Tap to explore  •  Drag to rotate  •  Pinch to zoom',
+              'Tap to explore  •  Drag to move  •  Pinch to zoom',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 11,
@@ -2743,6 +2746,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     {'text': '🎲', 'effect': '-\$50', 'action': 'pay50'},
     {'text': '🎲', 'effect': 'GO', 'action': 'advanceGo'},
     {'text': '🎲', 'effect': '-3', 'action': 'back3'},
+    {'text': '🎲', 'effect': '+\$75', 'action': 'collect75'},
+    {'text': '🎲', 'effect': '-\$25', 'action': 'pay25'},
+    {'text': '🎲', 'effect': '+5', 'action': 'forward5'},
+    {'text': '🎲', 'effect': '-5', 'action': 'back5'},
+    {'text': '🎲', 'effect': '🚂', 'action': 'nearestRailroad'},
+    {'text': '🎲', 'effect': '💡', 'action': 'nearestUtility'},
+    {'text': '🎲', 'effect': '🔒', 'action': 'goToJail'},
+    {'text': '🎲', 'effect': '+\$20 each', 'action': 'collect20FromEach'},
+    {'text': '🎲', 'effect': '-\$25/house', 'action': 'repairs25'},
+    {'text': '🎲', 'effect': '🏠 FREE', 'action': 'freeUpgrade'},
   ];
 
   static const List<Map<String, String>> _chestCards = [
@@ -2753,52 +2766,29 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     {'text': '📦', 'effect': '+\$200', 'action': 'collect200'},
     {'text': '📦', 'effect': '-\$15', 'action': 'pay15'},
     {'text': '📦', 'effect': '-\$50', 'action': 'pay50'},
+    {'text': '📦', 'effect': '+\$75', 'action': 'collect75'},
+    {'text': '📦', 'effect': '-\$25', 'action': 'pay25'},
+    {'text': '📦', 'effect': 'GO', 'action': 'advanceGo'},
+    {'text': '📦', 'effect': '+3', 'action': 'forward3'},
+    {'text': '📦', 'effect': '-5', 'action': 'back5'},
+    {'text': '📦', 'effect': '+\$20 each', 'action': 'collect20FromEach'},
+    {'text': '📦', 'effect': '-\$20 each', 'action': 'pay20Each'},
+    {'text': '📦', 'effect': '+\$25/deed', 'action': 'propertyBonus25'},
+    {'text': '📦', 'effect': '-\$25/house', 'action': 'repairs25'},
+    {'text': '📦', 'effect': '🏠 FREE', 'action': 'freeUpgrade'},
   ];
 
   /// Apply card effect. Returns the new tile index if the player moved, null otherwise.
   int? _applyCardEffect(Player player, String action) {
-    int? newPosition;
+    late CardEffectResult result;
     setState(() {
-      switch (action) {
-        case 'collect25':
-          player.cash += 25;
-          break;
-        case 'collect50':
-          player.cash += 50;
-          break;
-        case 'collect100':
-          player.cash += 100;
-          break;
-        case 'collect150':
-          player.cash += 150;
-          break;
-        case 'collect200':
-          player.cash += 200;
-          break;
-        case 'pay15':
-          final pay15Result = engine.payTax(player, 15);
-          if (pay15Result.bankruptcy) {
-            AudioService.instance.onDefeat();
-          }
-          break;
-        case 'pay50':
-          final pay50Result = engine.payTax(player, 50);
-          if (pay50Result.bankruptcy) {
-            AudioService.instance.onDefeat();
-          }
-          break;
-        case 'advanceGo':
-          player.position = 0;
-          player.cash += gameState.getGoBonusForPlayer(player.id);
-          break;
-        case 'back3':
-          final tileCount = gameState.tiles.length;
-          player.position = (player.position - 3 + tileCount) % tileCount;
-          newPosition = player.position;
-          break;
-      }
+      result = CardEffectEngine(gameState).apply(player, action);
     });
-    return newPosition;
+    if (result.bankruptcy) AudioService.instance.onDefeat();
+    if (result.passedGo) AudioService.instance.onPassGo();
+    if (action == 'goToJail') AudioService.instance.onJail();
+    unawaited(_sync3DBoard());
+    return result.resolveLanding ? result.landingPosition : null;
   }
 
   void _onCardDeckTap(bool isChance) {
@@ -3007,6 +2997,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         });
       }
       _sync3DBoard();
+      _updateMusicIntensity();
       return;
     }
 
@@ -3040,6 +3031,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       }
     });
     _sync3DBoard();
+    _updateMusicIntensity();
 
     // Check if next player is in jail
     final nextPlayer = gameState.currentPlayer;
@@ -3060,6 +3052,21 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         }
       });
     }
+  }
+
+  void _updateMusicIntensity() {
+    final activePlayers = gameState.activePlayers;
+    final isTense =
+        activePlayers.any((player) => player.cash <= 300) ||
+        (gameState.players.length > 2 && activePlayers.length <= 2) ||
+        _totalRounds >= 12;
+    final intensity =
+        isTense
+            ? MusicIntensity.tense
+            : _totalRounds <= 2
+            ? MusicIntensity.relaxed
+            : MusicIntensity.standard;
+    unawaited(AudioService.instance.setMusicIntensity(intensity));
   }
 
   Future<void> _handleJailTurn(Player player) async {

@@ -99,7 +99,17 @@
       "text": "电子游戏锦标赛冠军！太厉害啦！",
       "effect": "+$200",
       "action": "collect200"
-    }
+    },
+    {"text": "一个神秘信封上写着你的名字！真幸运！", "effect": "+$75", "action": "collect75"},
+    {"text": "失控的机器人撞倒了花摊！", "effect": "-$25", "action": "pay25"},
+    {"text": "火箭滑板带你向前冲！", "effect": "前进5格", "action": "forward5"},
+    {"text": "藏宝图拿反啦！赶快往回走！", "effect": "后退5格", "action": "back5"},
+    {"text": "快登上神秘特快列车！", "effect": "前往最近的车站", "action": "nearestRailroad"},
+    {"text": "跟着闪烁的灯光前往公共设施！", "effect": "前往最近的公共设施", "action": "nearestUtility"},
+    {"text": "你的恶作剧触发了学校警报。进监狱！", "effect": "前往监狱", "action": "goToJail"},
+    {"text": "你赢得了社区挑战！大家一起奖励你。", "effect": "向每位玩家收取$20", "action": "collect20FromEach"},
+    {"text": "暴风雨损坏了你的建筑。", "effect": "每次升级支付$25", "action": "repairs25"},
+    {"text": "热心的建筑师来免费帮忙啦！", "effect": "免费升级一处房产", "action": "freeUpgrade"}
   ],
   "communityChest": [
     {
@@ -201,6 +211,16 @@
       "text": "社区小英雄奖！你太棒啦！",
       "effect": "+$150",
       "action": "collect150"
-    }
+    },
+    {"text": "社区花园获奖啦！", "effect": "+$75", "action": "collect75"},
+    {"text": "你为足球队补买了丢失的球。", "effect": "-$25", "action": "pay25"},
+    {"text": "游行领队请你带大家前往起点！", "effect": "领取起点奖金", "action": "advanceGo"},
+    {"text": "邻居告诉你一条穿过公园的近路！", "effect": "前进3格", "action": "forward3"},
+    {"text": "你忘带募捐箱了，快回去拿！", "effect": "后退5格", "action": "back5"},
+    {"text": "今天是你的生日！大家都送你现金礼物。", "effect": "向每位玩家收取$20", "action": "collect20FromEach"},
+    {"text": "为每位玩家的社区派对出一份力！", "effect": "向每位玩家支付$20", "action": "pay20Each"},
+    {"text": "社区协会按房产发放奖励！", "effect": "每处房产领取$25", "action": "propertyBonus25"},
+    {"text": "社区清洁日轮到你的建筑啦。", "effect": "每次升级支付$25", "action": "repairs25"},
+    {"text": "志愿者免费帮你升级一处房产！", "effect": "免费升级一处房产", "action": "freeUpgrade"}
   ]
 }

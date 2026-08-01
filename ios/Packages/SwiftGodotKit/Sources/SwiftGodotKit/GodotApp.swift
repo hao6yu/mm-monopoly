@@ -18,7 +18,7 @@ public final class GodotAppViewHandle {
     private weak var app: GodotApp?
     fileprivate var viewId: Int64?
 
-    internal init(app: GodotApp) {
+    public init(app: GodotApp) {
         self.app = app
     }
 

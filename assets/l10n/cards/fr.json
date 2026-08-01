@@ -19,7 +19,17 @@
     {"text": "Le camion de glaces ! Tu DOIS en prendre une !", "effect": "-15 $", "action": "pay15"},
     {"text": "Tu as trouvé un trèfle à quatre feuilles... et 100 $ !", "effect": "+100 $", "action": "collect100"},
     {"text": "Tes gâteaux se sont vendus comme des petits pains à la kermesse !", "effect": "+50 $", "action": "collect50"},
-    {"text": "CHAMPION du tournoi de jeux vidéo !", "effect": "+200 $", "action": "collect200"}
+    {"text": "CHAMPION du tournoi de jeux vidéo !", "effect": "+200 $", "action": "collect200"},
+    {"text": "Une enveloppe mystérieuse porte ton nom ! Quelle chance !", "effect": "+75 $", "action": "collect75"},
+    {"text": "Ton robot incontrôlable a renversé un étal de fleurs !", "effect": "-25 $", "action": "pay25"},
+    {"text": "Un skateboard-fusée te propulse en avant !", "effect": "Avance de 5 cases", "action": "forward5"},
+    {"text": "La carte au trésor était à l’envers. Demi-tour !", "effect": "Recule de 5 cases", "action": "back5"},
+    {"text": "En voiture pour l’express mystère !", "effect": "Va à la gare la plus proche", "action": "nearestRailroad"},
+    {"text": "Suis les lumières clignotantes jusqu’au service public !", "effect": "Va au service public le plus proche", "action": "nearestUtility"},
+    {"text": "Ta blague a déclenché l’alarme de l’école. En prison !", "effect": "Va en prison", "action": "goToJail"},
+    {"text": "Tu as gagné le défi du quartier ! Tout le monde participe.", "effect": "Reçois 20 $ de chaque joueur", "action": "collect20FromEach"},
+    {"text": "Une tempête a endommagé tes bâtiments.", "effect": "Paie 25 $ par amélioration", "action": "repairs25"},
+    {"text": "Un constructeur bénévole vient t’aider !", "effect": "Une amélioration gratuite", "action": "freeUpgrade"}
   ],
   "communityChest": [
     {"text": "Ton compte épargne a grandi ! Ka-ching !", "effect": "+100 $", "action": "collect100"},
@@ -41,6 +51,16 @@
     {"text": "La petite souris est passée... pour TOUTES tes dents de lait !", "effect": "+50 $", "action": "collect50"},
     {"text": "Le recyclage, ça paie ! Sauve la planète ET gagne des sous !", "effect": "+25 $", "action": "collect25"},
     {"text": "Ton bracelet fait main s’est vendu en ligne !", "effect": "+50 $", "action": "collect50"},
-    {"text": "Prix du héros de la communauté ! Tu es génial !", "effect": "+150 $", "action": "collect150"}
+    {"text": "Prix du héros de la communauté ! Tu es génial !", "effect": "+150 $", "action": "collect150"},
+    {"text": "Le jardin partagé a remporté un prix !", "effect": "+75 $", "action": "collect75"},
+    {"text": "Tu as remplacé le ballon perdu de l’équipe.", "effect": "-25 $", "action": "pay25"},
+    {"text": "Le chef du défilé dit : conduis tout le monde à la case DÉPART !", "effect": "Reçois le bonus DÉPART", "action": "advanceGo"},
+    {"text": "Un voisin te montre un raccourci dans le parc !", "effect": "Avance de 3 cases", "action": "forward3"},
+    {"text": "Tu as oublié les boîtes de dons. Retourne les chercher !", "effect": "Recule de 5 cases", "action": "back5"},
+    {"text": "C’est ton anniversaire ! Tout le monde t’offre de l’argent.", "effect": "Reçois 20 $ de chaque joueur", "action": "collect20FromEach"},
+    {"text": "Participe à la fête de quartier de chaque joueur !", "effect": "Paie 20 $ à chaque joueur", "action": "pay20Each"},
+    {"text": "L’association du quartier verse une prime par propriété !", "effect": "Reçois 25 $ par propriété", "action": "propertyBonus25"},
+    {"text": "Le nettoyage du quartier atteint tes bâtiments.", "effect": "Paie 25 $ par amélioration", "action": "repairs25"},
+    {"text": "Des bénévoles améliorent une de tes propriétés !", "effect": "Une amélioration gratuite", "action": "freeUpgrade"}
   ]
 }

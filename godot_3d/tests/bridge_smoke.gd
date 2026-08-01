@@ -79,6 +79,7 @@ func _run() -> void:
 	})
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
+	_test_host_camera_pan(scene)
 	_test_mobile_camera_framing(scene)
 	_test_die_face_rotations(scene)
 	_test_boat_lanes(scene)
@@ -162,6 +163,17 @@ func _test_special_tile_metadata(scene: Node) -> void:
 			)
 			quit(1)
 			return
+
+	var spin_tile := scene.board_root.get_node("Tile26") as Node3D
+	var spin_label := spin_tile.get_node("TileLabel") as Label3D
+	var spin_icon := spin_tile.get_node("TileIcon") as Label3D
+	scene.active_tile_names[26] = "LUCKY SPIN"
+	spin_label.text = scene._tile_label_text(26)
+	scene._refresh_tile_style(spin_tile, 26)
+	if spin_icon.visible or not is_equal_approx(spin_label.position.z, 0.02):
+		push_error("Special cards repeat words already present in their labels.")
+		quit(1)
+		return
 	print("SPECIAL_TILE_METADATA_OK")
 
 
@@ -412,6 +424,42 @@ func _test_host_camera_gesture(scene: Node) -> void:
 	)
 
 
+func _test_host_camera_pan(scene: Node) -> void:
+	var initial_target: Vector3 = scene.camera_target
+	scene.host_receive_message({
+		"action": "camera_gesture",
+		"json": JSON.stringify({
+			"panDeltaX": 80.0,
+			"panDeltaY": -45.0,
+			"zoomScale": 1.0,
+		}),
+	})
+	if scene.camera_target.is_equal_approx(initial_target):
+		push_error("Flutter camera bridge did not pan across the board.")
+		quit(1)
+		return
+
+	scene.host_receive_message({
+		"action": "camera_gesture",
+		"json": JSON.stringify({
+			"panDeltaX": 100000.0,
+			"panDeltaY": 100000.0,
+			"zoomScale": 1.0,
+		}),
+	})
+	if (
+		scene.camera_target.x < -11.01
+		or scene.camera_target.x > 11.01
+		or scene.camera_target.z < -20.01
+		or scene.camera_target.z > 18.01
+	):
+		push_error("Camera panning escaped the board target bounds.")
+		quit(1)
+		return
+	print("HOST_CAMERA_PAN_OK ", initial_target, " -> ", scene.camera_target)
+	scene._reset_camera()
+
+
 func _test_mobile_camera_framing(scene: Node) -> void:
 	if ProjectSettings.get_setting("display/window/stretch/aspect") != "expand":
 		push_error("The embedded board viewport must expand to fill portrait screens.")
@@ -550,6 +598,7 @@ func _test_city_catalog(scene: Node, base_state: Dictionary) -> void:
 			push_error("%s did not apply Flutter tile names." % board_id)
 			quit(1)
 			return
+		_test_tile_card_spacing(scene, board_id)
 		var property_visual := roundi(52.0 / 40.0) % 52
 		var property_tile: Node3D = scene.board_root.get_node(
 			"Tile%02d" % property_visual
@@ -609,6 +658,43 @@ func _test_city_catalog(scene: Node, base_state: Dictionary) -> void:
 	})
 	await process_frame
 	print("CITY_CATALOG_OK ", CityThemesCatalog.all_board_ids().size(), " boards")
+	print("TILE_CARD_SPACING_OK")
+
+
+func _test_tile_card_spacing(scene: Node, board_id: String) -> void:
+	for index in 52:
+		var next_index := (index + 1) % 52
+		var tile: Node3D = scene.board_root.get_node("Tile%02d" % index) as Node3D
+		var next_tile: Node3D = scene.board_root.get_node(
+			"Tile%02d" % next_index
+		) as Node3D
+		var base := tile.get_node("TileBase") as MeshInstance3D
+		var next_base := next_tile.get_node("TileBase") as MeshInstance3D
+		var box := base.mesh as BoxMesh
+		var next_box := next_base.mesh as BoxMesh
+		var center_spacing: float = scene.tile_positions[index].distance_to(
+			scene.tile_positions[next_index]
+		)
+		var occupied_length := (box.size.x + next_box.size.x) * 0.5
+		if occupied_length > center_spacing * 0.9:
+			push_error(
+				"%s cards %d/%d overlap their route spacing: %.3f / %.3f."
+				% [
+					board_id,
+					index,
+					next_index,
+					occupied_length,
+					center_spacing,
+				]
+			)
+			quit(1)
+			return
+
+		var label := tile.get_node("TileLabel") as Label3D
+		if label.width * label.pixel_size > box.size.x * 0.87:
+			push_error("%s card %d label exceeds its face." % [board_id, index])
+			quit(1)
+			return
 
 
 func _test_active_boat_lanes(scene: Node, board_id: String) -> void:
