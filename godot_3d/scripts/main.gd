@@ -11,10 +11,14 @@ const TABLE_PLAYER_SCALE := 3.0
 const TABLE_WIDTH := 37.0
 const TABLE_DEPTH := 40.0
 const BOARD_SPOT_COUNT := 52
-const CAMERA_MIN_DISTANCE := 19.0
+const CAMERA_DEFAULT_MIN_DISTANCE := 10.0
+const CAMERA_PORTRAIT_MIN_DISTANCE := 5.0
 const CAMERA_MAX_DISTANCE := 68.0
 const CAMERA_WHEEL_STEP := 2.4
 const PINCH_ZOOM_SENSITIVITY := 0.035
+const CAMERA_HORIZONTAL_FOV := 69.0
+const CAMERA_DEFAULT_DISTANCE := 36.0
+const CAMERA_PORTRAIT_DISTANCE := 28.0
 # Retained only as dormant source for a possible later RPG prototype.
 const RPG_ENTER_DISTANCE := 22.0
 const RPG_WALK_SPEED := 7.5
@@ -200,6 +204,7 @@ var saved_camera_target := Vector3.ZERO
 var saved_camera_azimuth := 0.0
 var saved_camera_elevation := 0.0
 var saved_camera_distance := 36.0
+var camera_uses_portrait_framing := false
 
 
 func _ready() -> void:
@@ -246,7 +251,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			orbiting = event.pressed
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			camera_distance = maxf(
-				CAMERA_MIN_DISTANCE,
+				_minimum_camera_distance(),
 				camera_distance - CAMERA_WHEEL_STEP
 			)
 			_update_camera()
@@ -284,7 +289,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					camera_distance - (
 						next_pinch_distance - pinch_distance
 					) * PINCH_ZOOM_SENSITIVITY,
-					CAMERA_MIN_DISTANCE,
+					_minimum_camera_distance(),
 					CAMERA_MAX_DISTANCE
 				)
 				_update_camera()
@@ -2461,11 +2466,17 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 func _create_camera() -> void:
 	camera = Camera3D.new()
 	camera.name = "BoardCamera"
-	camera.fov = 46.0
+	# Preserve the desktop composition across widths and reveal more of the
+	# world vertically on portrait screens instead of letterboxing the scene.
+	camera.keep_aspect = Camera3D.KEEP_WIDTH
+	camera.fov = CAMERA_HORIZONTAL_FOV
 	camera.near = 0.1
 	camera.far = 120.0
 	add_child(camera)
 	camera.current = true
+	camera_uses_portrait_framing = _is_portrait_viewport()
+	camera_distance = _default_camera_distance()
+	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	_update_camera()
 
 
@@ -4078,7 +4089,7 @@ func _apply_camera_gesture_json(json: String) -> void:
 	if zoom_scale > 0.0 and not is_equal_approx(zoom_scale, 1.0):
 		camera_distance = clampf(
 			camera_distance / zoom_scale,
-			CAMERA_MIN_DISTANCE,
+			_minimum_camera_distance(),
 			CAMERA_MAX_DISTANCE
 		)
 	_update_camera()
@@ -5234,8 +5245,40 @@ func _reset_camera() -> void:
 	camera_target = Vector3(0.0, 1.4, -1.0)
 	camera_azimuth = deg_to_rad(43.0)
 	camera_elevation = deg_to_rad(58.0)
-	camera_distance = 36.0
+	camera_uses_portrait_framing = _is_portrait_viewport()
+	camera_distance = _default_camera_distance()
 	_update_camera()
+
+
+func _on_viewport_size_changed() -> void:
+	var use_portrait_framing := _is_portrait_viewport()
+	if use_portrait_framing == camera_uses_portrait_framing:
+		return
+	camera_uses_portrait_framing = use_portrait_framing
+	if not cinematic_camera_active:
+		camera_distance = _default_camera_distance()
+		_update_camera()
+
+
+func _is_portrait_viewport() -> bool:
+	var viewport_size := get_viewport().get_visible_rect().size
+	return viewport_size.y > viewport_size.x * 1.15
+
+
+func _default_camera_distance() -> float:
+	return (
+		CAMERA_PORTRAIT_DISTANCE
+		if camera_uses_portrait_framing
+		else CAMERA_DEFAULT_DISTANCE
+	)
+
+
+func _minimum_camera_distance() -> float:
+	return (
+		CAMERA_PORTRAIT_MIN_DISTANCE
+		if camera_uses_portrait_framing
+		else CAMERA_DEFAULT_MIN_DISTANCE
+	)
 
 
 func _update_camera() -> void:
@@ -5581,6 +5624,8 @@ func _ui_panel(
 
 func _capture_initial_preview() -> void:
 	await get_tree().create_timer(2.0).timeout
+	if embedded_mode:
+		return
 	_save_preview()
 
 

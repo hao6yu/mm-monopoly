@@ -79,6 +79,7 @@ func _run() -> void:
 	})
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
+	_test_mobile_camera_framing(scene)
 	_test_die_face_rotations(scene)
 	_test_boat_lanes(scene)
 	await _test_city_catalog(scene, state)
@@ -409,6 +410,45 @@ func _test_host_camera_gesture(scene: Node) -> void:
 		" -> ",
 		scene.camera_distance
 	)
+
+
+func _test_mobile_camera_framing(scene: Node) -> void:
+	if ProjectSettings.get_setting("display/window/stretch/aspect") != "expand":
+		push_error("The embedded board viewport must expand to fill portrait screens.")
+		quit(1)
+		return
+	if scene.camera.keep_aspect != Camera3D.KEEP_WIDTH:
+		push_error("The board camera must preserve its horizontal framing on phones.")
+		quit(1)
+		return
+	scene.camera_uses_portrait_framing = true
+	if not is_equal_approx(scene._default_camera_distance(), 28.0):
+		push_error("Portrait screens should start closer to the board.")
+		quit(1)
+		return
+	if not is_equal_approx(scene._minimum_camera_distance(), 5.0):
+		push_error("Portrait screens should allow a close label-reading zoom.")
+		quit(1)
+		return
+
+	scene.host_receive_message({
+		"action": "camera_gesture",
+		"json": JSON.stringify({
+			"orbitDeltaX": 0.0,
+			"orbitDeltaY": 0.0,
+			"zoomScale": 100.0,
+		}),
+	})
+	if scene.camera_distance > 5.01:
+		push_error(
+			"The phone detail zoom limit is too far from the board: %s"
+			% scene.camera_distance
+		)
+		quit(1)
+		return
+	print("MOBILE_CAMERA_FRAMING_OK close zoom ", scene.camera_distance)
+	scene.camera_uses_portrait_framing = false
+	scene._reset_camera()
 
 
 func _test_die_face_rotations(scene: Node) -> void:
