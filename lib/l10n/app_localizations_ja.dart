@@ -937,7 +937,59 @@ class AppLocalizationsJa extends AppLocalizations {
   String get noProperties => '物件なし';
 
   @override
-  String get yourTurn => 'あなたの番';
+  String get humanPlayer => '人間';
+
+  @override
+  String get showPlayerStatus => 'プレイヤー状況を表示';
+
+  @override
+  String get hidePlayerStatus => 'プレイヤー状況を非表示';
+
+  @override
+  String roundNumber(int number) {
+    return 'ラウンド $number';
+  }
+
+  @override
+  String get activePlayer => '手番';
+
+  @override
+  String get waitingPlayer => '待機中';
+
+  @override
+  String aiThinking(String name) {
+    return '$nameが考えています…';
+  }
+
+  @override
+  String aiRolling(String name) {
+    return '$nameがサイコロを振っています…';
+  }
+
+  @override
+  String aiResolving(String name) {
+    return '$nameがターンを処理しています…';
+  }
+
+  @override
+  String playerRolling(String name) {
+    return '$nameがサイコロを振っています…';
+  }
+
+  @override
+  String playerMoving(String name) {
+    return '$nameが移動しています…';
+  }
+
+  @override
+  String passToPlayer(String name) {
+    return '$nameに渡してください • あなたのターン';
+  }
+
+  @override
+  String resolvingPlayerTurn(String name) {
+    return '$nameのターンを処理中…';
+  }
 
   @override
   String tileN(int position) {
@@ -952,6 +1004,38 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get rollDice => 'サイコロを振る';
+
+  @override
+  String rollForPlayer(String name) {
+    return '$nameのサイコロを振る';
+  }
+
+  @override
+  String get diceLabel => 'サイコロ';
+
+  @override
+  String get lastRollLabel => '前回の出目';
+
+  @override
+  String get cameraGestureHint => '1本指：移動 • 2本指：回転 • ピンチ：ズーム';
+
+  @override
+  String get resetView => '視点をリセット';
+
+  @override
+  String get viewLabel => '視点';
+
+  @override
+  String get playMusic => '音楽を再生';
+
+  @override
+  String get muteMusic => '音楽をミュート';
+
+  @override
+  String get moreActions => 'その他の操作';
+
+  @override
+  String get pleaseWait => 'お待ちください…';
 
   @override
   String get tap => 'タップ';
@@ -1491,6 +1575,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get select => '選択';
 
   @override
+  String get yourTurn => 'あなたの番';
+
+  @override
   String get countryUSA => 'アメリカ合衆国';
 
   @override
@@ -1564,6 +1651,30 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get cityCancun => 'カンクン';
+
+  @override
+  String get preparing3DBoard => '3Dボードを準備中…';
+
+  @override
+  String get starting3DBoard => '3Dボードを起動中…';
+
+  @override
+  String get building3DBoard => '街を構築してプレイヤーを配置中…';
+
+  @override
+  String get failedToPrepare3DBoard => 'このゲーム用の3Dボードを準備できませんでした。';
+
+  @override
+  String get godotConnectionUnavailable => '3Dボードに接続できません。';
+
+  @override
+  String get godotPreparationTimedOut => '3Dボードの準備に時間がかかりすぎています。';
+
+  @override
+  String get retry3DBoard => '3Dを再試行';
+
+  @override
+  String get use2DBoard => '2Dボードを使用';
 
   @override
   String get continuedOn2DBoard => '3Dボードが応答しないため、2Dボードでゲームを続けます。';

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../l10n/app_localizations.dart';
 import '../models/player.dart';
 import '../models/game_state.dart';
@@ -21,6 +22,7 @@ import '../integration/godot_board_controller.dart';
 import '../widgets/achievements/achievement_notification.dart';
 import '../widgets/board/game_board.dart';
 import '../widgets/board/godot_board_host.dart';
+import '../widgets/player/game_status_rail.dart';
 import '../widgets/player/player_card.dart';
 import '../widgets/dice/dice_widget.dart';
 import '../widgets/dialogs/buy_property_dialog.dart';
@@ -53,6 +55,168 @@ import '../models/game_result.dart';
 import '../controllers/game_session_controller.dart';
 import 'mini_games/memory_match_game.dart';
 import 'mini_games/quick_tap_game.dart';
+
+typedef BoardCameraGestureDelta = ({
+  double orbitDeltaX,
+  double orbitDeltaY,
+  double panDeltaX,
+  double panDeltaY,
+  double zoomScale,
+});
+
+/// Converts Flutter's scale gesture into the camera vocabulary shared with
+/// Godot. A one-finger drag translates the board; a two-finger drag orbits it
+/// while the distance between those fingers controls zoom at the same time.
+@visibleForTesting
+BoardCameraGestureDelta deriveBoardCameraGestureDelta({
+  required int pointerCount,
+  required ui.Offset focalDelta,
+  required double scale,
+  required double previousScale,
+  bool pointerCountChanged = false,
+}) {
+  if (pointerCountChanged) {
+    return (
+      orbitDeltaX: 0,
+      orbitDeltaY: 0,
+      panDeltaX: 0,
+      panDeltaY: 0,
+      zoomScale: 1,
+    );
+  }
+  if (pointerCount >= 2) {
+    final zoomScale = previousScale > 0
+        ? (scale / previousScale).clamp(0.82, 1.18).toDouble()
+        : 1.0;
+    return (
+      orbitDeltaX: focalDelta.dx,
+      orbitDeltaY: focalDelta.dy,
+      panDeltaX: 0,
+      panDeltaY: 0,
+      zoomScale: zoomScale,
+    );
+  }
+
+  return (
+    orbitDeltaX: 0,
+    orbitDeltaY: 0,
+    panDeltaX: focalDelta.dx,
+    panDeltaY: focalDelta.dy,
+    zoomScale: 1,
+  );
+}
+
+typedef BoardCameraFrameScheduler = int Function(FrameCallback callback);
+typedef BoardCameraFrameCanceller = void Function(int callbackId);
+
+/// Batches high-frequency pointer updates into one native camera message per
+/// Flutter frame. A second message cannot start until the prior MethodChannel
+/// call finishes, so a slow native frame cannot build an unbounded queue.
+@visibleForTesting
+class BoardCameraGestureDispatcher {
+  BoardCameraGestureDispatcher({
+    required Future<void> Function(BoardCameraGestureDelta delta) send,
+    BoardCameraFrameScheduler? scheduleFrame,
+    BoardCameraFrameCanceller? cancelFrame,
+  }) : _send = send,
+       _scheduleFrame =
+           scheduleFrame ??
+           ((callback) =>
+               SchedulerBinding.instance.scheduleFrameCallback(callback)),
+       _cancelFrame =
+           cancelFrame ?? SchedulerBinding.instance.cancelFrameCallbackWithId;
+
+  final Future<void> Function(BoardCameraGestureDelta delta) _send;
+  final BoardCameraFrameScheduler _scheduleFrame;
+  final BoardCameraFrameCanceller _cancelFrame;
+
+  BoardCameraGestureDelta? _pending;
+  int? _scheduledFrameId;
+  Future<void>? _inFlight;
+  bool _disposed = false;
+
+  void enqueue(BoardCameraGestureDelta delta) {
+    if (_disposed || _isIdle(delta)) return;
+    final pending = _pending;
+    _pending = pending == null ? delta : _merge(pending, delta);
+    _ensureFrameScheduled();
+  }
+
+  Future<void> flush() async {
+    if (_disposed) return;
+    _cancelScheduledFrame();
+    while (!_disposed) {
+      _cancelScheduledFrame();
+      final inFlight = _inFlight;
+      if (inFlight != null) {
+        await inFlight;
+        continue;
+      }
+      if (_pending == null) return;
+      await _sendPending();
+    }
+  }
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _cancelScheduledFrame();
+    _pending = null;
+  }
+
+  void _ensureFrameScheduled() {
+    if (_disposed ||
+        _pending == null ||
+        _inFlight != null ||
+        _scheduledFrameId != null) {
+      return;
+    }
+    _scheduledFrameId = _scheduleFrame((_) {
+      _scheduledFrameId = null;
+      unawaited(_sendPending());
+    });
+  }
+
+  Future<void> _sendPending() async {
+    if (_disposed || _inFlight != null) return;
+    final delta = _pending;
+    if (delta == null) return;
+    _pending = null;
+    final operation = Future<void>.sync(() => _send(delta));
+    _inFlight = operation;
+    try {
+      await operation;
+    } finally {
+      if (identical(_inFlight, operation)) _inFlight = null;
+      if (!_disposed && _pending != null) _ensureFrameScheduled();
+    }
+  }
+
+  void _cancelScheduledFrame() {
+    final callbackId = _scheduledFrameId;
+    if (callbackId == null) return;
+    _scheduledFrameId = null;
+    _cancelFrame(callbackId);
+  }
+
+  static BoardCameraGestureDelta _merge(
+    BoardCameraGestureDelta first,
+    BoardCameraGestureDelta second,
+  ) => (
+    orbitDeltaX: first.orbitDeltaX + second.orbitDeltaX,
+    orbitDeltaY: first.orbitDeltaY + second.orbitDeltaY,
+    panDeltaX: first.panDeltaX + second.panDeltaX,
+    panDeltaY: first.panDeltaY + second.panDeltaY,
+    zoomScale: first.zoomScale * second.zoomScale,
+  );
+
+  static bool _isIdle(BoardCameraGestureDelta delta) =>
+      delta.orbitDeltaX == 0 &&
+      delta.orbitDeltaY == 0 &&
+      delta.panDeltaX == 0 &&
+      delta.panDeltaY == 0 &&
+      delta.zoomScale == 1;
+}
 
 class _TurnOperationToken {
   const _TurnOperationToken({
@@ -121,17 +285,20 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   late Animation<double> _bounceAnimation;
 
   final Random _random = Random.secure();
-  int _totalRounds = 1;
   bool _isPaused = false; // Track if game menu is open
   bool _isMusicPlaying = true; // Track music state
   bool _isProcessingTurn = false; // Prevent dice rolls while processing
   int _turnOperationId = 0;
   final Set<Timer> _scheduledTurnTimers = <Timer>{};
   late final GodotBoardController _godotBoardController;
+  late final BoardCameraGestureDispatcher _cameraGestureDispatcher;
   StreamSubscription<GodotBoardSelection>? _godotSelectionSubscription;
   bool _show3DBoard = false;
+  bool _using2DBoardFallback = false;
+  bool _is3DBoardInitializationComplete = false;
   ui.Offset _last3DGestureFocalPoint = ui.Offset.zero;
   double _last3DGestureScale = 1;
+  int _last3DGesturePointerCount = 0;
 
   // Phase 4: AI Decision Engines per AI player
   final Map<String, AIDecisionEngine> _aiEngines = {};
@@ -156,6 +323,15 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _updateMusicIntensity();
     _loadLocalizedCards();
     _godotBoardController = GodotBoardController();
+    _cameraGestureDispatcher = BoardCameraGestureDispatcher(
+      send: (delta) => _godotBoardController.updateCameraGesture(
+        orbitDeltaX: delta.orbitDeltaX,
+        orbitDeltaY: delta.orbitDeltaY,
+        panDeltaX: delta.panDeltaX,
+        panDeltaY: delta.panDeltaY,
+        zoomScale: delta.zoomScale,
+      ),
+    );
     _godotBoardController.addListener(_onGodotBoardChanged);
     _godotSelectionSubscription = _godotBoardController.selections.listen(
       _handle3DBoardSelection,
@@ -167,16 +343,26 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       GodotBoardProtocol.supportedBoardIds.contains(widget.cityBoard.boardId);
 
   Future<void> _initialize3DBoard() async {
+    _is3DBoardInitializationComplete = false;
     await _godotBoardController.initialize();
     if (!mounted) return;
     setState(() {
-      _show3DBoard = _supports3DBoard && _godotBoardController.isAvailable;
+      _show3DBoard =
+          !_using2DBoardFallback &&
+          _supports3DBoard &&
+          _godotBoardController.isAvailable;
+      _is3DBoardInitializationComplete = true;
     });
     await _sync3DBoard();
+    _scheduleCurrentAIRollIfReady();
   }
 
   Future<void> _sync3DBoard() async {
-    if (!_supports3DBoard || !_godotBoardController.isAvailable) return;
+    if (_using2DBoardFallback ||
+        !_supports3DBoard ||
+        !_godotBoardController.isAvailable) {
+      return;
+    }
     await _godotBoardController.syncGameState(
       gameState,
       boardId: widget.cityBoard.boardId,
@@ -184,7 +370,27 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   void _onGodotBoardChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    _scheduleCurrentAIRollIfReady();
+  }
+
+  bool get _isPreparingInitial3DBoard =>
+      !_using2DBoardFallback &&
+      _supports3DBoard &&
+      !_is3DBoardInitializationComplete;
+
+  bool get _isShowing3DExperience => _show3DBoard || _isPreparingInitial3DBoard;
+
+  void _scheduleCurrentAIRollIfReady({
+    Duration delay = const Duration(milliseconds: 750),
+  }) {
+    if (!_is3DBoardInitializationComplete ||
+        _scheduledTurnTimers.isNotEmpty ||
+        !_canStartAutomatedRoll()) {
+      return;
+    }
+    _scheduleCurrentTurnAction(delay, _rollDiceForAI, requireRollReady: true);
   }
 
   Future<void> _loadLocalizedCards() async {
@@ -224,7 +430,6 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       _turnOperationId++;
       setState(() {
         engine = GameEngine(gameState);
-        _totalRounds = 1;
         _isPaused = false;
       });
       _sync3DBoard();
@@ -241,7 +446,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           !_isProcessingTurn) {
         _scheduleCurrentTurnAction(
           const Duration(milliseconds: 500),
-          _rollDice,
+          _rollDiceForAI,
           requireRollReady: true,
         );
       }
@@ -280,6 +485,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _diceController.dispose();
     _bounceController.dispose();
     _glowController.dispose();
+    _cameraGestureDispatcher.dispose();
     _godotBoardController.removeListener(_onGodotBoardChanged);
     _godotSelectionSubscription?.cancel();
     _godotBoardController.dispose();
@@ -350,13 +556,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         if (_canStartRoll()) {
           _rollDice();
         } else {
+          final l10n = AppLocalizations.of(context)!;
           final value = gameState.diceCount == 1
               ? '${gameState.die1Value}'
               : '${gameState.die1Value} + ${gameState.die2Value}';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                _isProcessingTurn
+                gameState.currentPlayer.isAI
+                    ? l10n.aiThinking(gameState.currentPlayer.name)
+                    : _isProcessingTurn
                     ? 'The dice are resolving this turn.'
                     : 'Last roll: $value',
               ),
@@ -586,20 +795,29 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   void _showGameMenu() {
     if (!_canOpenGameMenu) return;
-    final canPersistTurn = _canOpenGameMenu;
+    final canPersistTurn = _canUseStableInteractions;
     _cancelScheduledTurnActions();
     _isPaused = true;
     showGameMenuDialog(
       context: context,
       onClose: () {
-        _isPaused = false;
-        // Resume AI if it's their turn
+        if (!mounted) return;
+        setState(() => _isPaused = false);
         if (gameState.currentPlayer.isAI && gameState.canRoll) {
-          _scheduleCurrentTurnAction(
-            const Duration(milliseconds: 500),
-            _rollDice,
-            requireRollReady: true,
-          );
+          final player = gameState.currentPlayer;
+          if (player.jailTurnsRemaining > 0) {
+            _scheduleCurrentTurnAction(
+              const Duration(milliseconds: 500),
+              () => _handleJailTurn(player),
+              expectedPlayer: player,
+            );
+          } else {
+            _scheduleCurrentTurnAction(
+              const Duration(milliseconds: 500),
+              _rollDiceForAI,
+              requireRollReady: true,
+            );
+          }
         }
       },
       onRestart: () async {
@@ -726,7 +944,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       if (gameState.currentPlayer.isAI && gameState.canRoll) {
         _scheduleCurrentTurnAction(
           const Duration(milliseconds: 1000),
-          _rollDice,
+          _rollDiceForAI,
           requireRollReady: true,
         );
       }
@@ -776,6 +994,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             children: [
               LayoutBuilder(
                 builder: (context, constraints) {
+                  if (_isPreparingInitial3DBoard) {
+                    return _buildInitial3DBoardLoading();
+                  }
                   if (_show3DBoard) {
                     return _build3DBoardLayout();
                   }
@@ -793,9 +1014,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
               ),
               Positioned(
                 top: 8,
-                left: _show3DBoard ? null : 0,
-                right: _show3DBoard ? 8 : 0,
-                child: _show3DBoard
+                left: _isShowing3DExperience ? null : 0,
+                right: _isShowing3DExperience ? 8 : 0,
+                child: _isShowing3DExperience
                     ? _buildCityBadge()
                     : Center(child: _buildCityBadge()),
               ),
@@ -844,6 +1065,34 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                     ),
                   ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitial3DBoardLoading() {
+    final message = AppLocalizations.of(context)!.preparing3DBoard;
+    return ColoredBox(
+      key: const Key('initial-3d-board-loading'),
+      color: const Color(0xFF071126),
+      child: Center(
+        child: Semantics(
+          liveRegion: true,
+          label: message,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Color(0xFFE4B64E)),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ),
@@ -909,31 +1158,43 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         return Stack(
           children: [
             Positioned.fill(
-              child: GodotBoardHost(controller: _godotBoardController),
-            ),
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                excludeFromSemantics: true,
-                onScaleStart: _on3DGestureStart,
-                onScaleUpdate: _on3DGestureUpdate,
-                onScaleEnd: _on3DGestureEnd,
-                onTapUp: _canUseStableInteractions || _waitingForCardPick
-                    ? (details) => _on3DBoardTap(details, constraints.biggest)
-                    : null,
-                child: const SizedBox.expand(),
+              child: GodotBoardHost(
+                controller: _godotBoardController,
+                onRetry: _godotBoardController.retryStateApplication,
+                onUse2D: _continueOn2DBoard,
               ),
             ),
+            if (_godotBoardController.stateApplyError == null)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  excludeFromSemantics: true,
+                  onScaleStart: _on3DGestureStart,
+                  onScaleUpdate: _on3DGestureUpdate,
+                  onScaleEnd: _on3DGestureEnd,
+                  onTapUp: _canUseStableInteractions || _waitingForCardPick
+                      ? (details) => _on3DBoardTap(details, constraints.biggest)
+                      : null,
+                  child: const SizedBox.expand(),
+                ),
+              ),
             Positioned(
               top: 12,
               left: 12,
               child: _build3DActionBar(compact: constraints.maxWidth < 700),
             ),
             Positioned(
-              top: constraints.maxWidth < 700 ? 66 : 12,
-              left: 68,
-              right: 68,
-              child: Center(child: _build3DCurrentPlayerHud()),
+              top: 64,
+              left: 8,
+              right: 8,
+              child: Center(
+                child: _build3DStatusRail(
+                  maxWidth: min(
+                    220 + (gameState.players.length * 135),
+                    constraints.maxWidth - 16,
+                  ),
+                ),
+              ),
             ),
             if (constraints.maxWidth >= 700)
               Positioned(left: 14, bottom: 16, child: _build3DGestureHint()),
@@ -962,36 +1223,37 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   void _on3DGestureStart(ScaleStartDetails details) {
     _last3DGestureFocalPoint = details.localFocalPoint;
     _last3DGestureScale = 1;
+    _last3DGesturePointerCount = details.pointerCount;
   }
 
   void _on3DGestureUpdate(ScaleUpdateDetails details) {
     final focalDelta = details.localFocalPoint - _last3DGestureFocalPoint;
-    var panDeltaX = 0.0;
-    var panDeltaY = 0.0;
-    var zoomScale = 1.0;
-
-    if (details.pointerCount >= 2) {
-      if (_last3DGestureScale > 0) {
-        zoomScale = (details.scale / _last3DGestureScale).clamp(0.82, 1.18);
-      }
-    } else {
-      panDeltaX = focalDelta.dx;
-      panDeltaY = focalDelta.dy;
-    }
+    final pointerCountChanged =
+        details.pointerCount != _last3DGesturePointerCount;
+    final cameraDelta = deriveBoardCameraGestureDelta(
+      pointerCount: details.pointerCount,
+      focalDelta: focalDelta,
+      scale: details.scale,
+      previousScale: _last3DGestureScale,
+      pointerCountChanged: pointerCountChanged,
+    );
 
     _last3DGestureFocalPoint = details.localFocalPoint;
     _last3DGestureScale = details.scale;
-    unawaited(
-      _godotBoardController.updateCameraGesture(
-        panDeltaX: panDeltaX,
-        panDeltaY: panDeltaY,
-        zoomScale: zoomScale,
-      ),
-    );
+    _last3DGesturePointerCount = details.pointerCount;
+    _cameraGestureDispatcher.enqueue(cameraDelta);
   }
 
   void _on3DGestureEnd(ScaleEndDetails details) {
     _last3DGestureScale = 1;
+    _last3DGesturePointerCount = 0;
+    unawaited(_cameraGestureDispatcher.flush());
+  }
+
+  Future<void> _reset3DCamera() async {
+    await _cameraGestureDispatcher.flush();
+    if (!mounted) return;
+    await _godotBoardController.resetCamera();
   }
 
   void _on3DBoardTap(TapUpDetails details, Size boardSize) {
@@ -1005,79 +1267,19 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
-  Widget _build3DCurrentPlayerHud() {
-    final player = gameState.currentPlayer;
-    final canInspect = _canUseStableInteractions;
-    return Semantics(
-      button: true,
-      enabled: canInspect,
-      label: 'Open ${player.name} portfolio',
-      child: Tooltip(
-        message: 'View ${player.name} portfolio',
-        child: AnimatedContainer(
-          key: const Key('3d-current-player-hud'),
-          duration: const Duration(milliseconds: 220),
-          constraints: const BoxConstraints(maxWidth: 230),
-          decoration: BoxDecoration(
-            color: const Color(0xE6111A33),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: player.color, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: player.color.withValues(alpha: 0.3),
-                blurRadius: 16,
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: canInspect ? () => _showPlayerPortfolio(player) : null,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(player.icon.iconData, size: 17, color: player.color),
-                    const SizedBox(width: 7),
-                    Flexible(
-                      child: Text(
-                        '${player.name}’s turn',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '\$${player.cash}',
-                      style: TextStyle(
-                        color: player.color,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+  Widget _build3DStatusRail({required double maxWidth}) {
+    return GameStatusRail(
+      gameState: gameState,
+      boardReady: _godotBoardController.isBoardReady,
+      isProcessingTurn: _isProcessingTurn,
+      interactionsEnabled: _canUseStableInteractions,
+      onPlayerTap: _showPlayerPortfolio,
+      maxWidth: maxWidth,
     );
   }
 
   Widget _build3DActionBar({required bool compact}) {
+    final l10n = AppLocalizations.of(context)!;
     final currentPlayer = gameState.currentPlayer;
     final powerUpCount = gameState.getPowerUps(currentPlayer.id).length;
     final hasMoreActions =
@@ -1088,13 +1290,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       children: [
         _build3DOverlayButton(
           icon: Icons.menu_rounded,
-          tooltip: 'Game menu',
+          tooltip: l10n.gameMenu,
           onTap: _canOpenGameMenu ? _showGameMenu : null,
         ),
         const SizedBox(width: 7),
         _build3DOverlayButton(
           icon: _isMusicPlaying ? Icons.music_note : Icons.music_off,
-          tooltip: _isMusicPlaying ? 'Mute music' : 'Play music',
+          tooltip: _isMusicPlaying ? l10n.muteMusic : l10n.playMusic,
           onTap: _toggleMusic,
           color: _isMusicPlaying
               ? const Color(0xE61D765F)
@@ -1104,7 +1306,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           const SizedBox(width: 7),
           _build3DOverlayButton(
             icon: Icons.swap_horiz_rounded,
-            tooltip: 'Trade',
+            tooltip: l10n.trade,
             onTap: _canUseStableInteractions ? _showTradeDialog : null,
             color: const Color(0xE6197C78),
           ),
@@ -1113,7 +1315,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           const SizedBox(width: 7),
           _build3DOverlayButton(
             icon: Icons.account_balance_rounded,
-            tooltip: 'Bank',
+            tooltip: l10n.bank,
             onTap: _canUseStableInteractions ? _showMortgageDialog : null,
             color: const Color(0xE65A3B87),
           ),
@@ -1124,7 +1326,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             count: powerUpCount,
             child: _build3DOverlayButton(
               icon: Icons.style_rounded,
-              tooltip: 'Power-up cards',
+              tooltip: l10n.yourPowerUpCards,
               onTap: _canUseStableInteractions ? _showPowerUpHand : null,
               color: const Color(0xE69A6C16),
             ),
@@ -1134,7 +1336,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           const SizedBox(width: 7),
           _build3DOverlayButton(
             icon: Icons.more_horiz_rounded,
-            tooltip: 'More actions',
+            tooltip: l10n.moreActions,
             onTap: _canUseStableInteractions ? _show3DMoreActions : null,
           ),
         ],
@@ -1144,6 +1346,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   void _show3DMoreActions() {
     if (!_canUseStableInteractions) return;
+    final l10n = AppLocalizations.of(context)!;
     final player = gameState.currentPlayer;
     final powerUpCount = gameState.getPowerUps(player.id).length;
     showModalBottomSheet<void>(
@@ -1160,9 +1363,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                   Icons.swap_horiz_rounded,
                   color: Colors.tealAccent,
                 ),
-                title: const Text(
-                  'Trade',
-                  style: TextStyle(color: Colors.white),
+                title: Text(
+                  l10n.trade,
+                  style: const TextStyle(color: Colors.white),
                 ),
                 onTap: () {
                   Navigator.pop(sheetContext);
@@ -1175,9 +1378,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                   Icons.account_balance_rounded,
                   color: Colors.deepPurpleAccent,
                 ),
-                title: const Text(
-                  'Bank',
-                  style: TextStyle(color: Colors.white),
+                title: Text(
+                  l10n.bank,
+                  style: const TextStyle(color: Colors.white),
                 ),
                 onTap: () {
                   Navigator.pop(sheetContext);
@@ -1188,7 +1391,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
               ListTile(
                 leading: const Icon(Icons.style_rounded, color: Colors.amber),
                 title: Text(
-                  'Power-up cards ($powerUpCount)',
+                  '${l10n.yourPowerUpCards} ($powerUpCount)',
                   style: const TextStyle(color: Colors.white),
                 ),
                 onTap: () {
@@ -1240,20 +1443,25 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Widget _build3DRollControl() {
+    final l10n = AppLocalizations.of(context)!;
     final boardReady = _godotBoardController.isBoardReady;
     final canRoll = _canStartRoll(boardReady: boardReady);
     final isRolling =
         gameState.animationState == TurnAnimationState.rollingDice;
     final isMoving = gameState.animationState == TurnAnimationState.movingToken;
     final label = !boardReady
-        ? 'LOADING BOARD'
+        ? l10n.starting3DBoard
         : isRolling
-        ? 'ROLLING…'
+        ? l10n.rolling
         : isMoving
-        ? 'MOVING…'
-        : 'ROLL FOR ${gameState.currentPlayer.name.toUpperCase()}';
-    final diceValue = gameState.die1Value <= 0
-        ? 'READY'
+        ? l10n.moving
+        : gameState.currentPlayer.isAI
+        ? l10n.aiThinking(gameState.currentPlayer.name)
+        : l10n.rollForPlayer(gameState.currentPlayer.name);
+    final hasSettledRoll =
+        gameState.lastDiceRoll > 0 && gameState.die1Value > 0;
+    final diceValue = !hasSettledRoll
+        ? '—'
         : gameState.diceCount == 1
         ? '${gameState.die1Value}'
         : '${gameState.die1Value} + ${gameState.die2Value}';
@@ -1286,9 +1494,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'DICE',
-                      style: TextStyle(
+                    Text(
+                      hasSettledRoll ? l10n.lastRollLabel : l10n.diceLabel,
+                      style: const TextStyle(
                         color: Color(0xFFFFE29A),
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -1310,56 +1518,62 @@ class _GameBoardScreenState extends State<GameBoardScreen>
               ),
               const SizedBox(width: 8),
               Flexible(
-                child: Material(
-                  color: canRoll
-                      ? const Color(0xFFF2C452)
-                      : const Color(0xFF26324E),
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
+                child: Semantics(
+                  key: const Key('3d-roll-control'),
+                  button: true,
+                  enabled: canRoll,
+                  label: label,
+                  child: Material(
+                    color: canRoll
+                        ? const Color(0xFFF2C452)
+                        : const Color(0xFF26324E),
                     borderRadius: BorderRadius.circular(14),
-                    onTap: canRoll ? _rollDice : null,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minWidth: 190,
-                        minHeight: 58,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isRolling || isMoving)
-                            const SizedBox(
-                              width: 21,
-                              height: 21,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          else
-                            Icon(
-                              Icons.casino_rounded,
-                              size: 23,
-                              color: canRoll
-                                  ? const Color(0xFF142033)
-                                  : Colors.white54,
-                            ),
-                          const SizedBox(width: 9),
-                          Flexible(
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: canRoll ? _rollDice : null,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 190,
+                          minHeight: 58,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isRolling || isMoving)
+                              const SizedBox(
+                                width: 21,
+                                height: 21,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                            else
+                              Icon(
+                                Icons.casino_rounded,
+                                size: 23,
                                 color: canRoll
                                     ? const Color(0xFF142033)
-                                    : Colors.white70,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.45,
+                                    : Colors.white54,
+                              ),
+                            const SizedBox(width: 9),
+                            Flexible(
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: canRoll
+                                      ? const Color(0xFF142033)
+                                      : Colors.white70,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.45,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1367,28 +1581,28 @@ class _GameBoardScreenState extends State<GameBoardScreen>
               ),
               const SizedBox(width: 8),
               Tooltip(
-                message: 'Reset view',
+                message: l10n.resetView,
                 child: Material(
                   color: const Color(0xFF26324E),
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
-                    onTap: _godotBoardController.resetCamera,
-                    child: const SizedBox(
+                    onTap: _reset3DCamera,
+                    child: SizedBox(
                       width: 58,
                       height: 58,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.center_focus_strong_rounded,
                             size: 20,
                             color: Colors.white,
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
-                            'VIEW',
-                            style: TextStyle(
+                            l10n.viewLabel,
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
@@ -1408,6 +1622,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Widget _build3DGestureHint() {
+    final l10n = AppLocalizations.of(context)!;
     return IgnorePointer(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
@@ -1416,14 +1631,14 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: Colors.white12),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.pinch_rounded, size: 16, color: Colors.white70),
-            SizedBox(width: 6),
+            const Icon(Icons.pinch_rounded, size: 16, color: Colors.white70),
+            const SizedBox(width: 6),
             Text(
-              'Tap to explore  •  Drag to move  •  Pinch to zoom',
-              style: TextStyle(
+              l10n.cameraGestureHint,
+              style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -1590,6 +1805,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Widget _buildCompact2DActionBar() {
+    final l10n = AppLocalizations.of(context)!;
     final player = gameState.currentPlayer;
     final canRoll = _canStartRoll();
     final powerUpCount = gameState.getPowerUps(player.id).length;
@@ -1609,13 +1825,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         children: [
           IconButton(
             key: const Key('compact-menu-button'),
-            tooltip: 'Game menu',
+            tooltip: l10n.gameMenu,
             onPressed: _canOpenGameMenu ? _showGameMenu : null,
             color: Colors.white,
             icon: const Icon(Icons.menu_rounded),
           ),
           IconButton(
-            tooltip: _isMusicPlaying ? 'Mute music' : 'Play music',
+            tooltip: _isMusicPlaying ? l10n.muteMusic : l10n.playMusic,
             onPressed: _toggleMusic,
             color: Colors.white,
             icon: Icon(
@@ -1625,7 +1841,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           if (hasMoreActions)
             IconButton(
               key: const Key('compact-more-actions-button'),
-              tooltip: 'More actions',
+              tooltip: l10n.moreActions,
               onPressed: _canUseStableInteractions ? _show3DMoreActions : null,
               color: Colors.white,
               icon: const Icon(Icons.more_horiz_rounded),
@@ -1652,11 +1868,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                   Flexible(
                     child: Text(
                       canRoll
-                          ? AppLocalizations.of(context)!.rollDice
+                          ? l10n.rollDice
+                          : gameState.currentPlayer.isAI
+                          ? l10n.aiThinking(gameState.currentPlayer.name)
                           : gameState.animationState ==
                                 TurnAnimationState.movingToken
-                          ? 'MOVING…'
-                          : 'PLEASE WAIT…',
+                          ? l10n.moving
+                          : l10n.pleaseWait,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1910,9 +2128,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
-  Future<void> _rollDice() async {
+  Future<void> _rollDice({bool automated = false}) async {
     // Prevent double-tap exploits
-    if (!_canStartRoll()) return;
+    final canRoll = automated ? _canStartAutomatedRoll() : _canStartRoll();
+    if (!canRoll) return;
 
     // Lock turn processing
     _cancelScheduledTurnActions();
@@ -2090,11 +2309,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   void _switchTo2DRollFallback() {
     if (!mounted || !_show3DBoard) return;
     setState(() {
+      _using2DBoardFallback = true;
       _show3DBoard = false;
       _replaceGameState(
         gameState.copyWith(animationState: TurnAnimationState.movingToken),
       );
     });
+    _godotBoardController.continueIn2D();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(AppLocalizations.of(context)!.continuedOn2DBoard),
@@ -2102,6 +2323,17 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  void _continueOn2DBoard() {
+    if (!mounted) return;
+    setState(() {
+      _using2DBoardFallback = true;
+      _show3DBoard = false;
+      _is3DBoardInitializationComplete = true;
+    });
+    _godotBoardController.continueIn2D();
+    _scheduleCurrentAIRollIfReady();
   }
 
   _TurnOperationToken _captureTurnOperation({Player? player}) =>
@@ -2135,7 +2367,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       if (!_isTurnOperationActive(operation) ||
           _isPaused ||
           !widget.isActive ||
-          (requireRollReady && !_canStartRoll())) {
+          (requireRollReady && !_canStartAutomatedRoll())) {
         return;
       }
       await action();
@@ -2150,7 +2382,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _scheduledTurnTimers.clear();
   }
 
-  bool _canStartRoll({bool? boardReady}) =>
+  bool _isRollReady({bool? boardReady}) =>
+      _is3DBoardInitializationComplete &&
       (boardReady ?? (!_show3DBoard || _godotBoardController.isBoardReady)) &&
       mounted &&
       widget.session.acceptsInput &&
@@ -2159,7 +2392,31 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       !_isProcessingTurn &&
       gameState.canRoll;
 
-  bool get _canOpenGameMenu => _canUseStableInteractions;
+  /// User-facing dice interactions are never valid during an AI turn. AI
+  /// scheduling uses a separate gate so a tap and an automatic timer cannot
+  /// race to roll the same turn.
+  bool _canStartRoll({bool? boardReady}) =>
+      !gameState.currentPlayer.isAI &&
+      gameState.currentPlayer.jailTurnsRemaining == 0 &&
+      _isRollReady(boardReady: boardReady);
+
+  bool _canStartAutomatedRoll({bool? boardReady}) =>
+      gameState.currentPlayer.isAI &&
+      gameState.currentPlayer.jailTurnsRemaining == 0 &&
+      _isRollReady(boardReady: boardReady);
+
+  Future<void> _rollDiceForAI() => _rollDice(automated: true);
+
+  bool get _canOpenGameMenu =>
+      mounted &&
+      widget.session.acceptsInput &&
+      widget.isActive &&
+      !_isPaused &&
+      !_isProcessingTurn &&
+      !_waitingForCardPick &&
+      gameState.canRoll &&
+      (gameState.currentPlayer.isAI ||
+          gameState.currentPlayer.jailTurnsRemaining == 0);
 
   /// Nonessential board inspection and management is only safe at the clean
   /// human pre-roll boundary. Dice/card controls and camera/music interactions
@@ -2839,7 +3096,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     // 10% chance each round, guaranteed every 10 rounds
     final shouldTrigger =
-        EventCards.shouldTriggerEvent(_totalRounds) ||
+        EventCards.shouldTriggerEvent(gameState.roundNumber) ||
         gameState.turnsSinceLastEvent >= 10;
 
     if (shouldTrigger) {
@@ -2851,11 +3108,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
       // Show event dialog for human players
       if (!gameState.currentPlayer.isAI && mounted) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) {
-            showEventDialog(context: context, event: event, onDismiss: () {});
-          }
-        });
+        final expectedPlayer = gameState.currentPlayer;
+        _scheduleCurrentTurnAction(
+          const Duration(milliseconds: 300),
+          () =>
+              showEventDialog(context: context, event: event, onDismiss: () {}),
+          expectedPlayer: expectedPlayer,
+        );
       }
 
       setState(() {});
@@ -3133,7 +3392,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       players: gameState.players,
       winner: winner,
       gameState: gameState,
-      totalRounds: _totalRounds,
+      totalRounds: gameState.roundNumber,
     );
 
     // Show achievement notifications
@@ -3153,7 +3412,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         GameResult(
           winner: winner,
           players: List<Player>.unmodifiable(gameState.players),
-          turns: _totalRounds,
+          turns: gameState.roundNumber,
         ),
       );
     }
@@ -3177,7 +3436,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       if (gameState.currentPlayer.isAI) {
         _scheduleCurrentTurnAction(
           const Duration(milliseconds: 1500),
-          _rollDice,
+          _rollDiceForAI,
           requireRollReady: true,
         );
       }
@@ -3190,10 +3449,11 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       // Find next active player
       int nextIndex = gameState.currentPlayerIndex;
       bool crossedRound = false;
+      var nextRoundNumber = gameState.roundNumber;
       do {
         nextIndex = (nextIndex + 1) % gameState.players.length;
         if (nextIndex == 0) {
-          _totalRounds++;
+          nextRoundNumber++;
           crossedRound = true;
           // Tick active events at round end
           gameState.tickActiveEvents();
@@ -3207,6 +3467,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       _replaceGameState(
         gameState.copyWith(
           currentPlayerIndex: nextIndex,
+          roundNumber: nextRoundNumber,
           highlightedTileIndex: null,
           logicPhase: TurnLogicPhase.preRoll,
         ),
@@ -3235,7 +3496,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     if (gameState.currentPlayer.isAI) {
       _scheduleCurrentTurnAction(
         const Duration(milliseconds: 1500),
-        _rollDice,
+        _rollDiceForAI,
         requireRollReady: true,
       );
     }
@@ -3246,10 +3507,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     final isTense =
         activePlayers.any((player) => player.cash <= 300) ||
         (gameState.players.length > 2 && activePlayers.length <= 2) ||
-        _totalRounds >= 12;
+        gameState.roundNumber >= 12;
     final intensity = isTense
         ? MusicIntensity.tense
-        : _totalRounds <= 2
+        : gameState.roundNumber <= 2
         ? MusicIntensity.relaxed
         : MusicIntensity.standard;
     unawaited(AudioService.instance.setMusicIntensity(intensity));
@@ -3269,7 +3530,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         // Now AI can roll
         _scheduleCurrentTurnAction(
           const Duration(milliseconds: 500),
-          _rollDice,
+          _rollDiceForAI,
           requireRollReady: true,
           expectedPlayer: player,
         );

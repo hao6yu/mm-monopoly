@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:property_tycoon/app.dart';
 import 'package:property_tycoon/config/board_factory.dart';
@@ -15,11 +16,17 @@ import 'package:property_tycoon/screens/victory_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  const godotChannel = MethodChannel('property_tycoon/godot_board_bridge');
 
   late GameSessionController session;
   late GameResult result;
 
   setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(godotChannel, (call) async {
+          if (call.method == 'isAvailable') return false;
+          return null;
+        });
     final city = CityBoardRegistry.byBoardId('usa_new_york')!;
     final players = <Player>[
       Player(
@@ -42,6 +49,11 @@ void main() {
     );
     session = GameSessionController(state);
     result = GameResult(winner: players.first, players: players, turns: 12);
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(godotChannel, null);
   });
 
   Widget navigationApp({required AppScreen screen, GameResult? gameResult}) {
@@ -68,6 +80,10 @@ void main() {
 
     await tester.pumpWidget(navigationApp(screen: AppScreen.game));
     await tester.pump(const Duration(milliseconds: 250));
+    // The board now renders an intentional startup state while native 3D
+    // availability is resolved. Pump the frame scheduled by that async
+    // result before interacting with the 2D fallback controls.
+    await tester.pump();
     final boardStateBefore = tester.state(find.byType(GameBoardScreen));
 
     final progressedState = session.state.copyWith(

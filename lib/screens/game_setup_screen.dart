@@ -124,6 +124,11 @@ class _GameSetupScreenState extends State<GameSetupScreen>
       if (_validateConfigs()) {
         setState(() => _isStarting = true);
         try {
+          // Let Flutter paint the loading state before tile localization and
+          // native 3D-board setup begin. Without this frame, the first visible
+          // feedback can arrive only after the expensive work has completed.
+          await WidgetsBinding.instance.endOfFrame;
+          if (!mounted) return;
           await widget.onStartGame(
             List<PlayerConfig>.unmodifiable(_playerConfigs),
             diceCount: _diceCount,
@@ -188,21 +193,108 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF071427),
-      body: CityThemeBackground(
-        animation: _floatController,
-        imageAsset: 'assets/images/home_city_dusk.jpg',
-        imageAlignment: const Alignment(0.08, 0),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildProgressIndicator(),
-              Expanded(
-                child: _currentStep == 0
-                    ? _buildPlayerCountStep()
-                    : _buildPlayerConfigStep(),
+      body: Stack(
+        children: [
+          ExcludeSemantics(
+            excluding: _isStarting,
+            child: CityThemeBackground(
+              animation: _floatController,
+              imageAsset: 'assets/images/home_city_dusk.jpg',
+              imageAlignment: const Alignment(0.08, 0),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    _buildProgressIndicator(),
+                    Expanded(
+                      child: _currentStep == 0
+                          ? _buildPlayerCountStep()
+                          : _buildPlayerConfigStep(),
+                    ),
+                    _buildNavigationButtons(),
+                  ],
+                ),
               ),
-              _buildNavigationButtons(),
+            ),
+          ),
+          if (_isStarting) _buildStartingOverlay(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStartingOverlay() {
+    final l10n = AppLocalizations.of(context)!;
+    return Positioned.fill(
+      key: const Key('setup-starting-overlay'),
+      child: BlockSemantics(
+        blocking: true,
+        child: Semantics(
+          container: true,
+          liveRegion: true,
+          label: l10n.preparingGame,
+          child: Stack(
+            children: [
+              const ModalBarrier(dismissible: false, color: Color(0xB8071427)),
+              SafeArea(
+                child: Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 340),
+                    margin: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 24,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF21A2944),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: const Color(0x806BE2D7)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x66000000),
+                          blurRadius: 28,
+                          offset: Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox.square(
+                          key: Key('setup-starting-progress'),
+                          dimension: 38,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3.2,
+                            color: Color(0xFFFFD86B),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          l10n.preparingGame,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          _selectedCityBoard.localizedDisplayName(l10n),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFF9AF1E8),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

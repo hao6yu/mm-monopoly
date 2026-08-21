@@ -969,7 +969,59 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noProperties => 'Sin propiedades';
 
   @override
-  String get yourTurn => 'TU TURNO';
+  String get humanPlayer => 'Persona';
+
+  @override
+  String get showPlayerStatus => 'Mostrar estado de los jugadores';
+
+  @override
+  String get hidePlayerStatus => 'Ocultar estado de los jugadores';
+
+  @override
+  String roundNumber(int number) {
+    return 'Ronda $number';
+  }
+
+  @override
+  String get activePlayer => 'En turno';
+
+  @override
+  String get waitingPlayer => 'En espera';
+
+  @override
+  String aiThinking(String name) {
+    return '$name está pensando…';
+  }
+
+  @override
+  String aiRolling(String name) {
+    return '$name está lanzando los dados…';
+  }
+
+  @override
+  String aiResolving(String name) {
+    return '$name está resolviendo…';
+  }
+
+  @override
+  String playerRolling(String name) {
+    return '$name está lanzando los dados…';
+  }
+
+  @override
+  String playerMoving(String name) {
+    return '$name se está moviendo…';
+  }
+
+  @override
+  String passToPlayer(String name) {
+    return 'Pásale el dispositivo a $name • Tu turno';
+  }
+
+  @override
+  String resolvingPlayerTurn(String name) {
+    return 'Resolviendo el turno de $name…';
+  }
 
   @override
   String tileN(int position) {
@@ -984,6 +1036,39 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get rollDice => 'LANZAR DADOS';
+
+  @override
+  String rollForPlayer(String name) {
+    return 'Tirar por $name';
+  }
+
+  @override
+  String get diceLabel => 'DADOS';
+
+  @override
+  String get lastRollLabel => 'ÚLTIMA TIRADA';
+
+  @override
+  String get cameraGestureHint =>
+      '1 dedo: mover • 2 dedos: girar • Pellizca: zoom';
+
+  @override
+  String get resetView => 'Restablecer vista';
+
+  @override
+  String get viewLabel => 'VISTA';
+
+  @override
+  String get playMusic => 'Reproducir música';
+
+  @override
+  String get muteMusic => 'Silenciar música';
+
+  @override
+  String get moreActions => 'Más acciones';
+
+  @override
+  String get pleaseWait => 'Espera…';
 
   @override
   String get tap => 'TOCA';
@@ -1542,6 +1627,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get select => 'Seleccionar';
 
   @override
+  String get yourTurn => 'TU TURNO';
+
+  @override
   String get countryUSA => 'Estados Unidos';
 
   @override
@@ -1615,6 +1703,34 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cityCancun => 'Cancún';
+
+  @override
+  String get preparing3DBoard => 'Preparando el tablero 3D…';
+
+  @override
+  String get starting3DBoard => 'Iniciando el tablero 3D…';
+
+  @override
+  String get building3DBoard =>
+      'Construyendo la ciudad y colocando a los jugadores…';
+
+  @override
+  String get failedToPrepare3DBoard =>
+      'No se pudo preparar el tablero 3D para esta partida.';
+
+  @override
+  String get godotConnectionUnavailable =>
+      'La conexión con el tablero 3D no está disponible.';
+
+  @override
+  String get godotPreparationTimedOut =>
+      'El tablero 3D tardó demasiado en preparar esta partida.';
+
+  @override
+  String get retry3DBoard => 'Reintentar en 3D';
+
+  @override
+  String get use2DBoard => 'Usar tablero 2D';
 
   @override
   String get continuedOn2DBoard =>

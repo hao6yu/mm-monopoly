@@ -17,7 +17,11 @@ const TILE_SURFACE_OFFSET := 0.1
 const TOKEN_MODEL_CONTACT_Y := 1.1
 const TOKEN_HOP_HEIGHT := 0.62
 const TOKEN_STEP_DURATION := 0.24
+const TOKEN_MIN_DURATION_RATIO := 0.65
+const TOKEN_MAX_DURATION_RATIO := 2.4
 const HOSTED_ROLL_TIMEOUT_MSEC := 9500
+const MOBILE_CYLINDER_RADIAL_SEGMENTS := 24
+const MOBILE_MIN_SPHERE_SHADOW_RADIUS := 0.1
 const CAMERA_DEFAULT_MIN_DISTANCE := 10.0
 const CAMERA_PORTRAIT_MIN_DISTANCE := 5.0
 const CAMERA_MAX_DISTANCE := 68.0
@@ -25,9 +29,15 @@ const CAMERA_WHEEL_STEP := 2.4
 const PINCH_ZOOM_SENSITIVITY := 0.035
 const CAMERA_HORIZONTAL_FOV := 69.0
 const CAMERA_DEFAULT_DISTANCE := 36.0
+const CAMERA_TABLET_LANDSCAPE_DISTANCE := 31.5
 const CAMERA_PORTRAIT_DISTANCE := 28.0
 const CAMERA_PAN_DISTANCE_CAP := 12.0
 const CAMERA_PAN_SENSITIVITY := 0.0035
+const CAMERA_ORBIT_HORIZONTAL_SENSITIVITY := 0.007
+const CAMERA_ORBIT_VERTICAL_SENSITIVITY := 0.005
+const CAMERA_MIN_ELEVATION := deg_to_rad(27.0)
+const CAMERA_MAX_ELEVATION := deg_to_rad(72.0)
+const CAMERA_DEFAULT_TARGET := Vector3(0.0, 1.4, -1.0)
 const CAMERA_TARGET_MIN_X := -11.0
 const CAMERA_TARGET_MAX_X := 11.0
 const CAMERA_TARGET_MIN_Z := -20.0
@@ -162,13 +172,14 @@ var table_root: Node3D
 var rpg_root: Node3D
 var rpg_character: Node3D
 var camera: Camera3D
-var camera_target := Vector3(0.0, 1.4, -1.0)
+var camera_target := CAMERA_DEFAULT_TARGET
 var camera_azimuth := deg_to_rad(43.0)
 var camera_elevation := deg_to_rad(58.0)
 var camera_distance := 36.0
 var orbiting := false
 var touch_points: Dictionary = {}
 var pinch_distance := 0.0
+var touch_centroid := Vector2.ZERO
 var rpg_mode := false
 var mode_transitioning := false
 var rpg_camera_yaw := 0.0
@@ -197,6 +208,7 @@ var movement_generation := 0
 var active_roll_command_id := ""
 var active_roll_deadline_msec := 0
 var active_host_session_key := ""
+var scene_ready_token := ""
 var completed_roll_command_ids: Array[String] = []
 var flutter_bridge: Object
 var swift_host_messages: Array[Dictionary] = []
@@ -205,7 +217,7 @@ var player_names: Array[String] = ["MIA", "NOAH", "LUNA", "MAX"]
 var cloud_nodes: Array[Node3D] = []
 var cloud_speeds: Array[float] = []
 var boat_routes: Array[Dictionary] = []
-var current_board_id := "usa_new_york"
+var current_board_id := "usa"
 var city_theme: Dictionary = {}
 var active_tile_names: Array[String] = []
 var latest_logical_tile_names: Array[String] = []
@@ -218,17 +230,16 @@ var brand_subtitle_label: Label
 var movement_preview_root: Node3D
 var movement_markers: Array[MeshInstance3D] = []
 var destination_beacon: Node3D
-var camera_tween: Tween
-var cinematic_camera_active := false
-var saved_camera_target := Vector3.ZERO
-var saved_camera_azimuth := 0.0
-var saved_camera_elevation := 0.0
-var saved_camera_distance := 36.0
 var camera_uses_portrait_framing := false
+var camera_uses_tablet_landscape_framing := false
+var box_mesh_cache: Dictionary = {}
+var cylinder_mesh_cache: Dictionary = {}
+var sphere_mesh_cache: Dictionary = {}
 
 
 func _ready() -> void:
 	randomize()
+	scene_ready_token = "%d-%d" % [Time.get_ticks_usec(), get_instance_id()]
 	city_theme = CityThemesCatalog.get_theme(current_board_id)
 	active_tile_names.assign(TILE_NAMES)
 	board_root = Node3D.new()
@@ -250,8 +261,6 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_theme_park_world(delta)
-	if cinematic_camera_active:
-		_update_camera()
 	if is_instance_valid(destination_beacon):
 		var beacon_pulse := 1.0 + sin(Time.get_ticks_msec() * 0.006) * 0.12
 		var pulse_node := destination_beacon.get_node_or_null("DestinationPulse") as Node3D
@@ -290,47 +299,58 @@ func _unhandled_input(event: InputEvent) -> void:
 			)
 			_update_camera()
 	elif event is InputEventMouseMotion and orbiting:
-		camera_azimuth -= event.relative.x * 0.007
-		camera_elevation = clampf(
-			camera_elevation - event.relative.y * 0.005,
-			deg_to_rad(27.0),
-			deg_to_rad(72.0)
-		)
+		_orbit_camera(event.relative.x, event.relative.y)
 		_update_camera()
 	elif event is InputEventScreenTouch:
 		if event.pressed:
 			touch_points[event.index] = event.position
 		else:
 			touch_points.erase(event.index)
-		orbiting = touch_points.size() == 1
+		# Native touch input mirrors the embedded Flutter contract: one finger
+		# moves the board, two fingers rotate it, and pinching zooms. Flutter's
+		# opaque input layer normally forwards these as camera_gesture messages;
+		# this path keeps standalone Godot previews consistent.
+		orbiting = false
 		pinch_distance = (
 			_current_touch_distance()
-			if touch_points.size() == 2
+			if touch_points.size() >= 2
 			else 0.0
 		)
+		touch_centroid = _current_touch_centroid()
 	elif event is InputEventScreenDrag:
+		if not touch_points.has(event.index):
+			return
 		touch_points[event.index] = event.position
-		if touch_points.size() == 2:
+		if touch_points.size() >= 2:
 			var next_pinch_distance := _current_touch_distance()
+			var next_touch_centroid := _current_touch_centroid()
+			var orbit_delta := next_touch_centroid - touch_centroid
+			var camera_changed := false
+			if not orbit_delta.is_zero_approx():
+				_orbit_camera(orbit_delta.x, orbit_delta.y)
+				camera_changed = true
 			if pinch_distance > 0.0:
-				camera_distance = clampf(
+				var next_camera_distance := clampf(
 					camera_distance - (
 						next_pinch_distance - pinch_distance
 					) * PINCH_ZOOM_SENSITIVITY,
 					_minimum_camera_distance(),
 					CAMERA_MAX_DISTANCE
 				)
+				camera_changed = (
+					camera_changed
+					or not is_equal_approx(next_camera_distance, camera_distance)
+				)
+				camera_distance = next_camera_distance
+			if camera_changed:
 				_update_camera()
 			pinch_distance = next_pinch_distance
+			touch_centroid = next_touch_centroid
 			orbiting = false
 		elif touch_points.size() == 1:
-			orbiting = true
-			camera_azimuth -= event.relative.x * 0.007
-			camera_elevation = clampf(
-				camera_elevation - event.relative.y * 0.005,
-				deg_to_rad(27.0),
-				deg_to_rad(72.0)
-			)
+			orbiting = false
+			_pan_camera(event.relative.x, event.relative.y)
+			touch_centroid = _current_touch_centroid()
 			_update_camera()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
@@ -350,6 +370,24 @@ func _current_touch_distance() -> float:
 	var first_position := positions[0] as Vector2
 	var second_position := positions[1] as Vector2
 	return first_position.distance_to(second_position)
+
+
+func _current_touch_centroid() -> Vector2:
+	if touch_points.is_empty():
+		return Vector2.ZERO
+	var centroid := Vector2.ZERO
+	for position_value in touch_points.values():
+		centroid += position_value as Vector2
+	return centroid / float(touch_points.size())
+
+
+func _orbit_camera(delta_x: float, delta_y: float) -> void:
+	camera_azimuth -= delta_x * CAMERA_ORBIT_HORIZONTAL_SENSITIVITY
+	camera_elevation = clampf(
+		camera_elevation - delta_y * CAMERA_ORBIT_VERTICAL_SENSITIVITY,
+		CAMERA_MIN_ELEVATION,
+		CAMERA_MAX_ELEVATION
+	)
 
 
 func _create_environment() -> void:
@@ -393,7 +431,10 @@ func _create_environment() -> void:
 	fill.light_color = Color("#ffd49e")
 	fill.light_energy = 0.72
 	fill.omni_range = 24.0
-	fill.shadow_enabled = true
+	# The key light provides the board's grounding shadow. A second shadowed
+	# positional light repeated the whole scene's shadow pass (and atlas cost)
+	# for a subtle warm fill that reads equally well without shadows on mobile.
+	fill.shadow_enabled = false
 	add_child(fill)
 
 	var rim := OmniLight3D.new()
@@ -1537,12 +1578,14 @@ func _make_harbor_boat(kind: String, accent: Color) -> Node3D:
 
 
 func _create_cloud_layer(parent: Node3D) -> void:
-	var cloud_material := _material(Color(1.0, 1.0, 1.0, 0.76), 0.0, 0.92)
+	var cloud_material := _material(Color(1.0, 1.0, 1.0, 0.48), 0.0, 0.92)
 	cloud_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	# Clouds belong beyond the play surface. Their former routes crossed the
+	# property loop and could hide pawns, labels, and landmarks at low angles.
 	var cloud_specs := [
-		[Vector3(-10.8, 6.5, -12.8), 0.58, 0.08],
-		[Vector3(10.8, 7.4, -6.8), 0.48, 0.06],
-		[Vector3(-10.2, 8.2, 8.0), 0.52, 0.05],
+		[Vector3(-10.8, 6.5, -24.0), 0.48, 0.08],
+		[Vector3(10.8, 7.4, 23.0), 0.42, 0.06],
+		[Vector3(-10.2, 8.2, 25.0), 0.44, 0.05],
 	]
 	for spec in cloud_specs:
 		var cloud := Node3D.new()
@@ -1746,7 +1789,7 @@ func _create_neighborhood_blocks(landmarks: Node3D) -> void:
 func _update_theme_park_world(delta: float) -> void:
 	for index in cloud_nodes.size():
 		var cloud := cloud_nodes[index]
-		if not is_instance_valid(cloud):
+		if not is_instance_valid(cloud) or not cloud.visible:
 			continue
 		cloud.position.x += cloud_speeds[index] * delta
 		if cloud.position.x > 32.0:
@@ -2029,8 +2072,8 @@ func _make_character_piece(
 	# A colored plinth keeps each miniature readable against busy property tiles.
 	_add_cylinder(
 		model,
-		0.42,
-		0.47,
+		0.36,
+		0.40,
 		0.12,
 		Vector3(0.0, 1.16, 0.0),
 		shirt_material
@@ -2111,8 +2154,8 @@ func _make_character_piece(
 	_add_sphere(model, 0.035, Vector3(0.09, 2.65, -0.27), face_material, 10, 6)
 
 	var ring_mesh := TorusMesh.new()
-	ring_mesh.inner_radius = 0.47
-	ring_mesh.outer_radius = 0.55
+	ring_mesh.inner_radius = 0.40
+	ring_mesh.outer_radius = 0.47
 	ring_mesh.rings = 32
 	ring_mesh.ring_segments = 12
 	var ring := MeshInstance3D.new()
@@ -2415,6 +2458,9 @@ func _create_dice() -> void:
 			platform_center.z
 		)
 		die.rotation_degrees = Vector3(-8.0, -16.0 + index * 31.0, 5.0)
+		# Until the first settled roll there is no second value to communicate.
+		# Keeping one physical die preserves the affordance without implying 0 + 0.
+		die.visible = index == 0
 		board_root.add_child(die)
 		dice_nodes.append(die)
 
@@ -2564,6 +2610,7 @@ func _create_camera() -> void:
 	add_child(camera)
 	camera.current = true
 	camera_uses_portrait_framing = _is_portrait_viewport()
+	camera_uses_tablet_landscape_framing = _is_tablet_landscape_viewport()
 	camera_distance = _default_camera_distance()
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	_update_camera()
@@ -2677,7 +2724,7 @@ func _create_ui() -> void:
 	actions.add_theme_constant_override("separation", 12)
 	action_margin.add_child(actions)
 	dice_value_label = Label.new()
-	dice_value_label.text = "DICE\n3 + 4"
+	dice_value_label.text = "DICE\n—"
 	dice_value_label.custom_minimum_size = Vector2(96.0, 66.0)
 	dice_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dice_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -2734,14 +2781,17 @@ func _rebuild_city_board(
 	if active_tween != null and active_tween.is_running():
 		active_tween.kill()
 	_cancel_dice_tweens()
-	if camera_tween != null and camera_tween.is_running():
-		camera_tween.kill()
-	cinematic_camera_active = false
 	active_reach_player = -1
 
 	for child in board_root.get_children():
 		board_root.remove_child(child)
 		child.queue_free()
+	# Primitive meshes are immutable after construction, so identical props can
+	# share buffers within one city. Clear between cities to avoid retaining a
+	# catalogue of meshes from every board visited by the long-lived host.
+	box_mesh_cache.clear()
+	cylinder_mesh_cache.clear()
+	sphere_mesh_cache.clear()
 	tile_positions.clear()
 	player_tokens.clear()
 	dice_nodes.clear()
@@ -2766,6 +2816,8 @@ func _rebuild_city_board(
 	_create_theme_park_world()
 	_create_tokens()
 	_create_dice()
+	if embedded_mode:
+		_apply_embedded_ambient_policy()
 	_update_city_brand()
 
 
@@ -4071,6 +4123,12 @@ func _animate_property_change(
 	status_label.modulate = change_color
 	status_label.outline_modulate = INK
 	status_label.outline_size = 8
+	status_label.visible = not embedded_mode
+	status_label.visibility_range_end = 25.0
+	status_label.visibility_range_end_margin = 3.0
+	status_label.visibility_range_fade_mode = (
+		GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	)
 	markers.add_child(status_label)
 	var label_tween := create_tween()
 	label_tween.set_trans(Tween.TRANS_QUAD)
@@ -4088,6 +4146,7 @@ func _animate_property_change(
 		0.0,
 		0.32
 	)
+	label_tween.finished.connect(status_label.queue_free, CONNECT_ONE_SHOT)
 
 
 func _apply_city_environment() -> void:
@@ -4125,19 +4184,30 @@ func _connect_flutter_bridge() -> void:
 		flutter_bridge.connect("animate_roll", _animate_flutter_roll_json)
 		flutter_bridge.connect("camera_gesture", _apply_camera_gesture_json)
 		flutter_bridge.connect("board_tap", _pick_board_object_json)
-		flutter_bridge.ready()
+		flutter_bridge.ready(scene_ready_token)
 		return
 
 	if OS.get_name() == "iOS":
 		_enable_embedded_mode()
-		_emit_swift_host_event("boardReady", {})
+		_emit_swift_host_event("boardReady", {
+			"sceneReadyToken": scene_ready_token,
+		})
 
 
 func _enable_embedded_mode() -> void:
 	embedded_mode = true
+	_apply_embedded_ambient_policy()
 	var hud := get_node_or_null("GameHUD") as CanvasLayer
 	if hud != null:
 		hud.visible = false
+
+
+func _apply_embedded_ambient_policy() -> void:
+	# Flutter supplies the gameplay HUD, so mobile readability takes priority
+	# over foreground ambience. No cloud may drift between the camera and board.
+	for cloud in cloud_nodes:
+		if is_instance_valid(cloud):
+			cloud.visible = false
 
 
 func host_receive_message(message: Dictionary) -> void:
@@ -4167,22 +4237,8 @@ func _apply_camera_gesture_json(json: String) -> void:
 	var pan_delta_x := float(gesture.get("panDeltaX", 0.0))
 	var pan_delta_y := float(gesture.get("panDeltaY", 0.0))
 	var zoom_scale := float(gesture.get("zoomScale", 1.0))
-	if (
-		orbit_delta_x != 0.0
-		or orbit_delta_y != 0.0
-		or pan_delta_x != 0.0
-		or pan_delta_y != 0.0
-		or (zoom_scale > 0.0 and not is_equal_approx(zoom_scale, 1.0))
-	):
-		_cancel_camera_cinematic()
-
 	if orbit_delta_x != 0.0 or orbit_delta_y != 0.0:
-		camera_azimuth -= orbit_delta_x * 0.007
-		camera_elevation = clampf(
-			camera_elevation - orbit_delta_y * 0.005,
-			deg_to_rad(27.0),
-			deg_to_rad(72.0)
-		)
+		_orbit_camera(orbit_delta_x, orbit_delta_y)
 	if pan_delta_x != 0.0 or pan_delta_y != 0.0:
 		_pan_camera(pan_delta_x, pan_delta_y)
 	if zoom_scale > 0.0 and not is_equal_approx(zoom_scale, 1.0):
@@ -4418,6 +4474,10 @@ func _apply_flutter_state_json(json: String) -> void:
 	if requested_board_id != current_board_id:
 		active_player_count = requested_player_count
 		_rebuild_city_board(requested_board_id, logical_tile_names, logical_tiles)
+		if requested_board_id != current_board_id:
+			# Never acknowledge a state against a different visible city. Flutter's
+			# watchdog will offer Retry or the deterministic 2D renderer.
+			return
 	elif (
 		logical_tile_names != latest_logical_tile_names
 		or logical_tiles != latest_logical_tiles
@@ -4472,10 +4532,36 @@ func _apply_flutter_state_json(json: String) -> void:
 	if dice_nodes.size() > 1:
 		dice_nodes[1].visible = synced_die_two > 0
 	dice_value_label.text = (
-		"DICE\n%d" % synced_die_one
-		if synced_die_two <= 0
-		else "DICE\n%d + %d" % [synced_die_one, synced_die_two]
+		"DICE\n—"
+		if synced_die_one <= 0
+		else (
+			"DICE\n%d" % synced_die_one
+			if synced_die_two <= 0
+			else "DICE\n%d + %d" % [synced_die_one, synced_die_two]
+		)
 	)
+	_emit_host_state_applied(payload)
+
+
+func _emit_host_state_applied(payload: Dictionary) -> void:
+	var session_id := str(payload.get("sessionId", ""))
+	var state_generation := int(payload.get("stateGeneration", -1))
+	if session_id.is_empty() or state_generation < 0:
+		push_warning("Ignoring an unversioned Flutter board state acknowledgement.")
+		return
+	var arguments := {
+		"sessionId": session_id,
+		"stateGeneration": state_generation,
+		"boardId": current_board_id,
+	}
+	if flutter_bridge != null:
+		flutter_bridge.stateApplied(
+			session_id,
+			state_generation,
+			current_board_id
+		)
+	else:
+		_emit_swift_host_event("stateApplied", arguments)
 
 
 func _host_session_key(payload: Dictionary, players: Array) -> String:
@@ -4533,7 +4619,6 @@ func _animate_flutter_roll_json(json: String) -> void:
 	_reset_token_vertical_presentation(player_tokens[player_index])
 	turn_label.text = "%s IS ROLLING…" % player_names[player_index]
 	_show_movement_preview(command)
-	_begin_roll_camera_cinematic()
 	_animate_3d_dice(die_one, die_two)
 
 	get_tree().create_timer(1.04).timeout.connect(
@@ -4638,13 +4723,6 @@ func _cancel_hosted_roll(reason: String) -> void:
 	active_roll_command_id = ""
 	active_roll_deadline_msec = 0
 	_clear_movement_preview()
-	if cinematic_camera_active:
-		_cancel_camera_cinematic()
-		camera_target = saved_camera_target
-		camera_azimuth = saved_camera_azimuth
-		camera_elevation = saved_camera_elevation
-		camera_distance = saved_camera_distance
-		_update_camera()
 	_reflow_token_occupancy()
 	if had_active_roll and not reason.is_empty():
 		push_warning(reason)
@@ -4669,7 +4747,6 @@ func _begin_flutter_token_path(command: Dictionary, generation: int) -> void:
 		player_names[player_index],
 		spaces,
 	]
-	_focus_camera_on_route(command)
 
 	var visual_path_value = command.get("visualPath", [])
 	if typeof(visual_path_value) != TYPE_ARRAY:
@@ -4701,6 +4778,7 @@ func _animate_token_to_tile(
 	hosted_generation: int = -1
 ) -> bool:
 	var old_tile := player_tiles[player_index]
+	var step_duration := _token_step_duration(old_tile, target_tile, duration)
 	player_tiles[player_index] = target_tile
 	var token := player_tokens[player_index]
 	var visual := _token_visual(token)
@@ -4721,29 +4799,39 @@ func _animate_token_to_tile(
 	step_tween.set_parallel(true)
 	step_tween.set_trans(Tween.TRANS_QUAD)
 	step_tween.set_ease(Tween.EASE_IN_OUT)
-	step_tween.tween_property(token, "position", target_local, duration)
+	step_tween.tween_property(token, "position", target_local, step_duration)
 	step_tween.tween_method(
 		_set_token_rotation_progress.bind(token, start_rotation, target_rotation),
 		0.0,
 		1.0,
-		duration
+		step_duration
 	)
 	if visual != null:
 		step_tween.tween_method(
 			_set_token_hop_progress.bind(visual),
 			0.0,
 			1.0,
-			duration
+			step_duration
 		)
 		step_tween.tween_property(
 			visual,
 			"scale",
 			_token_scale_for_tile(target_tile, player_index),
-			duration
+			step_duration
 		)
 	if old_tile != target_tile:
-		_append_tile_occupant_reflow(step_tween, old_tile, player_index, duration)
-	_append_tile_occupant_reflow(step_tween, target_tile, player_index, duration)
+		_append_tile_occupant_reflow(
+			step_tween,
+			old_tile,
+			player_index,
+			step_duration
+		)
+	_append_tile_occupant_reflow(
+		step_tween,
+		target_tile,
+		player_index,
+		step_duration
+	)
 	await step_tween.finished
 	if active_tween == step_tween:
 		active_tween = null
@@ -4758,6 +4846,33 @@ func _animate_token_to_tile(
 	_reflow_tile_occupants(old_tile, player_index)
 	_reflow_tile_occupants(target_tile, player_index)
 	return true
+
+
+func _token_step_duration(
+	from_tile: int,
+	to_tile: int,
+	base_duration: float = TOKEN_STEP_DURATION
+) -> float:
+	if tile_positions.size() < 2 or from_tile == to_tile:
+		return base_duration
+	var route_step_distance := 0.0
+	for index in tile_positions.size():
+		route_step_distance += tile_positions[index].distance_to(
+			tile_positions[(index + 1) % tile_positions.size()]
+		)
+	route_step_distance /= float(tile_positions.size())
+	if route_step_distance <= 0.001:
+		return base_duration
+	var segment_distance := tile_positions[posmod(
+		from_tile,
+		tile_positions.size()
+	)].distance_to(tile_positions[posmod(to_tile, tile_positions.size())])
+	var distance_ratio := clampf(
+		segment_distance / route_step_distance,
+		TOKEN_MIN_DURATION_RATIO,
+		TOKEN_MAX_DURATION_RATIO
+	)
+	return base_duration * distance_ratio
 
 
 func _set_token_hop_progress(progress: float, visual: Node3D) -> void:
@@ -4790,15 +4905,10 @@ func _finish_flutter_roll(command: Dictionary, generation: int) -> void:
 		active_tile_names[final_visual],
 	]
 	_finish_movement_preview(final_visual, player_index)
-	_focus_camera_on_landing(final_visual)
 	await _play_landing_reaction(player_index)
 	if not _is_hosted_roll_current(command, generation):
 		return
 
-	get_tree().create_timer(1.0).timeout.connect(
-		_restore_camera_for_generation.bind(generation),
-		CONNECT_ONE_SHOT
-	)
 	get_tree().create_timer(1.1).timeout.connect(
 		_clear_preview_for_generation.bind(generation),
 		CONNECT_ONE_SHOT
@@ -4831,11 +4941,6 @@ func _remember_roll_command_id(command_id: String) -> void:
 	completed_roll_command_ids.append(command_id)
 	if completed_roll_command_ids.size() > 64:
 		completed_roll_command_ids.pop_front()
-
-
-func _restore_camera_for_generation(generation: int) -> void:
-	if generation == movement_generation:
-		_restore_camera_after_roll()
 
 
 func _clear_preview_for_generation(generation: int) -> void:
@@ -5003,153 +5108,6 @@ func _play_landing_reaction(player_index: int) -> void:
 		active_tween = null
 	_reset_token_vertical_presentation(token)
 	visual.scale = base_scale
-
-
-func _begin_roll_camera_cinematic() -> void:
-	if camera == null or dice_nodes.is_empty():
-		return
-	_cancel_camera_cinematic()
-	saved_camera_target = camera_target
-	saved_camera_azimuth = camera_azimuth
-	saved_camera_elevation = camera_elevation
-	saved_camera_distance = camera_distance
-	cinematic_camera_active = true
-
-	var dice_focus := Vector3.ZERO
-	var visible_dice := 0
-	for die in dice_nodes:
-		if die.visible:
-			dice_focus += die.global_position
-			visible_dice += 1
-	if visible_dice > 0:
-		dice_focus /= float(visible_dice)
-	dice_focus.y = 1.25
-	camera_tween = create_tween()
-	camera_tween.set_parallel(true)
-	camera_tween.set_trans(Tween.TRANS_CUBIC)
-	camera_tween.set_ease(Tween.EASE_IN_OUT)
-	camera_tween.tween_property(self, "camera_target", dice_focus, 0.48)
-	camera_tween.tween_property(self, "camera_distance", 27.0, 0.48)
-	camera_tween.tween_property(
-		self,
-		"camera_elevation",
-		deg_to_rad(52.0),
-		0.48
-	)
-
-
-func _focus_camera_on_route(command: Dictionary) -> void:
-	if not cinematic_camera_active:
-		return
-	var visual_path_value = command.get("visualPath", [])
-	if typeof(visual_path_value) != TYPE_ARRAY:
-		return
-	var visual_path: Array = visual_path_value
-	if visual_path.is_empty():
-		return
-	var destination_visual := posmod(
-		int(visual_path[visual_path.size() - 1]),
-		BOARD_SPOT_COUNT
-	)
-	var player_index := int(command.get("playerIndex", 0))
-	var start_visual := player_tiles[clampi(
-		player_index,
-		0,
-		maxi(0, player_tiles.size() - 1)
-	)]
-	var route_focus := tile_positions[start_visual].lerp(
-		tile_positions[destination_visual],
-		0.58
-	)
-	route_focus.y = 1.15
-	if camera_tween != null and camera_tween.is_running():
-		camera_tween.kill()
-	camera_tween = create_tween()
-	camera_tween.set_parallel(true)
-	camera_tween.set_trans(Tween.TRANS_CUBIC)
-	camera_tween.set_ease(Tween.EASE_IN_OUT)
-	camera_tween.tween_property(self, "camera_target", route_focus, 0.55)
-	camera_tween.tween_property(self, "camera_distance", 28.5, 0.55)
-	camera_tween.tween_property(
-		self,
-		"camera_elevation",
-		deg_to_rad(55.0),
-		0.55
-	)
-
-
-func _focus_camera_on_landing(visual_index: int) -> void:
-	if not cinematic_camera_active or visual_index >= tile_positions.size():
-		return
-	var landing_position := tile_positions[visual_index]
-	var landing_focus := landing_position
-	landing_focus.y = 0.72
-	var payload := _visual_tile_payload(visual_index)
-	var is_developed := (
-		int(payload.get("ownerColorArgb", 0)) != 0
-		or int(payload.get("upgradeLevel", 0)) > 0
-	)
-	var outward_azimuth := atan2(landing_position.x, landing_position.z + 1.0)
-	if camera_tween != null and camera_tween.is_running():
-		camera_tween.kill()
-	camera_tween = create_tween()
-	camera_tween.set_parallel(true)
-	camera_tween.set_trans(Tween.TRANS_CUBIC)
-	camera_tween.set_ease(Tween.EASE_IN_OUT)
-	camera_tween.tween_property(self, "camera_target", landing_focus, 0.48)
-	camera_tween.tween_property(self, "camera_azimuth", outward_azimuth, 0.48)
-	camera_tween.tween_property(
-		self,
-		"camera_elevation",
-		deg_to_rad(49.0),
-		0.48
-	)
-	camera_tween.tween_property(
-		self,
-		"camera_distance",
-		21.5 if is_developed else 24.0,
-		0.48
-	)
-
-
-func _restore_camera_after_roll() -> void:
-	if not cinematic_camera_active:
-		return
-	if camera_tween != null and camera_tween.is_running():
-		camera_tween.kill()
-	camera_tween = create_tween()
-	camera_tween.set_parallel(true)
-	camera_tween.set_trans(Tween.TRANS_CUBIC)
-	camera_tween.set_ease(Tween.EASE_IN_OUT)
-	camera_tween.tween_property(self, "camera_target", saved_camera_target, 0.72)
-	camera_tween.tween_property(self, "camera_azimuth", saved_camera_azimuth, 0.72)
-	camera_tween.tween_property(
-		self,
-		"camera_elevation",
-		saved_camera_elevation,
-		0.72
-	)
-	camera_tween.tween_property(
-		self,
-		"camera_distance",
-		saved_camera_distance,
-		0.72
-	)
-	camera_tween.finished.connect(
-		_complete_camera_restore,
-		CONNECT_ONE_SHOT
-	)
-
-
-func _complete_camera_restore() -> void:
-	cinematic_camera_active = false
-	_update_camera()
-
-
-func _cancel_camera_cinematic() -> void:
-	if camera_tween != null and camera_tween.is_running():
-		camera_tween.kill()
-	cinematic_camera_active = false
 
 
 func _move_player_token_to_visual(player_index: int, target_value: int) -> void:
@@ -5578,23 +5536,32 @@ func _reset_rpg_view() -> void:
 
 
 func _reset_camera() -> void:
-	_cancel_camera_cinematic()
-	camera_target = Vector3(0.0, 1.4, -1.0)
+	camera_target = CAMERA_DEFAULT_TARGET
 	camera_azimuth = deg_to_rad(43.0)
 	camera_elevation = deg_to_rad(58.0)
 	camera_uses_portrait_framing = _is_portrait_viewport()
+	camera_uses_tablet_landscape_framing = _is_tablet_landscape_viewport()
 	camera_distance = _default_camera_distance()
 	_update_camera()
 
 
 func _on_viewport_size_changed() -> void:
 	var use_portrait_framing := _is_portrait_viewport()
-	if use_portrait_framing == camera_uses_portrait_framing:
+	var use_tablet_landscape_framing := _is_tablet_landscape_viewport()
+	if (
+		use_portrait_framing == camera_uses_portrait_framing
+		and use_tablet_landscape_framing
+		== camera_uses_tablet_landscape_framing
+	):
 		return
 	camera_uses_portrait_framing = use_portrait_framing
-	if not cinematic_camera_active:
-		camera_distance = _default_camera_distance()
-		_update_camera()
+	camera_uses_tablet_landscape_framing = use_tablet_landscape_framing
+	# A target panned for the old aspect ratio can leave the board mostly
+	# off-screen after rotation. Recenter the target while retaining the chosen
+	# orbit angle, then fit the new responsive overview distance.
+	camera_target = CAMERA_DEFAULT_TARGET
+	camera_distance = _default_camera_distance()
+	_update_camera()
 
 
 func _is_portrait_viewport() -> bool:
@@ -5602,12 +5569,19 @@ func _is_portrait_viewport() -> bool:
 	return viewport_size.y > viewport_size.x * 1.15
 
 
+func _is_tablet_landscape_viewport() -> bool:
+	var viewport_size := get_viewport().get_visible_rect().size
+	if viewport_size.y <= 0.0 or viewport_size.x < viewport_size.y:
+		return false
+	return viewport_size.x / viewport_size.y < 1.7
+
+
 func _default_camera_distance() -> float:
-	return (
-		CAMERA_PORTRAIT_DISTANCE
-		if camera_uses_portrait_framing
-		else CAMERA_DEFAULT_DISTANCE
-	)
+	if camera_uses_portrait_framing:
+		return CAMERA_PORTRAIT_DISTANCE
+	if camera_uses_tablet_landscape_framing:
+		return CAMERA_TABLET_LANDSCAPE_DISTANCE
+	return CAMERA_DEFAULT_DISTANCE
 
 
 func _minimum_camera_distance() -> float:
@@ -5974,8 +5948,11 @@ func _add_box(
 	position: Vector3,
 	material: Material
 ) -> MeshInstance3D:
-	var mesh := BoxMesh.new()
-	mesh.size = size
+	var mesh := box_mesh_cache.get(size) as BoxMesh
+	if mesh == null:
+		mesh = BoxMesh.new()
+		mesh.size = size
+		box_mesh_cache[size] = mesh
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	instance.position = position
@@ -5993,12 +5970,18 @@ func _add_cylinder(
 	position: Vector3,
 	material: Material
 ) -> MeshInstance3D:
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = top_radius
-	mesh.bottom_radius = bottom_radius
-	mesh.height = height
-	mesh.radial_segments = 48
-	mesh.rings = 2
+	var mesh_key := Vector3(top_radius, bottom_radius, height)
+	var mesh := cylinder_mesh_cache.get(mesh_key) as CylinderMesh
+	if mesh == null:
+		mesh = CylinderMesh.new()
+		mesh.top_radius = top_radius
+		mesh.bottom_radius = bottom_radius
+		mesh.height = height
+		# 24 sides remain visually round at the board's closest supported framing,
+		# while halving cylinder vertices in both color and shadow passes.
+		mesh.radial_segments = MOBILE_CYLINDER_RADIAL_SEGMENTS
+		mesh.rings = 2
+		cylinder_mesh_cache[mesh_key] = mesh
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	instance.position = position
@@ -6064,16 +6047,26 @@ func _add_sphere(
 	radial_segments: int = 32,
 	rings: int = 16
 ) -> MeshInstance3D:
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.radial_segments = radial_segments
-	mesh.rings = rings
+	var mesh_key := Vector3(radius, float(radial_segments), float(rings))
+	var mesh := sphere_mesh_cache.get(mesh_key) as SphereMesh
+	if mesh == null:
+		mesh = SphereMesh.new()
+		mesh.radius = radius
+		mesh.height = radius * 2.0
+		mesh.radial_segments = radial_segments
+		mesh.rings = rings
+		sphere_mesh_cache[mesh_key] = mesh
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	instance.position = position
 	instance.material_override = material
-	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	# Raised dice pips, eyes, and similar sub-0.1-unit details contribute many
+	# shadow draws but no readable shadow at the supported camera distances.
+	instance.cast_shadow = (
+		GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if radius >= MOBILE_MIN_SPHERE_SHADOW_RADIUS
+		else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	)
 	parent.add_child(instance)
 	return instance
 

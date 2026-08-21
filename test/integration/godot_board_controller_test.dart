@@ -1,13 +1,36 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:property_tycoon/config/board_factory.dart';
+import 'package:property_tycoon/config/city_board_registry.dart';
 import 'package:property_tycoon/integration/godot_board_contract.dart';
 import 'package:property_tycoon/integration/godot_board_controller.dart';
+import 'package:property_tycoon/models/game_state.dart';
+import 'package:property_tycoon/models/player.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = MethodChannel('property_tycoon/godot_board_bridge');
+  const codec = StandardMethodCodec();
+
+  Future<Object?> sendNativeCall(MethodCall call) async {
+    final reply = await TestDefaultBinaryMessengerBinding
+        .instance
+        .defaultBinaryMessenger
+        .handlePlatformMessage(
+          channel.name,
+          codec.encodeMethodCall(call),
+          null,
+        );
+    return reply == null ? null : codec.decodeEnvelope(reply);
+  }
 
   tearDown(() async {
+    debugDefaultTargetPlatformOverride = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
   });
@@ -47,5 +70,486 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('roll command sends the complete visual route across GO', () {
+    final city = CityBoardRegistry.all.first;
+    final player = Player(
+      id: 'player_0',
+      name: 'Player 1',
+      icon: PlayerIcon.dog,
+      color: Colors.red,
+      position: 37,
+    );
+    final state = GameState.initial(
+      players: [player],
+      tiles: BoardFactory.generateTiles(city),
+    );
+    final controller = GodotBoardController();
+    addTearDown(controller.dispose);
+
+    final command = controller.createRollCommand(
+      gameState: state,
+      playerIndex: 0,
+      die1: 3,
+      die2: 3,
+    );
+
+    expect(command.toLogicalPosition, 3);
+    expect(command.visualPath, orderedEquals([49, 50, 51, 0, 1, 2, 3, 4]));
+    expect(command.toJson()['visualPath'], command.visualPath);
+  });
+
+  test(
+    'scene ready does not unlock play before exact state is applied',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final sentStates = <Map<String, Object?>>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            switch (call.method) {
+              case 'isAvailable':
+                return true;
+              case 'syncState':
+                sentStates.add(
+                  (jsonDecode(call.arguments as String) as Map<String, dynamic>)
+                      .cast<String, Object?>(),
+                );
+                return true;
+              case 'retryScene':
+                return false;
+            }
+            return null;
+          });
+
+      final city = CityBoardRegistry.all.first;
+      final state = GameState.initial(
+        players: [
+          Player(
+            id: 'player_0',
+            name: 'Player 1',
+            icon: PlayerIcon.dog,
+            color: Colors.red,
+          ),
+        ],
+        tiles: BoardFactory.generateTiles(city),
+        cityBoardId: city.boardId,
+      );
+      final controller = GodotBoardController();
+      addTearDown(controller.dispose);
+
+      await controller.initialize();
+      await controller.syncGameState(state, boardId: city.boardId);
+      expect(sentStates, hasLength(1));
+      controller.markViewCreated();
+      expect(sentStates, hasLength(1));
+      final requested = sentStates.last;
+      expect(requested['sessionId'], state.id);
+      expect(requested['stateGeneration'], 1);
+
+      final staleResult = await sendNativeCall(
+        MethodCall('stateApplied', {
+          'sessionId': state.id,
+          'stateGeneration': 0,
+          'boardId': city.boardId,
+        }),
+      );
+      expect(staleResult, isFalse);
+      expect(controller.isBoardReady, isFalse);
+
+      await sendNativeCall(
+        MethodCall('stateApplied', {
+          'sessionId': state.id,
+          'stateGeneration': requested['stateGeneration'],
+          'boardId': city.boardId,
+        }),
+      );
+      expect(controller.isSceneReady, isFalse);
+      expect(controller.isBoardReady, isFalse);
+
+      final sendsBeforeSceneReady = sentStates.length;
+      await sendNativeCall(
+        const MethodCall('boardReady', {'sceneReadyToken': 'scene-1'}),
+      );
+      expect(controller.isSceneReady, isTrue);
+      expect(controller.isBoardReady, isTrue);
+      expect(controller.isLoading, isFalse);
+      expect(sentStates, hasLength(sendsBeforeSceneReady));
+
+      await controller.syncGameState(state, boardId: city.boardId);
+      expect(controller.isBoardReady, isFalse);
+      expect(controller.isSynchronizing, isTrue);
+      expect(controller.isLoading, isFalse);
+      expect(sentStates.last['stateGeneration'], 2);
+      expect(sentStates, hasLength(2));
+
+      await controller.retryStateApplication();
+      expect(sentStates.last['stateGeneration'], 2);
+      expect(sentStates, hasLength(3));
+    },
+  );
+
+  test('boardReady before stateApplied does not resend cached state', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final sentStates = <Map<String, Object?>>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'isAvailable') return true;
+          if (call.method == 'syncState') {
+            sentStates.add(
+              (jsonDecode(call.arguments as String) as Map<String, dynamic>)
+                  .cast<String, Object?>(),
+            );
+            return true;
+          }
+          return null;
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController();
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    await controller.syncGameState(state, boardId: city.boardId);
+    controller.markViewCreated();
+    expect(sentStates, hasLength(1));
+
+    await sendNativeCall(
+      const MethodCall('boardReady', {'sceneReadyToken': 'scene-1'}),
+    );
+    expect(controller.isSceneReady, isTrue);
+    expect(controller.isBoardReady, isFalse);
+    expect(sentStates, hasLength(1));
+
+    await sendNativeCall(
+      MethodCall('stateApplied', {
+        'sessionId': state.id,
+        'stateGeneration': 1,
+        'boardId': city.boardId,
+      }),
+    );
+    expect(controller.isBoardReady, isTrue);
+    expect(sentStates, hasLength(1));
+  });
+
+  testWidgets('startup watchdog bounds a platform view that never starts', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'isAvailable' || call.method == 'syncState') {
+            return true;
+          }
+          if (call.method == 'retryScene') return false;
+          return null;
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController(
+      stateApplyTimeout: const Duration(milliseconds: 100),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    await controller.syncGameState(state, boardId: city.boardId);
+    await tester.pump(const Duration(milliseconds: 101));
+
+    expect(controller.stateApplyError, GodotBoardStateApplyError.timedOut);
+    expect(controller.isLoading, isTrue);
+
+    controller.continueIn2D();
+    expect(controller.stateApplyError, isNull);
+    expect(controller.isLoading, isFalse);
+    await tester.pump(const Duration(seconds: 1));
+    expect(controller.stateApplyError, isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets(
+    'early stateApplied keeps recovery until view and scene are ready',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      var stateSendCount = 0;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            if (call.method == 'isAvailable') return true;
+            if (call.method == 'syncState') {
+              stateSendCount++;
+              return true;
+            }
+            return null;
+          });
+
+      final city = CityBoardRegistry.all.first;
+      final state = GameState.initial(
+        players: [
+          Player(
+            id: 'player_0',
+            name: 'Player 1',
+            icon: PlayerIcon.dog,
+            color: Colors.red,
+          ),
+        ],
+        tiles: BoardFactory.generateTiles(city),
+        cityBoardId: city.boardId,
+      );
+      final controller = GodotBoardController(
+        stateApplyTimeout: const Duration(milliseconds: 100),
+      );
+      addTearDown(controller.dispose);
+
+      await controller.initialize();
+      await controller.syncGameState(state, boardId: city.boardId);
+      await tester.pump(const Duration(milliseconds: 101));
+      expect(controller.stateApplyError, GodotBoardStateApplyError.timedOut);
+
+      await sendNativeCall(
+        MethodCall('stateApplied', {
+          'sessionId': state.id,
+          'stateGeneration': 1,
+          'boardId': city.boardId,
+        }),
+      );
+      expect(controller.stateApplyError, GodotBoardStateApplyError.timedOut);
+      expect(controller.isLoading, isTrue);
+
+      await sendNativeCall(
+        const MethodCall('boardReady', {'sceneReadyToken': 'scene-1'}),
+      );
+      expect(controller.stateApplyError, GodotBoardStateApplyError.timedOut);
+      expect(controller.isBoardReady, isFalse);
+      expect(stateSendCount, 1);
+
+      controller.markViewCreated();
+      expect(controller.isBoardReady, isTrue);
+      expect(controller.stateApplyError, isNull);
+      expect(controller.isLoading, isFalse);
+      expect(stateSendCount, 1);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets('native availability wait is bounded', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final availability = Completer<bool>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) {
+          if (call.method == 'isAvailable') return availability.future;
+          return null;
+        });
+    final controller = GodotBoardController(
+      stateApplyTimeout: const Duration(milliseconds: 100),
+    );
+    addTearDown(controller.dispose);
+
+    final initialization = controller.initialize();
+    await tester.pump(const Duration(milliseconds: 101));
+    await initialization;
+    availability.complete(true);
+
+    expect(controller.isAvailable, isFalse);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('hung native retry keeps recovery bounded', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final retryReply = Completer<bool>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) {
+          if (call.method == 'isAvailable' || call.method == 'syncState') {
+            return Future.value(true);
+          }
+          if (call.method == 'retryScene') return retryReply.future;
+          return null;
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController(
+      stateApplyTimeout: const Duration(milliseconds: 100),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    await controller.syncGameState(state, boardId: city.boardId);
+    await tester.pump(const Duration(milliseconds: 101));
+    expect(controller.stateApplyError, GodotBoardStateApplyError.timedOut);
+
+    final retry = controller.retryStateApplication();
+    expect(controller.stateApplyError, isNull);
+    await tester.pump(const Duration(milliseconds: 101));
+    await retry;
+    expect(controller.stateApplyError, GodotBoardStateApplyError.timedOut);
+    expect(controller.isLoading, isTrue);
+
+    retryReply.complete(true);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('hung state sync times out and releases its caller', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final syncReply = Completer<bool>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) {
+          if (call.method == 'isAvailable') return Future.value(true);
+          if (call.method == 'syncState') return syncReply.future;
+          return null;
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController(
+      stateApplyTimeout: const Duration(milliseconds: 100),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    var completed = false;
+    final sync = controller
+        .syncGameState(state, boardId: city.boardId)
+        .whenComplete(() => completed = true);
+    await tester.pump();
+    expect(completed, isFalse);
+
+    await tester.pump(const Duration(milliseconds: 101));
+    await sync;
+    expect(completed, isTrue);
+    expect(controller.stateApplyError, GodotBoardStateApplyError.timedOut);
+
+    syncReply.complete(true);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('Use 2D releases a hung state sync immediately', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final syncReply = Completer<bool>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) {
+          if (call.method == 'isAvailable') return Future.value(true);
+          if (call.method == 'syncState') return syncReply.future;
+          return null;
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController(
+      stateApplyTimeout: const Duration(minutes: 1),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    var completed = false;
+    final sync = controller
+        .syncGameState(state, boardId: city.boardId)
+        .whenComplete(() => completed = true);
+    await tester.pump();
+    expect(completed, isFalse);
+
+    controller.continueIn2D();
+    await sync;
+    expect(completed, isTrue);
+    expect(controller.stateApplyError, isNull);
+    expect(controller.isLoading, isFalse);
+
+    syncReply.complete(true);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  test('disposed view callbacks cannot resend an old session', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    var stateSendCount = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'isAvailable') return true;
+          if (call.method == 'syncState') {
+            stateSendCount++;
+            return true;
+          }
+          return null;
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController();
+
+    await controller.initialize();
+    await controller.syncGameState(state, boardId: city.boardId);
+    expect(stateSendCount, 1);
+
+    controller.dispose();
+    controller.markViewCreated();
+    await controller.syncGameState(state, boardId: city.boardId);
+    expect(stateSendCount, 1);
   });
 }

@@ -1,9 +1,9 @@
-/// First version of the Flutter <-> Godot board protocol.
+/// Versioned Flutter <-> Godot board protocol.
 ///
 /// Flutter positions always refer to logical game tiles. Godot positions refer
 /// to the richer visual route, which can contain a different number of spots.
 abstract final class GodotBoardProtocol {
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
   static const int cityVisualSpotCount = 52;
   static const Set<String> supportedBoardIds = {
     'usa',
@@ -46,18 +46,38 @@ abstract final class GodotBoardProtocol {
     required int logicalTileCount,
     required int visualSpotCount,
   }) {
-    if (logicalTileCount <= 0 || visualSpotCount <= 0 || spaces <= 0) {
+    if (logicalTileCount <= 0 || visualSpotCount <= 0 || spaces == 0) {
       return const [];
     }
-    return List<int>.generate(spaces, (index) {
-      final logicalPosition =
-          (fromLogicalPosition + index + 1) % logicalTileCount;
-      return toVisualPosition(
-        logicalPosition: logicalPosition,
+
+    // A logical tile does not always map to the adjacent visual spot. Walk
+    // every visual spot between logical landings so the native pawn follows
+    // the perimeter instead of cutting diagonally across board corners.
+    final direction = spaces.isNegative ? -1 : 1;
+    final path = <int>[];
+    var currentVisualPosition = toVisualPosition(
+      logicalPosition: fromLogicalPosition,
+      logicalTileCount: logicalTileCount,
+      visualSpotCount: visualSpotCount,
+    );
+
+    for (var logicalStep = 1; logicalStep <= spaces.abs(); logicalStep++) {
+      final nextLogicalPosition =
+          (fromLogicalPosition + (logicalStep * direction)) % logicalTileCount;
+      final nextVisualPosition = toVisualPosition(
+        logicalPosition: nextLogicalPosition,
         logicalTileCount: logicalTileCount,
         visualSpotCount: visualSpotCount,
       );
-    });
+
+      while (currentVisualPosition != nextVisualPosition) {
+        currentVisualPosition =
+            (currentVisualPosition + direction) % visualSpotCount;
+        path.add(currentVisualPosition);
+      }
+    }
+
+    return path;
   }
 }
 
@@ -142,6 +162,7 @@ class GodotBoardTileState {
 class GodotBoardSceneState {
   const GodotBoardSceneState({
     required this.sessionId,
+    required this.stateGeneration,
     required this.boardId,
     required this.logicalTileCount,
     required this.visualSpotCount,
@@ -155,6 +176,7 @@ class GodotBoardSceneState {
   });
 
   final String sessionId;
+  final int stateGeneration;
   final String boardId;
   final int logicalTileCount;
   final int visualSpotCount;
@@ -170,6 +192,7 @@ class GodotBoardSceneState {
     'schemaVersion': GodotBoardProtocol.schemaVersion,
     'type': 'scene_state',
     'sessionId': sessionId,
+    'stateGeneration': stateGeneration,
     'boardId': boardId,
     'logicalTileCount': logicalTileCount,
     'visualSpotCount': visualSpotCount,
@@ -181,6 +204,28 @@ class GodotBoardSceneState {
     'tiles': tiles.map((tile) => tile.toJson()).toList(),
     'players': players.map((player) => player.toJson()).toList(),
   };
+}
+
+/// Acknowledgement emitted only after Godot has applied the requested scene
+/// state, including any city rebuild and pawn placement.
+class GodotBoardStateApplied {
+  const GodotBoardStateApplied({
+    required this.sessionId,
+    required this.stateGeneration,
+    required this.boardId,
+  });
+
+  final String sessionId;
+  final int stateGeneration;
+  final String boardId;
+
+  factory GodotBoardStateApplied.fromMap(Map<Object?, Object?> map) {
+    return GodotBoardStateApplied(
+      sessionId: map['sessionId'] as String? ?? '',
+      stateGeneration: (map['stateGeneration'] as num?)?.toInt() ?? -1,
+      boardId: map['boardId'] as String? ?? '',
+    );
+  }
 }
 
 class GodotBoardSelection {

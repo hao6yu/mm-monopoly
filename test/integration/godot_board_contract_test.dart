@@ -27,7 +27,7 @@ void main() {
       expect(positions, orderedEquals([...positions]..sort()));
     });
 
-    test('creates one visual landing per logical dice step', () {
+    test('expands logical dice steps into every forward visual waypoint', () {
       final path = GodotBoardProtocol.visualPath(
         fromLogicalPosition: 37,
         spaces: 6,
@@ -35,15 +35,48 @@ void main() {
         visualSpotCount: 52,
       );
 
-      expect(path, hasLength(6));
-      expect(
-        path.last,
-        GodotBoardProtocol.toVisualPosition(
-          logicalPosition: 3,
-          logicalTileCount: 40,
-          visualSpotCount: 52,
-        ),
+      expect(path, orderedEquals([49, 50, 51, 0, 1, 2, 3, 4]));
+    });
+
+    test('a full forward lap visits every visual route spot in order', () {
+      final path = GodotBoardProtocol.visualPath(
+        fromLogicalPosition: 0,
+        spaces: 40,
+        logicalTileCount: 40,
+        visualSpotCount: 52,
       );
+
+      expect(
+        path,
+        orderedEquals([for (var spot = 1; spot < 52; spot++) spot, 0]),
+      );
+      expect(path.toSet(), hasLength(52));
+    });
+
+    test('reverse movement includes intermediate spots and wraps past GO', () {
+      final path = GodotBoardProtocol.visualPath(
+        fromLogicalPosition: 2,
+        spaces: -4,
+        logicalTileCount: 40,
+        visualSpotCount: 52,
+      );
+
+      expect(path, orderedEquals([2, 1, 0, 51, 50, 49]));
+    });
+
+    test('a full reverse lap preserves route continuity', () {
+      final path = GodotBoardProtocol.visualPath(
+        fromLogicalPosition: 0,
+        spaces: -40,
+        logicalTileCount: 40,
+        visualSpotCount: 52,
+      );
+
+      expect(
+        path,
+        orderedEquals([for (var spot = 51; spot >= 0; spot--) spot]),
+      );
+      expect(path.toSet(), hasLength(52));
     });
 
     test('serializes logical tile type and visual position for 3D parity', () {
@@ -84,6 +117,18 @@ void main() {
       expect(selection.logicalIndex, 7);
       expect(selection.visualIndex, 9);
       expect(selection.title, 'Chance');
+    });
+
+    test('deserializes an exact scene-state application acknowledgement', () {
+      final applied = GodotBoardStateApplied.fromMap({
+        'sessionId': 'game-9',
+        'stateGeneration': 4,
+        'boardId': 'usa',
+      });
+
+      expect(applied.sessionId, 'game-9');
+      expect(applied.stateGeneration, 4);
+      expect(applied.boardId, 'usa');
     });
   });
 }

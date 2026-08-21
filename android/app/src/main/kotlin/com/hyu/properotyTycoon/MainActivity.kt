@@ -65,6 +65,13 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
                         result.success(true)
                     }
                 }
+                "retryScene" -> {
+                    val sessionId = boardSessions.activeSession?.id
+                    result.success(
+                        sessionId != null &&
+                            bridgePlugin?.retryScene(sessionId) == true,
+                    )
+                }
                 "animateRoll" -> {
                     val json = call.arguments as? String
                     if (json == null) {
@@ -268,7 +275,9 @@ private class PropertyTycoonGodotBridge(
     }
 
     private var scriptReady = false
+    private var sceneReadyToken: String? = null
     private var latestState: String? = null
+    private var latestStateToken: GodotBoardStateToken? = null
     private var attachedSessionId: Long? = null
     private val queuedRolls = ArrayDeque<QueuedRoll>()
     private val commandSessions = GodotCommandSessionRegistry()
@@ -296,6 +305,7 @@ private class PropertyTycoonGodotBridge(
         queuedRolls.clear()
         commandSessions.clear()
         latestState = json
+        latestStateToken = GodotBoardStateToken.fromJson(json)
         if (scriptReady && attachedSessionId != null) {
             emitSignal(SYNC_STATE_SIGNAL.name, json)
         }
@@ -306,7 +316,10 @@ private class PropertyTycoonGodotBridge(
         attachedSessionId = sessionId
         queuedRolls.clear()
         commandSessions.clear()
-        if (cachedState != null) latestState = cachedState
+        if (cachedState != null) {
+            latestState = cachedState
+            latestStateToken = GodotBoardStateToken.fromJson(cachedState)
+        }
         if (scriptReady) announceReady(sessionId)
     }
 
@@ -353,25 +366,79 @@ private class PropertyTycoonGodotBridge(
 
     @UsedByGodot
     @Synchronized
-    fun ready() {
+    fun ready(token: String) {
+        if (token.isBlank()) return
         scriptReady = true
+        sceneReadyToken = token
         val sessionId = attachedSessionId ?: return
         announceReady(sessionId)
     }
 
     @Synchronized
+    fun retryScene(sessionId: Long): Boolean {
+        if (!scriptReady ||
+            sceneReadyToken.isNullOrBlank() ||
+            attachedSessionId != sessionId
+        ) {
+            return false
+        }
+        announceReady(sessionId)
+        return true
+    }
+
+    @Synchronized
     private fun announceReady(sessionId: Long) {
-        if (!scriptReady || attachedSessionId != sessionId) return
-        latestState?.let { emitSignal(SYNC_STATE_SIGNAL.name, it) }
-        while (queuedRolls.isNotEmpty()) {
-            val roll = queuedRolls.removeFirst()
-            if (roll.sessionId == sessionId) {
-                emitSignal(ANIMATE_ROLL_SIGNAL.name, roll.json)
-            } else {
-                commandSessions.remove(roll.commandId)
+        val readyToken = sceneReadyToken
+        if (!scriptReady || readyToken.isNullOrBlank() || attachedSessionId != sessionId) return
+        for (action in godotBoardReadyDispatchActions(latestState != null)) {
+            when (action) {
+                GodotBoardReadyDispatchAction.SYNC_CACHED_STATE ->
+                    latestState?.let { emitSignal(SYNC_STATE_SIGNAL.name, it) }
+                GodotBoardReadyDispatchAction.FLUSH_QUEUED_ROLLS -> {
+                    while (queuedRolls.isNotEmpty()) {
+                        val roll = queuedRolls.removeFirst()
+                        if (roll.sessionId == sessionId) {
+                            emitSignal(ANIMATE_ROLL_SIGNAL.name, roll.json)
+                        } else {
+                            commandSessions.remove(roll.commandId)
+                        }
+                    }
+                }
+                GodotBoardReadyDispatchAction.NOTIFY_FLUTTER ->
+                    activity.notifyFlutterForSession(
+                        sessionId,
+                        "boardReady",
+                        mapOf("sceneReadyToken" to readyToken),
+                    )
             }
         }
-        activity.notifyFlutterForSession(sessionId, "boardReady")
+    }
+
+    @UsedByGodot
+    fun stateApplied(
+        gameSessionId: String,
+        stateGeneration: Long,
+        boardId: String,
+    ) {
+        val nativeSessionId =
+            synchronized(this) {
+                val applied = GodotBoardStateToken(
+                    sessionId = gameSessionId,
+                    stateGeneration = stateGeneration,
+                    boardId = boardId,
+                )
+                if (applied != latestStateToken) return
+                attachedSessionId
+            } ?: return
+        activity.notifyFlutterForSession(
+            nativeSessionId,
+            "stateApplied",
+            mapOf(
+                "sessionId" to gameSessionId,
+                "stateGeneration" to stateGeneration,
+                "boardId" to boardId,
+            ),
+        )
     }
 
     @UsedByGodot
@@ -420,5 +487,65 @@ private class PropertyTycoonGodotBridge(
                 "title" to title.ifEmpty { null },
             ),
         )
+    }
+}
+
+internal enum class GodotBoardReadyDispatchAction {
+    SYNC_CACHED_STATE,
+    FLUSH_QUEUED_ROLLS,
+    NOTIFY_FLUTTER,
+}
+
+/**
+ * Native owns delivery of the one cached scene generation at readiness.
+ * Flutter treats boardReady as a readiness fact and must not echo the same
+ * generation back through syncState.
+ */
+internal fun godotBoardReadyDispatchActions(
+    hasCachedState: Boolean,
+): List<GodotBoardReadyDispatchAction> =
+    if (hasCachedState) {
+        listOf(
+            GodotBoardReadyDispatchAction.SYNC_CACHED_STATE,
+            GodotBoardReadyDispatchAction.FLUSH_QUEUED_ROLLS,
+            GodotBoardReadyDispatchAction.NOTIFY_FLUTTER,
+        )
+    } else {
+        listOf(
+            GodotBoardReadyDispatchAction.FLUSH_QUEUED_ROLLS,
+            GodotBoardReadyDispatchAction.NOTIFY_FLUTTER,
+        )
+    }
+
+internal data class GodotBoardStateToken(
+    val sessionId: String,
+    val stateGeneration: Long,
+    val boardId: String,
+) {
+    companion object {
+        fun fromJson(json: String): GodotBoardStateToken? =
+            runCatching {
+                val payload = JSONObject(json)
+                fromValues(
+                    sessionId = payload.optString("sessionId"),
+                    stateGeneration = payload.optLong("stateGeneration", -1L),
+                    boardId = payload.optString("boardId"),
+                )
+            }.getOrNull()
+
+        fun fromValues(
+            sessionId: String?,
+            stateGeneration: Long?,
+            boardId: String?,
+        ): GodotBoardStateToken? {
+            if (sessionId.isNullOrBlank() ||
+                stateGeneration == null ||
+                stateGeneration < 0L ||
+                boardId.isNullOrBlank()
+            ) {
+                return null
+            }
+            return GodotBoardStateToken(sessionId, stateGeneration, boardId)
+        }
     }
 }

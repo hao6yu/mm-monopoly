@@ -105,6 +105,7 @@ app.*.map.json
 *.g.dart
 *.freezed.dart
 *.mocks.dart
+/godot_3d/.godot/
 
 # Test coverage
 coverage/

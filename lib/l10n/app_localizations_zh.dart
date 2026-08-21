@@ -936,7 +936,59 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noProperties => '没有地产';
 
   @override
-  String get yourTurn => '轮到你了';
+  String get humanPlayer => '真人';
+
+  @override
+  String get showPlayerStatus => '显示玩家状态';
+
+  @override
+  String get hidePlayerStatus => '隐藏玩家状态';
+
+  @override
+  String roundNumber(int number) {
+    return '第 $number 回合';
+  }
+
+  @override
+  String get activePlayer => '当前';
+
+  @override
+  String get waitingPlayer => '等待中';
+
+  @override
+  String aiThinking(String name) {
+    return '$name 正在思考……';
+  }
+
+  @override
+  String aiRolling(String name) {
+    return '$name 正在掷骰子……';
+  }
+
+  @override
+  String aiResolving(String name) {
+    return '$name 正在处理回合……';
+  }
+
+  @override
+  String playerRolling(String name) {
+    return '$name 正在掷骰子……';
+  }
+
+  @override
+  String playerMoving(String name) {
+    return '$name 正在移动……';
+  }
+
+  @override
+  String passToPlayer(String name) {
+    return '请交给 $name • 轮到你了';
+  }
+
+  @override
+  String resolvingPlayerTurn(String name) {
+    return '正在处理 $name 的回合……';
+  }
 
   @override
   String tileN(int position) {
@@ -951,6 +1003,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get rollDice => '掷骰子';
+
+  @override
+  String rollForPlayer(String name) {
+    return '为$name掷骰子';
+  }
+
+  @override
+  String get diceLabel => '骰子';
+
+  @override
+  String get lastRollLabel => '上次点数';
+
+  @override
+  String get cameraGestureHint => '单指：移动 • 双指：旋转 • 捏合：缩放';
+
+  @override
+  String get resetView => '重置视角';
+
+  @override
+  String get viewLabel => '视角';
+
+  @override
+  String get playMusic => '播放音乐';
+
+  @override
+  String get muteMusic => '关闭音乐';
+
+  @override
+  String get moreActions => '更多操作';
+
+  @override
+  String get pleaseWait => '请稍候…';
 
   @override
   String get tap => '点击';
@@ -1490,6 +1574,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get select => '选择';
 
   @override
+  String get yourTurn => '轮到你了';
+
+  @override
   String get countryUSA => '美国';
 
   @override
@@ -1563,6 +1650,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cityCancun => '坎昆';
+
+  @override
+  String get preparing3DBoard => '正在准备 3D 棋盘…';
+
+  @override
+  String get starting3DBoard => '正在启动 3D 棋盘…';
+
+  @override
+  String get building3DBoard => '正在构建城市并放置玩家…';
+
+  @override
+  String get failedToPrepare3DBoard => '无法为本局游戏准备 3D 棋盘。';
+
+  @override
+  String get godotConnectionUnavailable => '3D 棋盘连接不可用。';
+
+  @override
+  String get godotPreparationTimedOut => '3D 棋盘准备时间过长。';
+
+  @override
+  String get retry3DBoard => '重试 3D';
+
+  @override
+  String get use2DBoard => '使用 2D 棋盘';
 
   @override
   String get continuedOn2DBoard => '3D 棋盘已停止响应，游戏将切换到 2D 棋盘继续。';

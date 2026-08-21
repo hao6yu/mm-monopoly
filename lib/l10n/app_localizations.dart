@@ -1838,11 +1838,83 @@ abstract class AppLocalizations {
   /// **'No properties'**
   String get noProperties;
 
-  /// No description provided for @yourTurn.
+  /// No description provided for @humanPlayer.
   ///
   /// In en, this message translates to:
-  /// **'YOUR TURN'**
-  String get yourTurn;
+  /// **'Human'**
+  String get humanPlayer;
+
+  /// No description provided for @showPlayerStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Show player status'**
+  String get showPlayerStatus;
+
+  /// No description provided for @hidePlayerStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide player status'**
+  String get hidePlayerStatus;
+
+  /// No description provided for @roundNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Round {number}'**
+  String roundNumber(int number);
+
+  /// No description provided for @activePlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activePlayer;
+
+  /// No description provided for @waitingPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get waitingPlayer;
+
+  /// No description provided for @aiThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is thinking…'**
+  String aiThinking(String name);
+
+  /// No description provided for @aiRolling.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is rolling…'**
+  String aiRolling(String name);
+
+  /// No description provided for @aiResolving.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is resolving…'**
+  String aiResolving(String name);
+
+  /// No description provided for @playerRolling.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is rolling…'**
+  String playerRolling(String name);
+
+  /// No description provided for @playerMoving.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is moving…'**
+  String playerMoving(String name);
+
+  /// No description provided for @passToPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Pass to {name} • Your turn'**
+  String passToPlayer(String name);
+
+  /// No description provided for @resolvingPlayerTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolving {name}\'s turn…'**
+  String resolvingPlayerTurn(String name);
 
   /// No description provided for @tileN.
   ///
@@ -1867,6 +1939,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ROLL DICE'**
   String get rollDice;
+
+  /// No description provided for @rollForPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll for {name}'**
+  String rollForPlayer(String name);
+
+  /// No description provided for @diceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'DICE'**
+  String get diceLabel;
+
+  /// No description provided for @lastRollLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'LAST ROLL'**
+  String get lastRollLabel;
+
+  /// No description provided for @cameraGestureHint.
+  ///
+  /// In en, this message translates to:
+  /// **'1 finger: move • 2 fingers: rotate • Pinch: zoom'**
+  String get cameraGestureHint;
+
+  /// No description provided for @resetView.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset view'**
+  String get resetView;
+
+  /// No description provided for @viewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'VIEW'**
+  String get viewLabel;
+
+  /// No description provided for @playMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Play music'**
+  String get playMusic;
+
+  /// No description provided for @muteMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute music'**
+  String get muteMusic;
+
+  /// No description provided for @moreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get moreActions;
+
+  /// No description provided for @pleaseWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait…'**
+  String get pleaseWait;
 
   /// No description provided for @tap.
   ///
@@ -2858,6 +2990,12 @@ abstract class AppLocalizations {
   /// **'Select'**
   String get select;
 
+  /// No description provided for @yourTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'YOUR TURN'**
+  String get yourTurn;
+
   /// No description provided for @countryUSA.
   ///
   /// In en, this message translates to:
@@ -3007,6 +3145,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancún'**
   String get cityCancun;
+
+  /// No description provided for @preparing3DBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the 3D board…'**
+  String get preparing3DBoard;
+
+  /// No description provided for @starting3DBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the 3D board…'**
+  String get starting3DBoard;
+
+  /// No description provided for @building3DBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Building the city and placing players…'**
+  String get building3DBoard;
+
+  /// No description provided for @failedToPrepare3DBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'The 3D board couldn\'t prepare this game.'**
+  String get failedToPrepare3DBoard;
+
+  /// No description provided for @godotConnectionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The 3D board connection is unavailable.'**
+  String get godotConnectionUnavailable;
+
+  /// No description provided for @godotPreparationTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'The 3D board took too long to prepare this game.'**
+  String get godotPreparationTimedOut;
+
+  /// No description provided for @retry3DBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry 3D'**
+  String get retry3DBoard;
+
+  /// No description provided for @use2DBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 2D board'**
+  String get use2DBoard;
 
   /// No description provided for @continuedOn2DBoard.
   ///

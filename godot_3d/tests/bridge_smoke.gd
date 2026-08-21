@@ -53,6 +53,9 @@ func _run() -> void:
 		logical_tiles.append(tile_payload)
 
 	var state := {
+		"sessionId": "bridge-smoke-session",
+		"stateGeneration": 1,
+		"boardId": "usa",
 		"currentPlayerIndex": 0,
 		"die1": 0,
 		"die2": 0,
@@ -79,15 +82,24 @@ func _run() -> void:
 		"action": "sync_state",
 		"json": JSON.stringify(state),
 	})
+	_test_state_applied_handshake(scene, state)
+	_test_mobile_render_budget(scene)
+	_test_unrolled_dice_state(scene)
 	_test_token_grounding_and_occupancy(scene)
+	_test_distance_scaled_token_motion(scene)
 	await _test_roll_cancellation_on_state_sync(scene, state)
+	_test_native_one_finger_pan(scene)
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
 	_test_host_camera_pan(scene)
 	_test_mobile_camera_framing(scene)
 	_test_die_face_rotations(scene)
 	_test_boat_lanes(scene)
+	_test_embedded_cloud_policy(scene)
 	await _test_city_catalog(scene, state)
+	# The development/picking fixtures below assert New York-specific model
+	# families. Restore that city after exercising the complete catalog.
+	state["boardId"] = "usa_new_york"
 	_test_special_tile_metadata(scene)
 	_test_property_development_metadata(scene)
 	await _test_nyc_development_families(scene, state)
@@ -95,6 +107,7 @@ func _run() -> void:
 	await _test_property_state_transition(scene, state)
 	_test_board_object_picking(scene)
 
+	var roll_camera_snapshot := _camera_snapshot(scene)
 	var command := {
 		"commandId": "bridge-smoke",
 		"playerId": "player-one",
@@ -114,8 +127,8 @@ func _run() -> void:
 		push_error("3D roll did not create the five-step route preview.")
 		quit(1)
 		return
-	if not scene.cinematic_camera_active:
-		push_error("3D roll did not start the camera cinematic.")
+	if not _camera_matches_snapshot(scene, roll_camera_snapshot):
+		push_error("Starting a dice roll moved the player-controlled camera.")
 		quit(1)
 		return
 	var expected_marker_position: Vector3 = (
@@ -148,12 +161,142 @@ func _run() -> void:
 				push_error("3D dice did not settle on the Flutter roll values.")
 				quit(1)
 				return
+			if not _camera_matches_snapshot(scene, roll_camera_snapshot):
+				push_error("A completed roll did not preserve the chosen camera view.")
+				quit(1)
+				return
 			print("BRIDGE_SMOKE_OK ", message)
 			quit(0)
 			return
 
 	push_error("Timed out waiting for movementComplete.")
 	quit(1)
+
+
+func _test_state_applied_handshake(scene: Node, state: Dictionary) -> void:
+	var message: Dictionary = scene.host_poll_message()
+	var arguments_value = JSON.parse_string(str(message.get("arguments", "{}")))
+	var arguments: Dictionary = (
+		arguments_value as Dictionary
+		if typeof(arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if (
+		str(message.get("method", "")) != "stateApplied"
+		or str(arguments.get("sessionId", "")) != str(state["sessionId"])
+		or int(arguments.get("stateGeneration", -1))
+		!= int(state["stateGeneration"])
+		or str(arguments.get("boardId", "")) != str(state["boardId"])
+	):
+		push_error("Godot acknowledged readiness before applying the requested state token.")
+		quit(1)
+		return
+	print("STATE_APPLIED_HANDSHAKE_OK ", arguments)
+
+
+func _camera_snapshot(scene: Node) -> Dictionary:
+	return {
+		"target": scene.camera_target,
+		"azimuth": scene.camera_azimuth,
+		"elevation": scene.camera_elevation,
+		"distance": scene.camera_distance,
+	}
+
+
+func _camera_matches_snapshot(scene: Node, snapshot: Dictionary) -> bool:
+	var expected_target: Vector3 = snapshot["target"]
+	return (
+		scene.camera_target.is_equal_approx(expected_target)
+		and is_equal_approx(scene.camera_azimuth, float(snapshot["azimuth"]))
+		and is_equal_approx(scene.camera_elevation, float(snapshot["elevation"]))
+		and is_equal_approx(scene.camera_distance, float(snapshot["distance"]))
+	)
+
+
+func _test_mobile_render_budget(scene: Node) -> void:
+	var msaa_3d := int(ProjectSettings.get_setting(
+		"rendering/anti_aliasing/quality/msaa_3d",
+		-1
+	))
+	var directional_shadow_size := int(ProjectSettings.get_setting(
+		"rendering/lights_and_shadows/directional_shadow/size",
+		-1
+	))
+	var positional_shadow_size := int(ProjectSettings.get_setting(
+		"rendering/lights_and_shadows/positional_shadow/atlas_size",
+		-1
+	))
+	var key_light := scene.get_node_or_null("KeyLight") as DirectionalLight3D
+	var fill_light := scene.get_node_or_null("WarmFill") as OmniLight3D
+	var probe_root := Node3D.new()
+	scene.add_child(probe_root)
+	var probe_material := StandardMaterial3D.new()
+	var first_pip: MeshInstance3D = scene._add_sphere(
+		probe_root,
+		0.072,
+		Vector3.ZERO,
+		probe_material,
+		10,
+		6
+	)
+	var second_pip: MeshInstance3D = scene._add_sphere(
+		probe_root,
+		0.072,
+		Vector3.RIGHT,
+		probe_material,
+		10,
+		6
+	)
+	var first_box: MeshInstance3D = scene._add_box(
+		probe_root,
+		Vector3.ONE,
+		Vector3.ZERO,
+		probe_material
+	)
+	var second_box: MeshInstance3D = scene._add_box(
+		probe_root,
+		Vector3.ONE,
+		Vector3.RIGHT,
+		probe_material
+	)
+	if (
+		msaa_3d != Viewport.MSAA_2X
+		or directional_shadow_size > 2048
+		or positional_shadow_size > 1024
+		or key_light == null
+		or not key_light.shadow_enabled
+		or fill_light == null
+		or fill_light.shadow_enabled
+		or scene.MOBILE_CYLINDER_RADIAL_SEGMENTS > 24
+		or first_pip.mesh != second_pip.mesh
+		or first_box.mesh != second_box.mesh
+		or first_pip.cast_shadow
+		!= GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	):
+		push_error("The embedded board exceeded its mobile GPU render budget.")
+		quit(1)
+		return
+	probe_root.queue_free()
+	print(
+		"MOBILE_RENDER_BUDGET_OK msaa=",
+		msaa_3d,
+		" directional_shadow=",
+		directional_shadow_size,
+		" positional_shadow=",
+		positional_shadow_size
+	)
+
+
+func _test_unrolled_dice_state(scene: Node) -> void:
+	if (
+		scene.dice_value_label.text != "DICE\n—"
+		or scene.dice_nodes.size() < 2
+		or scene.dice_nodes[1].visible
+	):
+		push_error("A new game presents an unset die as a settled roll value.")
+		quit(1)
+		return
+	print("UNROLLED_DICE_STATE_OK")
 
 
 func _test_token_grounding_and_occupancy(scene: Node) -> void:
@@ -230,6 +373,34 @@ func _test_token_grounding_and_occupancy(scene: Node) -> void:
 		quit(1)
 		return
 	print("TOKEN_GROUNDING_OCCUPANCY_COLOR_OK")
+
+
+func _test_distance_scaled_token_motion(scene: Node) -> void:
+	var base_duration: float = scene.TOKEN_STEP_DURATION
+	var adjacent_duration: float = scene._token_step_duration(0, 1, base_duration)
+	var skipped_duration: float = scene._token_step_duration(0, 2, base_duration)
+	var adjacent_distance: float = scene.tile_positions[0].distance_to(
+		scene.tile_positions[1]
+	)
+	var skipped_distance: float = scene.tile_positions[0].distance_to(
+		scene.tile_positions[2]
+	)
+	var adjacent_speed := adjacent_distance / adjacent_duration
+	var skipped_speed := skipped_distance / skipped_duration
+	if skipped_duration <= adjacent_duration:
+		push_error("A longer visual segment must not animate faster than one step.")
+		quit(1)
+		return
+	if absf(adjacent_speed - skipped_speed) > adjacent_speed * 0.02:
+		push_error("Pawn movement speed changes across different route distances.")
+		quit(1)
+		return
+	print(
+		"DISTANCE_SCALED_TOKEN_MOTION_OK ",
+		adjacent_duration,
+		" -> ",
+		skipped_duration
+	)
 
 
 func _test_roll_cancellation_on_state_sync(
@@ -516,8 +687,9 @@ func _test_property_state_transition(scene: Node, state: Dictionary) -> void:
 		or markers.get_node_or_null("NYCBrownstoneDevelopment") == null
 		or status == null
 		or status.text != "SOLD"
+		or status.visible
 	):
-		push_error("3D property state transition did not animate.")
+		push_error("Embedded property transition is missing or has a floating label.")
 		quit(1)
 		return
 	print("PROPERTY_STATE_TRANSITION_OK")
@@ -538,7 +710,14 @@ func _test_board_object_picking(scene: Node) -> void:
 			"normalizedY": screen_position.y / viewport_size.y,
 		}),
 	})
-	var message: Dictionary = scene.host_poll_message()
+	var message: Dictionary = {}
+	for _attempt in 64:
+		var candidate: Dictionary = scene.host_poll_message()
+		if candidate.is_empty():
+			break
+		if candidate.get("method", "") == "boardObjectTapped":
+			message = candidate
+			break
 	if message.get("method", "") != "boardObjectTapped":
 		push_error("3D board tap did not emit a Flutter selection.")
 		quit(1)
@@ -557,6 +736,7 @@ func _test_board_object_picking(scene: Node) -> void:
 
 func _test_pinch_zoom(scene: Node) -> void:
 	var initial_distance: float = scene.camera_distance
+	var initial_azimuth: float = scene.camera_azimuth
 	var first_touch := InputEventScreenTouch.new()
 	first_touch.index = 0
 	first_touch.position = Vector2(100.0, 100.0)
@@ -582,6 +762,10 @@ func _test_pinch_zoom(scene: Node) -> void:
 		)
 		quit(1)
 		return
+	if is_equal_approx(scene.camera_azimuth, initial_azimuth):
+		push_error("Two-finger drag should rotate while pinch zoom remains active.")
+		quit(1)
+		return
 
 	var zoomed_distance: float = scene.camera_distance
 	var close_fingers := InputEventScreenDrag.new()
@@ -599,13 +783,49 @@ func _test_pinch_zoom(scene: Node) -> void:
 		return
 
 	print(
-		"PINCH_ZOOM_OK ",
+		"TWO_FINGER_ORBIT_AND_PINCH_OK ",
 		initial_distance,
 		" -> ",
 		zoomed_distance,
 		" -> ",
 		scene.camera_distance
 	)
+	var release_first := InputEventScreenTouch.new()
+	release_first.index = 0
+	release_first.position = Vector2(100.0, 100.0)
+	release_first.pressed = false
+	scene._unhandled_input(release_first)
+	var release_second := InputEventScreenTouch.new()
+	release_second.index = 1
+	release_second.position = Vector2(150.0, 100.0)
+	release_second.pressed = false
+	scene._unhandled_input(release_second)
+	scene._reset_camera()
+
+
+func _test_native_one_finger_pan(scene: Node) -> void:
+	var initial_target: Vector3 = scene.camera_target
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = Vector2(100.0, 100.0)
+	touch.pressed = true
+	scene._unhandled_input(touch)
+
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = Vector2(180.0, 55.0)
+	drag.relative = Vector2(80.0, -45.0)
+	scene._unhandled_input(drag)
+	if scene.camera_target.is_equal_approx(initial_target):
+		push_error("One-finger drag should move the camera across the board.")
+		quit(1)
+		return
+
+	touch.position = drag.position
+	touch.pressed = false
+	scene._unhandled_input(touch)
+	print("ONE_FINGER_CAMERA_PAN_OK ", initial_target, " -> ", scene.camera_target)
+	scene._reset_camera()
 
 
 func _test_host_camera_gesture(scene: Node) -> void:
@@ -683,6 +903,7 @@ func _test_mobile_camera_framing(scene: Node) -> void:
 		quit(1)
 		return
 	scene.camera_uses_portrait_framing = true
+	scene.camera_uses_tablet_landscape_framing = false
 	if not is_equal_approx(scene._default_camera_distance(), 28.0):
 		push_error("Portrait screens should start closer to the board.")
 		quit(1)
@@ -709,6 +930,16 @@ func _test_mobile_camera_framing(scene: Node) -> void:
 		return
 	print("MOBILE_CAMERA_FRAMING_OK close zoom ", scene.camera_distance)
 	scene.camera_uses_portrait_framing = false
+	scene.camera_uses_tablet_landscape_framing = true
+	if not is_equal_approx(scene._default_camera_distance(), 31.5):
+		push_error("Tablet landscape should use the closer release framing.")
+		quit(1)
+		return
+	scene.camera_uses_tablet_landscape_framing = false
+	if not is_equal_approx(scene._default_camera_distance(), 36.0):
+		push_error("Wide landscape should retain the full-board framing.")
+		quit(1)
+		return
 	scene._reset_camera()
 
 
@@ -729,6 +960,20 @@ func _test_die_face_rotations(scene: Node) -> void:
 			quit(1)
 			return
 	print("DICE_FACE_ROTATIONS_OK")
+
+
+func _test_embedded_cloud_policy(scene: Node) -> void:
+	scene._enable_embedded_mode()
+	if scene.cloud_nodes.is_empty():
+		push_error("The ambient cloud visibility check has no scene fixtures.")
+		quit(1)
+		return
+	for cloud in scene.cloud_nodes:
+		if is_instance_valid(cloud) and cloud.visible:
+			push_error("An embedded mobile cloud can still occlude the board.")
+			quit(1)
+			return
+	print("EMBEDDED_CLOUD_OCCLUSION_POLICY_OK")
 
 
 func _dice_values_face_up(scene: Node, values: Array) -> bool:
@@ -803,10 +1048,23 @@ func _test_city_catalog(scene: Node, base_state: Dictionary) -> void:
 			push_error("%s did not build 52 visual locations." % board_id)
 			quit(1)
 			return
-		if scene.player_tokens.size() != 2 or scene.dice_nodes.size() != 2:
-			push_error("%s did not rebuild its game pieces and dice." % board_id)
+		if scene.player_tokens.size() < 2 or scene.dice_nodes.size() != 2:
+			push_error(
+				"%s did not rebuild its game pieces and dice (players=%d, dice=%d)."
+				% [board_id, scene.player_tokens.size(), scene.dice_nodes.size()]
+			)
 			quit(1)
 			return
+		for token_index in range(2, scene.player_tokens.size()):
+			if scene.player_tokens[token_index].visible:
+				push_error("%s left a surplus bootstrap pawn visible." % board_id)
+				quit(1)
+				return
+		for cloud in scene.cloud_nodes:
+			if is_instance_valid(cloud) and cloud.visible:
+				push_error("%s rebuilt an occluding mobile cloud layer." % board_id)
+				quit(1)
+				return
 		if scene.active_tile_names[0] != "TILE 00":
 			push_error("%s did not apply Flutter tile names." % board_id)
 			quit(1)

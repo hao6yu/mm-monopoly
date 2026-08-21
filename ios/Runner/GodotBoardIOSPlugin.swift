@@ -8,6 +8,51 @@ import UIKit
 final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
   static let viewType = "property_tycoon/godot_board"
   static let channelName = "property_tycoon/godot_board_bridge"
+  static let godotRenderScaleRatio: CGFloat = 0.75
+  static let godotMaximumContentScale: CGFloat = 2.0
+  static let godotMaximumFramesPerSecond = 60
+
+  enum SceneReadyDispatchAction: Equatable {
+    case notifyFlutter
+    case sendCachedState
+  }
+
+  /// Ready-time state delivery belongs to the native cache. Flutter records
+  /// boardReady but does not echo the same generation back into Godot.
+  static func sceneReadyDispatchActions(
+    hasCachedState: Bool
+  ) -> [SceneReadyDispatchAction] {
+    hasCachedState
+      ? [.sendCachedState, .notifyFlutter]
+      : [.notifyFlutter]
+  }
+
+  /// A readiness callback is replayable only when it carries a token created
+  /// by the running Godot scene. Engine startup alone does not prove that the
+  /// current scene exists or has connected its host bridge.
+  static func observedSceneReadyToken(from arguments: Any?) -> String? {
+    guard
+      let values = arguments as? [String: Any],
+      let token = values["sceneReadyToken"] as? String
+    else {
+      return nil
+    }
+    let normalized = token.trimmingCharacters(in: .whitespacesAndNewlines)
+    return normalized.isEmpty ? nil : normalized
+  }
+
+  /// Keeps Flutter and UIKit at native Retina resolution while reducing only
+  /// the embedded 3D drawable. A 2x iPad therefore renders Godot at 1.5x; a
+  /// 3x iPhone is bounded at 2x to avoid an unnecessarily large Metal surface.
+  static func godotContentScale(for nativeScale: CGFloat) -> CGFloat {
+    let safeNativeScale =
+      nativeScale.isFinite && nativeScale > 0 ? nativeScale : 1.0
+    let scaled = safeNativeScale * godotRenderScaleRatio
+    return min(
+      safeNativeScale,
+      max(1.0, min(godotMaximumContentScale, scaled))
+    )
+  }
 
   private let channel: FlutterMethodChannel
   private let godotApp = GodotApp(
@@ -23,7 +68,7 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
   // platform view so the engine never retains a layer from a retired view.
   private var hostedGodotView: UIGodotAppView?
   private var latestStateJSON: String?
-  private var boardReady = false
+  private var sceneReadyToken: String?
 
   private init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(
@@ -52,9 +97,9 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
       let available =
         Bundle.main.path(forResource: "property_tycoon", ofType: "pck") != nil
       result(available)
-      if available && boardReady {
+      if available, let sceneReadyToken {
         DispatchQueue.main.async { [weak self] in
-          self?.channel.invokeMethod("boardReady", arguments: nil)
+          self?.replayBoardReady(token: sceneReadyToken)
         }
       }
       #endif
@@ -71,9 +116,17 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
         return
       }
       latestStateJSON = json
-      if boardReady {
+      if sceneReadyToken != nil, viewHandle != nil {
         sendToGodot(action: "sync_state", json: json)
       }
+      result(true)
+
+    case "retryScene":
+      guard let sceneReadyToken else {
+        result(false)
+        return
+      }
+      dispatchSceneReady(token: sceneReadyToken, includeCachedState: true)
       result(true)
 
     case "animateRoll":
@@ -87,7 +140,7 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
         )
         return
       }
-      guard boardReady, viewHandle != nil else {
+      guard sceneReadyToken != nil, viewHandle != nil else {
         result(false)
         return
       }
@@ -105,7 +158,7 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
         )
         return
       }
-      guard boardReady, viewHandle != nil else {
+      guard sceneReadyToken != nil, viewHandle != nil else {
         result(false)
         return
       }
@@ -123,7 +176,7 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
         )
         return
       }
-      guard boardReady, viewHandle != nil else {
+      guard sceneReadyToken != nil, viewHandle != nil else {
         result(false)
         return
       }
@@ -139,23 +192,26 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
     if let hostedGodotView {
       hostedGodotView.removeFromSuperview()
       hostedGodotView.frame = frame
-      scheduleBoardReadyAnnouncements(for: hostedGodotView)
       return hostedGodotView
     }
 
     let godotView = UIGodotAppView(frame: frame)
     godotView.backgroundColor = UIColor(red: 0.027, green: 0.067, blue: 0.15, alpha: 1)
-    godotView.contentScaleFactor = UIScreen.main.scale
+    godotView.contentScaleFactor = Self.godotContentScale(
+      for: UIScreen.main.scale
+    )
+    godotView.maximumFramesPerSecond = Self.godotMaximumFramesPerSecond
     godotView.isMultipleTouchEnabled = true
     godotView.app = godotApp
     godotView.onReady = { [weak self] handle in
       guard let self else { return }
       self.viewHandle = handle
-      // SwiftGodot can unregister and re-register the view callbacks while
-      // Flutter reparents a platform view. Treat its ready handle as the
-      // authoritative readiness signal so Flutter cannot miss boardReady and
-      // remain behind its loading overlay even though Godot is rendering.
-      self.announceBoardReady()
+      // SwiftGodot's view handle proves only that the engine/window exists.
+      // Reparenting may replay a readiness token, but only after GDScript has
+      // emitted that token from its connected scene.
+      if let token = self.sceneReadyToken {
+        self.replayBoardReady(token: token)
+      }
     }
     godotView.onMessage = { [weak self] message in
       self?.handleGodotMessage(message)
@@ -167,7 +223,6 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
     // The registered onReady callback replaces this handle when available.
     viewHandle = GodotAppViewHandle(app: godotApp)
     _ = godotApp.start()
-    scheduleBoardReadyAnnouncements(for: godotView)
     return godotView
   }
 
@@ -184,43 +239,47 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
       return
     }
     let argumentsJSON = String(message["arguments"]) ?? "{}"
-
-    if method == "boardReady" {
-      announceBoardReady()
-      return
-    }
-
     let arguments: Any?
     if let data = argumentsJSON.data(using: .utf8) {
       arguments = try? JSONSerialization.jsonObject(with: data)
     } else {
       arguments = nil
     }
+
+    if method == "boardReady" {
+      guard let token = Self.observedSceneReadyToken(from: arguments) else {
+        return
+      }
+      sceneReadyToken = token
+      dispatchSceneReady(token: token, includeCachedState: true)
+      return
+    }
+
     channel.invokeMethod(method, arguments: arguments)
   }
 
-  private func announceBoardReady() {
-    boardReady = true
-    channel.invokeMethod("boardReady", arguments: nil)
-    if let json = latestStateJSON {
-      sendToGodot(action: "sync_state", json: json)
-    }
+  private func replayBoardReady(token: String) {
+    channel.invokeMethod(
+      "boardReady",
+      arguments: ["sceneReadyToken": token]
+    )
   }
 
-  private func scheduleBoardReadyAnnouncements(for godotView: UIGodotAppView) {
-    for delay in [0.25, 1.0, 2.5] {
-      DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak godotView] in
-        guard
-          let self,
-          let godotView,
-          self.hostedGodotView === godotView,
-          self.godotApp.instance?.isStarted() == true
-        else {
-          return
+  private func dispatchSceneReady(
+    token: String,
+    includeCachedState: Bool
+  ) {
+    let cachedState = includeCachedState ? latestStateJSON : nil
+    for action in Self.sceneReadyDispatchActions(
+      hasCachedState: cachedState != nil
+    ) {
+      switch action {
+      case .notifyFlutter:
+        replayBoardReady(token: token)
+      case .sendCachedState:
+        if let cachedState {
+          sendToGodot(action: "sync_state", json: cachedState)
         }
-        // Re-announcing is intentional: it retries the cached state after the
-        // Godot current scene becomes available and is harmless once synced.
-        self.announceBoardReady()
       }
     }
   }
