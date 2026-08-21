@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/player.dart';
@@ -12,16 +13,24 @@ class VictoryScreen extends StatefulWidget {
   final Player winner;
   final List<Player> allPlayers;
   final int gameTurns;
-  final VoidCallback onPlayAgain;
+  final FutureOr<void> Function() onPlayAgain;
   final VoidCallback onGoHome;
 
-  const VictoryScreen({super.key, required this.winner, required this.allPlayers, required this.gameTurns, required this.onPlayAgain, required this.onGoHome});
+  const VictoryScreen({
+    super.key,
+    required this.winner,
+    required this.allPlayers,
+    required this.gameTurns,
+    required this.onPlayAgain,
+    required this.onGoHome,
+  });
 
   @override
   State<VictoryScreen> createState() => _VictoryScreenState();
 }
 
-class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateMixin {
+class _VictoryScreenState extends State<VictoryScreen>
+    with TickerProviderStateMixin {
   late AnimationController _entranceController;
   late AnimationController _shineController;
   late AnimationController _buttonController;
@@ -32,27 +41,67 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
   late Animation<double> _buttonSlide;
 
   bool _showFireworks = true;
-  bool _showConfetti = true;
+  final bool _showConfetti = true;
+  Timer? _fireworksTimer;
 
   @override
   void initState() {
     super.initState();
 
-    _entranceController = AnimationController(duration: const Duration(milliseconds: 2000), vsync: this);
+    _entranceController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
 
-    _shineController = AnimationController(duration: const Duration(milliseconds: 2000), vsync: this)..repeat();
+    _shineController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat();
 
-    _buttonController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this)..repeat(reverse: true);
+    _buttonController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..repeat(reverse: true);
 
-    _titleScale = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2).chain(CurveTween(curve: Curves.easeOut)), weight: 40),
-      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0).chain(CurveTween(curve: Curves.elasticOut)), weight: 60),
-    ]).animate(CurvedAnimation(parent: _entranceController, curve: const Interval(0, 0.5)));
+    _titleScale =
+        TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 0.0,
+              end: 1.2,
+            ).chain(CurveTween(curve: Curves.easeOut)),
+            weight: 40,
+          ),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 1.2,
+              end: 1.0,
+            ).chain(CurveTween(curve: Curves.elasticOut)),
+            weight: 60,
+          ),
+        ]).animate(
+          CurvedAnimation(
+            parent: _entranceController,
+            curve: const Interval(0, 0.5),
+          ),
+        );
 
-    _avatarScale = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.1), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 1.1, end: 1.0).chain(CurveTween(curve: Curves.bounceOut)), weight: 50),
-    ]).animate(CurvedAnimation(parent: _entranceController, curve: const Interval(0.2, 0.7)));
+    _avatarScale =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.1), weight: 50),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 1.1,
+              end: 1.0,
+            ).chain(CurveTween(curve: Curves.bounceOut)),
+            weight: 50,
+          ),
+        ]).animate(
+          CurvedAnimation(
+            parent: _entranceController,
+            curve: const Interval(0.2, 0.7),
+          ),
+        );
 
     _statsSlide = Tween<double>(begin: 100, end: 0).animate(
       CurvedAnimation(
@@ -69,19 +118,20 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
     );
 
     _entranceController.forward();
-    
+
     // Play victory sound and music
     AudioService.instance.onVictory();
     AudioService.instance.playVictoryMusic();
 
     // Stop fireworks after a while
-    Future.delayed(const Duration(seconds: 8), () {
+    _fireworksTimer = Timer(const Duration(seconds: 8), () {
       if (mounted) setState(() => _showFireworks = false);
     });
   }
 
   @override
   void dispose() {
+    _fireworksTimer?.cancel();
     _entranceController.dispose();
     _shineController.dispose();
     _buttonController.dispose();
@@ -93,13 +143,23 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppTheme.background, Colors.black]),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppTheme.background, Colors.black],
+          ),
         ),
         child: SafeArea(
           child: Stack(
             children: [
               // Fireworks
-              if (_showFireworks) Positioned.fill(child: FireworksWidget(duration: const Duration(seconds: 8), burstCount: 12)),
+              if (_showFireworks)
+                Positioned.fill(
+                  child: FireworksWidget(
+                    duration: const Duration(seconds: 8),
+                    burstCount: 12,
+                  ),
+                ),
 
               // Confetti
               if (_showConfetti) Positioned.fill(child: _FallingConfetti()),
@@ -115,11 +175,17 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
                         const SizedBox(height: 40),
 
                         // Title
-                        Transform.scale(scale: _titleScale.value, child: _buildTitle()),
+                        Transform.scale(
+                          scale: _titleScale.value,
+                          child: _buildTitle(),
+                        ),
                         const SizedBox(height: 32),
 
                         // Winner avatar
-                        Transform.scale(scale: _avatarScale.value, child: _buildWinnerAvatar()),
+                        Transform.scale(
+                          scale: _avatarScale.value,
+                          child: _buildWinnerAvatar(),
+                        ),
                         const SizedBox(height: 24),
 
                         // Winner name
@@ -127,7 +193,11 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
                           opacity: _avatarScale.value.clamp(0, 1),
                           child: Text(
                             widget.winner.name,
-                            style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 32),
@@ -135,21 +205,30 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
                         // Stats card
                         Transform.translate(
                           offset: Offset(0, _statsSlide.value),
-                          child: Opacity(opacity: (1 - _statsSlide.value / 100).clamp(0, 1), child: _buildStatsCard()),
+                          child: Opacity(
+                            opacity: (1 - _statsSlide.value / 100).clamp(0, 1),
+                            child: _buildStatsCard(),
+                          ),
                         ),
                         const SizedBox(height: 24),
 
                         // Leaderboard
                         Transform.translate(
                           offset: Offset(0, _statsSlide.value),
-                          child: Opacity(opacity: (1 - _statsSlide.value / 100).clamp(0, 1), child: _buildLeaderboard()),
+                          child: Opacity(
+                            opacity: (1 - _statsSlide.value / 100).clamp(0, 1),
+                            child: _buildLeaderboard(),
+                          ),
                         ),
                         const SizedBox(height: 32),
 
                         // Buttons
                         Transform.translate(
                           offset: Offset(0, _buttonSlide.value),
-                          child: Opacity(opacity: (1 - _buttonSlide.value / 100).clamp(0, 1), child: _buildButtons()),
+                          child: Opacity(
+                            opacity: (1 - _buttonSlide.value / 100).clamp(0, 1),
+                            child: _buildButtons(),
+                          ),
                         ),
                         const SizedBox(height: 40),
                       ],
@@ -173,9 +252,22 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
           builder: (context, child) {
             return ShaderMask(
               shaderCallback: (bounds) {
-                return LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.amber.shade300, Colors.amber.shade600, Colors.amber.shade300], stops: [0, _shineController.value, 1]).createShader(bounds);
+                return LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.amber.shade300,
+                    Colors.amber.shade600,
+                    Colors.amber.shade300,
+                  ],
+                  stops: [0, _shineController.value, 1],
+                ).createShader(bounds);
               },
-              child: const Icon(Icons.emoji_events, size: 80, color: Colors.white),
+              child: const Icon(
+                Icons.emoji_events,
+                size: 80,
+                color: Colors.white,
+              ),
             );
           },
         ),
@@ -192,7 +284,7 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
                 foreground: Paint()
                   ..style = PaintingStyle.stroke
                   ..strokeWidth = 6
-                  ..color = Colors.amber.withOpacity(0.5),
+                  ..color = Colors.amber.withValues(alpha: 0.5),
               ),
             ),
             // Text
@@ -224,7 +316,15 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.amber.withOpacity(0.3 + _shineController.value * 0.3), blurRadius: 30, spreadRadius: 10)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amber.withValues(
+                      alpha: 0.3 + _shineController.value * 0.3,
+                    ),
+                    blurRadius: 30,
+                    spreadRadius: 10,
+                  ),
+                ],
               ),
             );
           },
@@ -234,7 +334,10 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
         // Crown
         Positioned(
           top: -10,
-          child: Transform.rotate(angle: -0.2, child: const Text('👑', style: TextStyle(fontSize: 40))),
+          child: Transform.rotate(
+            angle: -0.2,
+            child: const Text('👑', style: TextStyle(fontSize: 40)),
+          ),
         ),
       ],
     );
@@ -244,23 +347,47 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
           Text(
             AppLocalizations.of(context)!.gameStats,
-            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _StatItem(icon: Icons.attach_money, value: '\$${widget.winner.cash}', label: AppLocalizations.of(context)!.finalCash, color: Colors.green),
-              _StatItem(icon: Icons.home, value: '${widget.winner.propertyIds.length}', label: AppLocalizations.of(context)!.properties, color: Colors.blue),
-              _StatItem(icon: Icons.replay, value: '${widget.gameTurns}', label: AppLocalizations.of(context)!.turns, color: Colors.purple),
+              Expanded(
+                child: _StatItem(
+                  icon: Icons.attach_money,
+                  value: '\$${widget.winner.cash}',
+                  label: AppLocalizations.of(context)!.finalCash,
+                  color: Colors.green,
+                ),
+              ),
+              Expanded(
+                child: _StatItem(
+                  icon: Icons.home,
+                  value: '${widget.winner.propertyIds.length}',
+                  label: AppLocalizations.of(context)!.properties,
+                  color: Colors.blue,
+                ),
+              ),
+              Expanded(
+                child: _StatItem(
+                  icon: Icons.replay,
+                  value: '${widget.gameTurns}',
+                  label: AppLocalizations.of(context)!.turns,
+                  color: Colors.purple,
+                ),
+              ),
             ],
           ),
         ],
@@ -270,16 +397,24 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
 
   Widget _buildLeaderboard() {
     // Sort players by cash (descending)
-    final sortedPlayers = List<Player>.from(widget.allPlayers)..sort((a, b) => b.cash.compareTo(a.cash));
+    final sortedPlayers = List<Player>.from(widget.allPlayers)
+      ..sort((a, b) => b.cash.compareTo(a.cash));
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         children: [
           Text(
             AppLocalizations.of(context)!.finalStandings,
-            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 12),
           ...sortedPlayers.asMap().entries.map((entry) {
@@ -296,26 +431,49 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
                     width: 30,
                     child: Text(
                       '${index + 1}.',
-                      style: TextStyle(color: isWinner ? Colors.amber : Colors.white54, fontSize: 16, fontWeight: isWinner ? FontWeight.bold : FontWeight.normal),
+                      style: TextStyle(
+                        color: isWinner ? Colors.amber : Colors.white54,
+                        fontSize: 16,
+                        fontWeight: isWinner
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
                     ),
                   ),
                   // Avatar
-                  AvatarWidget(avatar: player.effectiveAvatar, size: 32, isSelected: isWinner),
+                  AvatarWidget(
+                    avatar: player.effectiveAvatar,
+                    size: 32,
+                    isSelected: isWinner,
+                  ),
                   const SizedBox(width: 12),
                   // Name
                   Expanded(
                     child: Text(
                       player.name,
-                      style: TextStyle(color: isWinner ? Colors.amber : Colors.white, fontSize: 16, fontWeight: isWinner ? FontWeight.bold : FontWeight.normal),
+                      style: TextStyle(
+                        color: isWinner ? Colors.amber : Colors.white,
+                        fontSize: 16,
+                        fontWeight: isWinner
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
                     ),
                   ),
                   // Cash
                   Text(
                     '\$${player.cash}',
-                    style: TextStyle(color: player.cash > 0 ? Colors.green : Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: player.cash > 0 ? Colors.green : Colors.red,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   // Winner badge
-                  if (isWinner) ...[const SizedBox(width: 8), const Icon(Icons.star, color: Colors.amber, size: 20)],
+                  if (isWinner) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.star, color: Colors.amber, size: 20),
+                  ],
                 ],
               ),
             );
@@ -338,14 +496,25 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: widget.onPlayAgain,
+                  key: const Key('victory-play-again-button'),
+                  onPressed: () async {
+                    await widget.onPlayAgain();
+                  },
                   icon: const Icon(Icons.replay, size: 24),
-                  label: Text(AppLocalizations.of(context)!.playAgain, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  label: Text(
+                    AppLocalizations.of(context)!.playAgain,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.amber,
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -357,14 +526,20 @@ class _VictoryScreenState extends State<VictoryScreen> with TickerProviderStateM
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
+            key: const Key('victory-home-button'),
             onPressed: widget.onGoHome,
             icon: const Icon(Icons.home, size: 24),
-            label: Text(AppLocalizations.of(context)!.backToMenu, style: const TextStyle(fontSize: 18)),
+            label: Text(
+              AppLocalizations.of(context)!.backToMenu,
+              style: const TextStyle(fontSize: 18),
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white70,
               side: const BorderSide(color: Colors.white30),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ),
@@ -379,7 +554,12 @@ class _StatItem extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _StatItem({required this.icon, required this.value, required this.label, required this.color});
+  const _StatItem({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -389,10 +569,17 @@ class _StatItem extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           value,
-          style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: color,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white54, fontSize: 12),
+        ),
       ],
     );
   }
@@ -404,17 +591,32 @@ class _FallingConfetti extends StatefulWidget {
   State<_FallingConfetti> createState() => _FallingConfettiState();
 }
 
-class _FallingConfettiState extends State<_FallingConfetti> with SingleTickerProviderStateMixin {
+class _FallingConfettiState extends State<_FallingConfetti>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   final List<_ConfettiPiece> _pieces = [];
   final Random _random = Random();
+  Size _screenSize = Size.zero;
+  bool _hasSeededPieces = false;
 
-  static const List<Color> _colors = [Colors.red, Colors.blue, Colors.green, Colors.yellow, Colors.purple, Colors.orange, Colors.pink, Colors.cyan];
+  static const List<Color> _colors = [
+    Colors.red,
+    Colors.blue,
+    Colors.green,
+    Colors.yellow,
+    Colors.purple,
+    Colors.orange,
+    Colors.pink,
+    Colors.cyan,
+  ];
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(seconds: 60), vsync: this);
+    _controller = AnimationController(
+      duration: const Duration(seconds: 60),
+      vsync: this,
+    );
 
     _controller.addListener(() {
       if (mounted) {
@@ -430,22 +632,29 @@ class _FallingConfettiState extends State<_FallingConfetti> with SingleTickerPro
           }
 
           // Remove off-screen pieces
-          _pieces.removeWhere((p) => p.y > MediaQuery.of(context).size.height + 50);
+          _pieces.removeWhere((p) => p.y > _screenSize.height + 50);
         });
       }
     });
 
     _controller.repeat();
+  }
 
-    // Add initial pieces
-    for (int i = 0; i < 30; i++) {
-      _addPiece(initialSpread: true);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _screenSize = MediaQuery.sizeOf(context);
+    if (!_hasSeededPieces) {
+      _hasSeededPieces = true;
+      for (int i = 0; i < 30; i++) {
+        _addPiece(initialSpread: true);
+      }
     }
   }
 
   void _addPiece({bool initialSpread = false}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = _screenSize.width;
+    final screenHeight = _screenSize.height;
 
     _pieces.add(
       _ConfettiPiece(
@@ -484,7 +693,17 @@ class _ConfettiPiece {
   Color color;
   double width, height;
 
-  _ConfettiPiece({required this.x, required this.y, required this.velocityX, required this.velocityY, required this.rotation, required this.rotationSpeed, required this.color, required this.width, required this.height});
+  _ConfettiPiece({
+    required this.x,
+    required this.y,
+    required this.velocityX,
+    required this.velocityY,
+    required this.rotation,
+    required this.rotationSpeed,
+    required this.color,
+    required this.width,
+    required this.height,
+  });
 
   void update(double dt) {
     // Gentle sway
@@ -506,14 +725,18 @@ class _ConfettiPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final piece in pieces) {
       final paint = Paint()
-        ..color = piece.color.withOpacity(0.8)
+        ..color = piece.color.withValues(alpha: 0.8)
         ..style = PaintingStyle.fill;
 
       canvas.save();
       canvas.translate(piece.x, piece.y);
       canvas.rotate(piece.rotation);
 
-      final rect = Rect.fromCenter(center: Offset.zero, width: piece.width, height: piece.height);
+      final rect = Rect.fromCenter(
+        center: Offset.zero,
+        width: piece.width,
+        height: piece.height,
+      );
       canvas.drawRect(rect, paint);
 
       canvas.restore();

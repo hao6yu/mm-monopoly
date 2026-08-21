@@ -104,6 +104,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get startGame => 'Commencer la Partie';
 
   @override
+  String get preparingGame => 'Préparation de la partie…';
+
+  @override
+  String get failedToStartGame => 'Impossible de lancer la partie. Réessayez.';
+
+  @override
   String playerN(int number) {
     return 'Joueur $number';
   }
@@ -1619,4 +1625,8 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get cityCancun => 'Cancún';
+
+  @override
+  String get continuedOn2DBoard =>
+      'Le plateau 3D ne répond plus. La partie continue sur le plateau 2D.';
 }

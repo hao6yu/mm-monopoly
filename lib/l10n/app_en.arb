@@ -34,6 +34,8 @@
   "previous": "Previous",
   "next": "Next",
   "startGame": "Start Game",
+  "preparingGame": "Preparing game…",
+  "failedToStartGame": "We couldn't start the game. Please try again.",
   "playerN": "Player {number}",
   "@playerN": { "placeholders": { "number": { "type": "int" } } },
   "you": "You",
@@ -582,5 +584,6 @@
   "cityHongKong": "Hong Kong",
   "cityMexicoCity": "Mexico City",
   "cityGuadalajara": "Guadalajara",
-  "cityCancun": "Cancún"
+  "cityCancun": "Cancún",
+  "continuedOn2DBoard": "The 3D board stopped responding. Continuing on the 2D board."
 }

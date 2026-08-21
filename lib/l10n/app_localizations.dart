@@ -290,6 +290,18 @@ abstract class AppLocalizations {
   /// **'Start Game'**
   String get startGame;
 
+  /// No description provided for @preparingGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing game…'**
+  String get preparingGame;
+
+  /// No description provided for @failedToStartGame.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t start the game. Please try again.'**
+  String get failedToStartGame;
+
   /// No description provided for @playerN.
   ///
   /// In en, this message translates to:
@@ -2995,6 +3007,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancún'**
   String get cityCancun;
+
+  /// No description provided for @continuedOn2DBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'The 3D board stopped responding. Continuing on the 2D board.'**
+  String get continuedOn2DBoard;
 }
 
 class _AppLocalizationsDelegate

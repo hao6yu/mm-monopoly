@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:property_tycoon/l10n/app_localizations.dart';
@@ -149,4 +151,39 @@ void main() {
       },
     );
   }
+
+  testWidgets('Start Game is single-flight while the board loads', (
+    tester,
+  ) async {
+    final startCompleter = Completer<void>();
+    var startCount = 0;
+
+    await tester.pumpWidget(
+      localizedApp(
+        GameSetupScreen(
+          onBack: () {},
+          onStartGame: (_, {diceCount = 2, required cityBoard}) {
+            startCount++;
+            return startCompleter.future;
+          },
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    await tester.tap(find.byKey(const Key('setup-primary-action')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('setup-primary-action')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('setup-primary-action')));
+    await tester.pump();
+
+    expect(startCount, 1);
+    expect(find.text('Preparing game…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    startCompleter.complete();
+    await tester.pump();
+    expect(find.text('Start Game'), findsOneWidget);
+  });
 }

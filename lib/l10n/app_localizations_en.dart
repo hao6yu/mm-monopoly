@@ -104,6 +104,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startGame => 'Start Game';
 
   @override
+  String get preparingGame => 'Preparing game…';
+
+  @override
+  String get failedToStartGame =>
+      'We couldn\'t start the game. Please try again.';
+
+  @override
   String playerN(int number) {
     return 'Player $number';
   }
@@ -1588,4 +1595,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cityCancun => 'Cancún';
+
+  @override
+  String get continuedOn2DBoard =>
+      'The 3D board stopped responding. Continuing on the 2D board.';
 }

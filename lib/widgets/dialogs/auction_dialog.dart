@@ -26,7 +26,8 @@ class AuctionDialog extends StatefulWidget {
   State<AuctionDialog> createState() => _AuctionDialogState();
 }
 
-class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProviderStateMixin {
+class _AuctionDialogState extends State<AuctionDialog>
+    with SingleTickerProviderStateMixin {
   late AuctionState _auction;
   late AnimationController _pulseController;
   int _customBidAmount = 0;
@@ -37,7 +38,9 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
     super.initState();
     _auction = AuctionState(
       property: widget.property,
-      participants: widget.participants.where((p) => p.status == PlayerStatus.active).toList(),
+      participants: widget.participants
+          .where((p) => p.status == PlayerStatus.active)
+          .toList(),
     );
     _customBidAmount = _auction.minimumNextBid;
 
@@ -147,17 +150,20 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final maxHeight = mediaQuery.size.height - mediaQuery.padding.vertical - 32;
     return Dialog(
+      insetPadding: const EdgeInsets.all(16),
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: BoxConstraints(maxWidth: 400, maxHeight: maxHeight),
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.amber, width: 3),
           boxShadow: [
             BoxShadow(
-              color: Colors.amber.withOpacity(0.3),
+              color: Colors.amber.withValues(alpha: 0.3),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -167,11 +173,21 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildHeader(),
-            _buildBidInfo(),
-            _buildParticipants(),
-            if (!_auction.currentBidder.isAI && !_auction.isComplete)
-              _buildBidControls(),
-            if (_auction.isComplete) _buildResult(),
+            Flexible(
+              child: SingleChildScrollView(
+                key: const Key('auction-content-scroll'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildBidInfo(),
+                    _buildParticipants(),
+                    if (!_auction.currentBidder.isAI && !_auction.isComplete)
+                      _buildBidControls(),
+                    if (_auction.isComplete) _buildResult(),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -207,16 +223,13 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
           const SizedBox(height: 4),
           Text(
             widget.property.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
             textAlign: TextAlign.center,
           ),
           Text(
             AppLocalizations.of(context)!.propertyValue(_auction.propertyPrice),
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontSize: 14,
             ),
           ),
@@ -236,46 +249,62 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                AppLocalizations.of(context)!.currentBid,
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context)!.currentBid,
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
               ),
-              AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, child) {
-                  return Text(
-                    _auction.currentBid == 0 ? AppLocalizations.of(context)!.noBidsYet : '\$${_auction.currentBid}',
-                    style: TextStyle(
-                      color: _auction.currentBid == 0
-                          ? Colors.white54
-                          : Color.lerp(AppTheme.cashGreen, Colors.white, _pulseController.value),
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  );
-                },
+              const SizedBox(width: 12),
+              Flexible(
+                child: AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    return Text(
+                      _auction.currentBid == 0
+                          ? AppLocalizations.of(context)!.noBidsYet
+                          : '\$${_auction.currentBid}',
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        color: _auction.currentBid == 0
+                            ? Colors.white54
+                            : Color.lerp(
+                                AppTheme.cashGreen,
+                                Colors.white,
+                                _pulseController.value,
+                              ),
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
+                ),
               ),
             ],
           ),
           if (_auction.currentBidderId != null) ...[
             const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Leading Bidder:',
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                const Expanded(
+                  child: Text(
+                    'Leading Bidder:',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
                 ),
-                Text(
-                  widget.participants
-                      .firstWhere((p) => p.id == _auction.currentBidderId)
-                      .name,
-                  style: const TextStyle(
-                    color: Colors.amber,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    widget.participants
+                        .firstWhere((p) => p.id == _auction.currentBidderId)
+                        .name,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      color: Colors.amber,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -307,19 +336,22 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: hasPassed
-                      ? Colors.grey.withOpacity(0.3)
+                      ? Colors.grey.withValues(alpha: 0.3)
                       : isCurrentBidder
-                          ? player.color.withOpacity(0.8)
-                          : player.color.withOpacity(0.4),
+                      ? player.color.withValues(alpha: 0.8)
+                      : player.color.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(20),
                   border: isLeading
                       ? Border.all(color: Colors.amber, width: 2)
                       : isCurrentBidder
-                          ? Border.all(color: Colors.white, width: 2)
-                          : null,
+                      ? Border.all(color: Colors.white, width: 2)
+                      : null,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -327,14 +359,22 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
                     if (isLeading)
                       const Padding(
                         padding: EdgeInsets.only(right: 4),
-                        child: Icon(Icons.emoji_events, color: Colors.amber, size: 16),
+                        child: Icon(
+                          Icons.emoji_events,
+                          color: Colors.amber,
+                          size: 16,
+                        ),
                       ),
                     Text(
                       player.name,
                       style: TextStyle(
                         color: hasPassed ? Colors.white38 : Colors.white,
-                        fontWeight: isCurrentBidder ? FontWeight.bold : FontWeight.normal,
-                        decoration: hasPassed ? TextDecoration.lineThrough : null,
+                        fontWeight: isCurrentBidder
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        decoration: hasPassed
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -364,7 +404,7 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: player.color.withOpacity(0.2),
+        color: player.color.withValues(alpha: 0.2),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(17)),
       ),
       child: Column(
@@ -379,8 +419,10 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
           ),
           const SizedBox(height: 12),
           // Quick bid buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _buildQuickBidButton(minBid, canAffordMin),
               _buildQuickBidButton(minBid + 50, player.cash >= minBid + 50),
@@ -394,10 +436,16 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
               children: [
                 Expanded(
                   child: Slider(
-                    value: _customBidAmount.toDouble().clamp(minBid.toDouble(), player.cash.toDouble()),
+                    value: _customBidAmount.toDouble().clamp(
+                      minBid.toDouble(),
+                      player.cash.toDouble(),
+                    ),
                     min: minBid.toDouble(),
                     max: player.cash.toDouble(),
-                    divisions: ((player.cash - minBid) / 10).ceil().clamp(1, 100),
+                    divisions: ((player.cash - minBid) / 10).ceil().clamp(
+                      1,
+                      100,
+                    ),
                     activeColor: Colors.amber,
                     onChanged: (value) {
                       setState(() {
@@ -431,39 +479,46 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
               ),
             ),
           const SizedBox(height: 12),
-          Row(
+          OverflowBar(
+            alignment: MainAxisAlignment.center,
+            overflowAlignment: OverflowBarAlignment.center,
+            spacing: 12,
+            overflowSpacing: 8,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _pass,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white70,
-                    side: const BorderSide(color: Colors.white24),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              OutlinedButton(
+                onPressed: _pass,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
                   ),
-                  child: Text(AppLocalizations.of(context)!.pass),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                child: Text(AppLocalizations.of(context)!.pass),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: canAffordMin ? () => _placeBid(_customBidAmount) : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    foregroundColor: Colors.black,
-                    disabledBackgroundColor: Colors.grey,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              ElevatedButton(
+                onPressed: canAffordMin
+                    ? () => _placeBid(_customBidAmount)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  disabledBackgroundColor: Colors.grey,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
                   ),
-                  child: Text(
-                    canAffordMin ? 'Bid \$$_customBidAmount' : 'Not enough cash',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                ),
+                child: Text(
+                  canAffordMin ? 'Bid \$$_customBidAmount' : 'Not enough cash',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -477,15 +532,16 @@ class _AuctionDialogState extends State<AuctionDialog> with SingleTickerProvider
     return ElevatedButton(
       onPressed: canAfford ? () => _placeBid(amount) : null,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.amber.withOpacity(0.8),
+        backgroundColor: Colors.amber.withValues(alpha: 0.8),
         foregroundColor: Colors.black,
-        disabledBackgroundColor: Colors.grey.withOpacity(0.3),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        disabledBackgroundColor: Colors.grey.withValues(alpha: 0.3),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      child: Text('\$$amount', style: const TextStyle(fontWeight: FontWeight.bold)),
+      child: Text(
+        '\$$amount',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
     );
   }
 

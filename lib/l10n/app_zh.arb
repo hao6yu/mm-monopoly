@@ -34,6 +34,8 @@
   "previous": "上一步",
   "next": "下一步",
   "startGame": "开始游戏",
+  "preparingGame": "正在准备游戏…",
+  "failedToStartGame": "无法开始游戏，请重试。",
   "playerN": "玩家 {number}",
   "you": "你",
   "ai": "电脑",
@@ -543,5 +545,6 @@
   "cityHongKong": "香港",
   "cityMexicoCity": "墨西哥城",
   "cityGuadalajara": "瓜达拉哈拉",
-  "cityCancun": "坎昆"
+  "cityCancun": "坎昆",
+  "continuedOn2DBoard": "3D 棋盘已停止响应，游戏将切换到 2D 棋盘继续。"
 }

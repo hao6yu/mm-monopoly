@@ -102,6 +102,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get startGame => 'ゲーム開始';
 
   @override
+  String get preparingGame => 'ゲームを準備中…';
+
+  @override
+  String get failedToStartGame => 'ゲームを開始できませんでした。もう一度お試しください。';
+
+  @override
   String playerN(int number) {
     return 'プレイヤー$number';
   }
@@ -1558,4 +1564,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get cityCancun => 'カンクン';
+
+  @override
+  String get continuedOn2DBoard => '3Dボードが応答しないため、2Dボードでゲームを続けます。';
 }

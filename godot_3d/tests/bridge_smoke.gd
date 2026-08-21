@@ -62,12 +62,14 @@ func _run() -> void:
 			{
 				"id": "player-one",
 				"name": "Player 1",
+				"colorArgb": 0xff5b8def,
 				"visualPosition": 0,
 				"isActive": true,
 			},
 			{
 				"id": "player-two",
 				"name": "Player 2",
+				"colorArgb": 0xffef765b,
 				"visualPosition": 0,
 				"isActive": true,
 			},
@@ -77,6 +79,8 @@ func _run() -> void:
 		"action": "sync_state",
 		"json": JSON.stringify(state),
 	})
+	_test_token_grounding_and_occupancy(scene)
+	await _test_roll_cancellation_on_state_sync(scene, state)
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
 	_test_host_camera_pan(scene)
@@ -114,6 +118,15 @@ func _run() -> void:
 		push_error("3D roll did not start the camera cinematic.")
 		quit(1)
 		return
+	var expected_marker_position: Vector3 = (
+		scene._token_anchor_for_tile(1, 0) + Vector3.UP * 0.17
+	)
+	if not scene.movement_markers[0].position.is_equal_approx(
+		expected_marker_position
+	):
+		push_error("3D route marker is not aligned with the pawn's route anchor.")
+		quit(1)
+		return
 	print("ROLL_PRESENTATION_OK")
 
 	for _attempt in 160:
@@ -122,6 +135,15 @@ func _run() -> void:
 		if message.is_empty():
 			continue
 		if message.get("method", "") == "movementComplete":
+			var token_visual := scene._token_visual(scene.player_tokens[0]) as Node3D
+			if (
+				scene.active_tween != null
+				or token_visual == null
+				or not is_zero_approx(token_visual.position.y)
+			):
+				push_error("movementComplete was emitted before the pawn landed.")
+				quit(1)
+				return
 			if not _dice_values_face_up(scene, [2, 3]):
 				push_error("3D dice did not settle on the Flutter roll values.")
 				quit(1)
@@ -132,6 +154,197 @@ func _run() -> void:
 
 	push_error("Timed out waiting for movementComplete.")
 	quit(1)
+
+
+func _test_token_grounding_and_occupancy(scene: Node) -> void:
+	var tile_anchor: Vector3 = scene._tile_ground_anchor(0)
+	var first_token := scene.player_tokens[0] as Node3D
+	var second_token := scene.player_tokens[1] as Node3D
+	if (
+		not is_equal_approx(first_token.position.y, tile_anchor.y)
+		or not is_equal_approx(second_token.position.y, tile_anchor.y)
+	):
+		push_error("Pawn roots are not anchored to the tile surface.")
+		quit(1)
+		return
+	var first_visual := scene._token_visual(first_token) as Node3D
+	if first_visual == null:
+		push_error("Pawn visual hierarchy does not preserve a ground contact origin.")
+		quit(1)
+		return
+	var first_idle := first_visual.get_node_or_null("TokenIdle") as Node3D
+	var first_model := (
+		first_idle.get_node_or_null("TokenModel") as Node3D
+		if first_idle != null
+		else null
+	)
+	if first_model == null or not is_equal_approx(first_model.position.y, -1.1):
+		push_error("Pawn visual hierarchy does not preserve a ground contact origin.")
+		quit(1)
+		return
+	var midpoint := first_token.position.lerp(second_token.position, 0.5)
+	if not midpoint.is_equal_approx(tile_anchor):
+		push_error("Shared-tile pawn slots are not centered around the road anchor.")
+		quit(1)
+		return
+	var effective_base_diameter := 1.1 * first_visual.scale.x
+	if first_token.position.distance_to(second_token.position) < effective_base_diameter:
+		push_error("Shared-tile pawn slots overlap after occupancy scaling.")
+		quit(1)
+		return
+	for occupant_count in range(1, 5):
+		var offsets: Array[Vector3] = []
+		var centroid := Vector3.ZERO
+		for slot_index in occupant_count:
+			var offset: Vector3 = scene._token_offset_for_occupancy(
+				0,
+				slot_index,
+				occupant_count
+			)
+			offsets.append(offset)
+			centroid += offset
+		centroid /= float(occupant_count)
+		if not centroid.is_zero_approx():
+			push_error("Occupancy slot pattern is not centered for %d pawns." % occupant_count)
+			quit(1)
+			return
+		var scaled_diameter: float = (
+			1.1 * scene._token_scale_for_occupancy(occupant_count).x
+		)
+		for first_index in offsets.size():
+			for second_index in range(first_index + 1, offsets.size()):
+				if offsets[first_index].distance_to(offsets[second_index]) < scaled_diameter:
+					push_error(
+						"Occupancy slot pattern overlaps for %d pawns." % occupant_count
+					)
+					quit(1)
+					return
+	var material_value = first_token.get_meta("player_color_material", null)
+	if not material_value is StandardMaterial3D:
+		push_error("Flutter player color was not applied to the 3D pawn.")
+		quit(1)
+		return
+	var player_material := material_value as StandardMaterial3D
+	if not player_material.albedo_color.is_equal_approx(Color("#5b8def")):
+		push_error("Flutter player color was not applied to the 3D pawn.")
+		quit(1)
+		return
+	print("TOKEN_GROUNDING_OCCUPANCY_COLOR_OK")
+
+
+func _test_roll_cancellation_on_state_sync(
+	scene: Node,
+	state: Dictionary
+) -> void:
+	var expired_command := {
+		"commandId": "1_player-one",
+		"playerId": "player-one",
+		"playerIndex": 0,
+		"die1": 1,
+		"die2": 1,
+		"spaces": 2,
+		"toLogicalPosition": 2,
+		"visualPath": [1, 2],
+	}
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(expired_command),
+	})
+	if not scene.active_roll_command_id.is_empty():
+		push_error("Expired hosted roll was allowed to enter the movement queue.")
+		quit(1)
+		return
+	var wrong_session_command := expired_command.duplicate(true)
+	wrong_session_command["commandId"] = "wrong-session"
+	wrong_session_command["sessionId"] = "retired-session"
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(wrong_session_command),
+	})
+	if not scene.active_roll_command_id.is_empty():
+		push_error("A roll from a retired session entered the movement queue.")
+		quit(1)
+		return
+	var cancelled_command := {
+		"commandId": "cancel-on-sync",
+		"playerId": "player-one",
+		"playerIndex": 0,
+		"die1": 1,
+		"die2": 1,
+		"spaces": 2,
+		"toLogicalPosition": 2,
+		"visualPath": [1, 2],
+	}
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(cancelled_command),
+	})
+	if scene.active_roll_command_id != "cancel-on-sync":
+		push_error("Hosted roll did not enter its scoped presentation state.")
+		quit(1)
+		return
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	await create_timer(1.15).timeout
+	if (
+		not scene.active_roll_command_id.is_empty()
+		or scene.player_tiles[0] != 0
+		or not scene.movement_markers.is_empty()
+		or not scene.dice_tweens.is_empty()
+	):
+		push_error("State sync did not cancel the stale hosted roll presentation.")
+		quit(1)
+		return
+	# Simulate a delayed native retry after the new authoritative generation.
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(cancelled_command),
+	})
+	if not scene.active_roll_command_id.is_empty():
+		push_error("A cancelled roll retry escaped its original state generation.")
+		quit(1)
+		return
+	var mid_move_command := cancelled_command.duplicate(true)
+	mid_move_command["commandId"] = "cancel-mid-hop"
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(mid_move_command),
+	})
+	await create_timer(1.12).timeout
+	if scene.active_tween == null or not scene.active_tween.is_running():
+		push_error("Hosted roll did not enter its authoritative movement tween.")
+		quit(1)
+		return
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	await create_timer(0.35).timeout
+	if (
+		not scene.active_roll_command_id.is_empty()
+		or scene.active_tween != null
+		or scene.player_tiles[0] != 0
+	):
+		push_error("State sync did not cancel an in-flight pawn hop cleanly.")
+		quit(1)
+		return
+	while true:
+		var message: Dictionary = scene.host_poll_message()
+		if message.is_empty():
+			break
+		if (
+			message.get("method", "") == "movementComplete"
+			and (
+				str(message.get("arguments", "")).contains("cancel-on-sync")
+				or str(message.get("arguments", "")).contains("cancel-mid-hop")
+			)
+		):
+			push_error("Cancelled roll emitted a stale movementComplete event.")
+			quit(1)
+			return
+	print("HOSTED_ROLL_CANCELLATION_OK")
 
 
 func _test_special_tile_metadata(scene: Node) -> void:

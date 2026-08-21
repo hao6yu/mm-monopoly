@@ -91,6 +91,8 @@ void main() {
       );
       final mirroredProperty = scene.tiles[1];
 
+      expect(scene.sessionId, state.id);
+      expect(scene.toJson()['sessionId'], state.id);
       expect(mirroredProperty.price, property.price);
       expect(mirroredProperty.ownerId, player.id);
       expect(mirroredProperty.ownerName, player.name);
@@ -98,6 +100,29 @@ void main() {
       expect(mirroredProperty.upgradeLevel, 3);
       expect(mirroredProperty.isMortgaged, isTrue);
       expect(mirroredProperty.groupId, property.groupId);
+    });
+
+    test('3D roll commands are scoped to the active game session', () {
+      final tiles = BoardFactory.generateTiles(CityBoardRegistry.all.first);
+      final player = Player(
+        id: 'player_0',
+        name: 'Player 1',
+        icon: PlayerIcon.dog,
+        color: Colors.red,
+      );
+      final state = GameState.initial(players: [player], tiles: tiles);
+      final controller = GodotBoardController();
+      addTearDown(controller.dispose);
+
+      final command = controller.createRollCommand(
+        gameState: state,
+        playerIndex: 0,
+        die1: 3,
+        die2: 2,
+      );
+
+      expect(command.sessionId, state.id);
+      expect(command.toJson()['sessionId'], state.id);
     });
 
     test('3D scene identifies a completed color group', () {
@@ -109,11 +134,10 @@ void main() {
         color: Colors.red,
       );
       final target = tiles.whereType<PropertyTileData>().first;
-      final group =
-          tiles
-              .whereType<PropertyTileData>()
-              .where((property) => property.groupId == target.groupId)
-              .toList();
+      final group = tiles
+          .whereType<PropertyTileData>()
+          .where((property) => property.groupId == target.groupId)
+          .toList();
       for (final property in group) {
         property.ownerId = player.id;
       }

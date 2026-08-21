@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../models/player.dart';
-import '../../models/tile.dart';
 import '../../config/theme.dart';
 import '../../l10n/app_localizations.dart';
 import 'animated_dialog.dart';
@@ -52,7 +51,7 @@ class RentPaymentDialog extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -179,7 +178,7 @@ class RentPaymentDialog extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.2),
+                      color: Colors.amber.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -202,7 +201,7 @@ class RentPaymentDialog extends StatelessWidget {
                   Text(
                     ownedCount == 2 ? l10n.ownerHasBothUtilities : l10n.ownerHasOneUtility,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 11,
                     ),
                   ),
@@ -212,7 +211,7 @@ class RentPaymentDialog extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -240,7 +239,7 @@ class RentPaymentDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.error.withOpacity(0.2),
+                color: AppTheme.error.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppTheme.error),
               ),
@@ -252,7 +251,7 @@ class RentPaymentDialog extends StatelessWidget {
                     child: Text(
                       l10n.bankruptMessage,
                       style: TextStyle(
-                        color: AppTheme.error.withOpacity(0.9),
+                        color: AppTheme.error.withValues(alpha: 0.9),
                         fontSize: 13,
                       ),
                     ),

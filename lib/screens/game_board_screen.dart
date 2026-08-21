@@ -49,17 +49,37 @@ import '../models/event_card.dart';
 import '../models/power_up_card.dart';
 import '../models/trade.dart';
 import '../models/ai_player.dart';
+import '../models/game_result.dart';
+import '../controllers/game_session_controller.dart';
 import 'mini_games/memory_match_game.dart';
 import 'mini_games/quick_tap_game.dart';
-import 'victory_screen.dart';
+
+class _TurnOperationToken {
+  const _TurnOperationToken({
+    required this.session,
+    required this.sessionGeneration,
+    required this.operationId,
+    required this.gameId,
+    required this.playerId,
+  });
+
+  final GameSessionController session;
+  final int sessionGeneration;
+  final int operationId;
+  final String gameId;
+  final String playerId;
+}
 
 /// Main game board screen
 class GameBoardScreen extends StatefulWidget {
-  final GameState gameState;
+  final GameSessionController session;
   final CityBoard cityBoard;
   final VoidCallback onQuit;
-  final VoidCallback onRestart;
-  final VoidCallback? onHowToPlay;
+  final FutureOr<void> Function() onRestart;
+  final FutureOr<void> Function()? onHowToPlay;
+  final ValueChanged<GameResult> onGameFinished;
+  final ValueChanged<GameState>? onGameLoaded;
+  final bool isActive;
   final bool tradingEnabled;
   final bool bankEnabled;
   final bool auctionEnabled;
@@ -67,11 +87,14 @@ class GameBoardScreen extends StatefulWidget {
 
   const GameBoardScreen({
     super.key,
-    required this.gameState,
+    required this.session,
     required this.cityBoard,
     required this.onQuit,
     required this.onRestart,
+    required this.onGameFinished,
+    this.onGameLoaded,
     this.onHowToPlay,
+    this.isActive = true,
     this.tradingEnabled = false,
     this.bankEnabled = false,
     this.auctionEnabled = false,
@@ -84,7 +107,13 @@ class GameBoardScreen extends StatefulWidget {
 
 class _GameBoardScreenState extends State<GameBoardScreen>
     with TickerProviderStateMixin {
-  late GameState gameState;
+  GameState get gameState => widget.session.state;
+
+  void _replaceGameState(GameState nextState) {
+    widget.session.replace(nextState);
+    engine = GameEngine(nextState);
+  }
+
   late GameEngine engine;
   late AnimationController _diceController;
   late AnimationController _bounceController;
@@ -96,6 +125,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   bool _isPaused = false; // Track if game menu is open
   bool _isMusicPlaying = true; // Track music state
   bool _isProcessingTurn = false; // Prevent dice rolls while processing
+  int _turnOperationId = 0;
+  final Set<Timer> _scheduledTurnTimers = <Timer>{};
   late final GodotBoardController _godotBoardController;
   StreamSubscription<GodotBoardSelection>? _godotSelectionSubscription;
   bool _show3DBoard = false;
@@ -118,7 +149,6 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   @override
   void initState() {
     super.initState();
-    gameState = widget.gameState;
     engine = GameEngine(gameState);
     _initializeAnimations();
     _initializeAIEngines();
@@ -188,15 +218,33 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   @override
   void didUpdateWidget(GameBoardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Detect when the game state has been reset (restart game)
-    if (widget.gameState != oldWidget.gameState) {
+    // Detect when the whole session has been reset or replaced.
+    if (!identical(widget.session, oldWidget.session)) {
+      _cancelScheduledTurnActions();
+      _turnOperationId++;
       setState(() {
-        gameState = widget.gameState;
         engine = GameEngine(gameState);
         _totalRounds = 1;
         _isPaused = false;
       });
       _sync3DBoard();
+    }
+    if (widget.cityBoard.boardId != oldWidget.cityBoard.boardId) {
+      _initialize3DBoard();
+    }
+    if (widget.isActive != oldWidget.isActive) {
+      _isPaused = !widget.isActive;
+      if (!widget.isActive) _cancelScheduledTurnActions();
+      if (widget.isActive &&
+          gameState.currentPlayer.isAI &&
+          gameState.canRoll &&
+          !_isProcessingTurn) {
+        _scheduleCurrentTurnAction(
+          const Duration(milliseconds: 500),
+          _rollDice,
+          requireRollReady: true,
+        );
+      }
     }
   }
 
@@ -223,6 +271,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   @override
   void dispose() {
+    _cancelScheduledTurnActions();
+    _turnOperationId++;
+    final cardPickCompleter = _cardPickCompleter;
+    if (cardPickCompleter != null && !cardPickCompleter.isCompleted) {
+      cardPickCompleter.complete(null);
+    }
     _diceController.dispose();
     _bounceController.dispose();
     _glowController.dispose();
@@ -233,23 +287,41 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   void _showTileInfo(TileData tile) {
+    if (!_canUseStableInteractions) return;
     showTileInfoDialog(context: context, tile: tile);
+  }
+
+  void _showPlayerPortfolio(Player player) {
+    if (!_canUseStableInteractions) return;
+    showPropertyPortfolioDialog(
+      context: context,
+      player: player,
+      tiles: gameState.tiles,
+      gameState: gameState,
+    );
   }
 
   void _handle3DBoardSelection(GodotBoardSelection selection) {
     if (!mounted) return;
+    if (selection.kind == 'tile' && _waitingForCardPick) {
+      final logicalIndex = selection.logicalIndex;
+      if (logicalIndex == null) return;
+      for (final tile in gameState.tiles) {
+        if (tile.index == logicalIndex &&
+            ((_isChanceCard && tile.type == TileType.chance) ||
+                (!_isChanceCard && tile.type == TileType.communityChest))) {
+          _onCardDeckTap(_isChanceCard);
+          return;
+        }
+      }
+    }
+    if (!_canUseStableInteractions) return;
     switch (selection.kind) {
       case 'tile':
         final logicalIndex = selection.logicalIndex;
         if (logicalIndex == null) return;
         for (final tile in gameState.tiles) {
           if (tile.index == logicalIndex) {
-            if (_waitingForCardPick &&
-                ((_isChanceCard && tile.type == TileType.chance) ||
-                    (!_isChanceCard && tile.type == TileType.communityChest))) {
-              _onCardDeckTap(_isChanceCard);
-              return;
-            }
             _showTileInfo(tile);
             return;
           }
@@ -271,22 +343,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           selectedPlayer = gameState.players[playerIndex];
         }
         if (selectedPlayer != null) {
-          showPropertyPortfolioDialog(
-            context: context,
-            player: selectedPlayer,
-            tiles: gameState.tiles,
-            gameState: gameState,
-          );
+          _showPlayerPortfolio(selectedPlayer);
         }
         return;
       case 'dice':
-        if (gameState.canRoll && !_isProcessingTurn) {
+        if (_canStartRoll()) {
           _rollDice();
         } else {
-          final value =
-              gameState.diceCount == 1
-                  ? '${gameState.die1Value}'
-                  : '${gameState.die1Value} + ${gameState.die2Value}';
+          final value = gameState.diceCount == 1
+              ? '${gameState.die1Value}'
+              : '${gameState.die1Value} + ${gameState.die2Value}';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -309,14 +375,28 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   void _showCityGuide({String? highlight}) {
-    if (!mounted) return;
+    if (!_canUseStableInteractions) return;
     final l10n = AppLocalizations.of(context)!;
     final city = widget.cityBoard.localizedDisplayName(l10n);
     final country = widget.cityBoard.country.localizedDisplayName(l10n);
-    final factTiles =
-        gameState.tiles
-            .where((tile) => tile.funFact?.isNotEmpty ?? false)
-            .toList();
+    final nativeName = widget.cityBoard.nativeName.trim();
+    final guideLocations = <String>[
+      city,
+      country,
+      if (nativeName.isNotEmpty &&
+          _normalizeGuideText(nativeName) != _normalizeGuideText(city))
+        nativeName,
+    ].join(' • ');
+    final guideDescription = _show3DBoard
+        ? 'Explore $city as a living 3D theme park. The 40 game '
+              'locations keep the original rules, with extra scenic '
+              'stops and interactive landmarks between them.'
+        : 'Explore $city on a themed game board. The 40 game locations '
+              'keep the original rules, with local facts and landmarks '
+              'throughout the route.';
+    final factTiles = gameState.tiles
+        .where((tile) => tile.funFact?.isNotEmpty ?? false)
+        .toList();
 
     TileData? matchedTile;
     final query = _normalizeGuideText(highlight ?? '');
@@ -329,12 +409,11 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         }
       }
     }
-    final featuredTiles =
-        <TileData>[
-          if (matchedTile != null) matchedTile,
-          for (final tile in factTiles)
-            if (tile != matchedTile) tile,
-        ].take(3).toList();
+    final featuredTiles = <TileData>[
+      if (matchedTile != null) matchedTile,
+      for (final tile in factTiles)
+        if (tile != matchedTile) tile,
+    ].take(3).toList();
 
     showModalBottomSheet<void>(
       context: context,
@@ -383,7 +462,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                               ),
                             ),
                             Text(
-                              '$city • $country • ${widget.cityBoard.nativeName}',
+                              guideLocations,
                               style: const TextStyle(
                                 color: Colors.white60,
                                 fontSize: 12,
@@ -394,6 +473,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                         ),
                       ),
                       IconButton(
+                        tooltip: MaterialLocalizations.of(
+                          sheetContext,
+                        ).closeButtonTooltip,
                         onPressed: () => Navigator.pop(sheetContext),
                         icon: const Icon(Icons.close, color: Colors.white70),
                       ),
@@ -401,9 +483,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Explore $city as a living 3D theme park. The 40 game '
-                    'locations keep the original rules, with extra scenic '
-                    'stops and interactive landmarks between them.',
+                    guideDescription,
                     style: const TextStyle(
                       color: Colors.white70,
                       height: 1.4,
@@ -423,43 +503,46 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                     ),
                     const SizedBox(height: 6),
                     for (final tile in featuredTiles)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        leading: CircleAvatar(
-                          backgroundColor: tile.color.withValues(alpha: 0.9),
-                          child: const Icon(
-                            Icons.location_on_rounded,
-                            color: Colors.white,
-                            size: 19,
+                      Material(
+                        color: Colors.transparent,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          leading: CircleAvatar(
+                            backgroundColor: tile.color.withValues(alpha: 0.9),
+                            child: const Icon(
+                              Icons.location_on_rounded,
+                              color: Colors.white,
+                              size: 19,
+                            ),
                           ),
-                        ),
-                        title: Text(
-                          tile.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
+                          title: Text(
+                            tile.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
-                        subtitle: Text(
-                          tile.funFact!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white60,
-                            height: 1.3,
+                          subtitle: Text(
+                            tile.funFact!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              height: 1.3,
+                            ),
                           ),
+                          trailing: const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Colors.white54,
+                          ),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) _showTileInfo(tile);
+                            });
+                          },
                         ),
-                        trailing: const Icon(
-                          Icons.chevron_right_rounded,
-                          color: Colors.white54,
-                        ),
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) _showTileInfo(tile);
-                          });
-                        },
                       ),
                   ],
                   const SizedBox(height: 8),
@@ -502,11 +585,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   void _showGameMenu() {
-    final canPersistTurn =
-        !_isProcessingTurn &&
-        !_waitingForCardPick &&
-        gameState.logicPhase == TurnLogicPhase.preRoll &&
-        gameState.animationState == TurnAnimationState.idle;
+    if (!_canOpenGameMenu) return;
+    final canPersistTurn = _canOpenGameMenu;
+    _cancelScheduledTurnActions();
     _isPaused = true;
     showGameMenuDialog(
       context: context,
@@ -514,30 +595,28 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         _isPaused = false;
         // Resume AI if it's their turn
         if (gameState.currentPlayer.isAI && gameState.canRoll) {
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted && !_isPaused && gameState.canRoll) {
-              _rollDice();
-            }
-          });
+          _scheduleCurrentTurnAction(
+            const Duration(milliseconds: 500),
+            _rollDice,
+            requireRollReady: true,
+          );
         }
       },
-      onRestart: () {
-        _isPaused = false;
-        widget.onRestart();
+      onRestart: () async {
+        await widget.onRestart();
+        if (mounted) _isPaused = false;
       },
       onQuit: () {
-        _isPaused = false;
         widget.onQuit();
       },
-      onRules: widget.onHowToPlay,
+      onRules: canPersistTurn ? widget.onHowToPlay : null,
       // Saving or replacing the board while a roll, dialog, or card draw is
       // unresolved leaves an old async turn attached to the new state. Only
       // expose persistence at the clean boundary before a roll.
       onSave: canPersistTurn ? _saveGame : null,
-      onLoad:
-          canPersistTurn && SaveService.instance.hasSavedGame()
-              ? _loadGame
-              : null,
+      onLoad: canPersistTurn && SaveService.instance.hasSavedGame()
+          ? _loadGame
+          : null,
     );
   }
 
@@ -554,19 +633,22 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                 color: Colors.white,
               ),
               const SizedBox(width: 12),
-              Text(
-                success
-                    ? AppLocalizations.of(context)!.gameSaved
-                    : AppLocalizations.of(context)!.failedToSave,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  success
+                      ? AppLocalizations.of(context)!.gameSaved
+                      : AppLocalizations.of(context)!.failedToSave,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
           ),
-          backgroundColor:
-              success ? const Color(0xFF4CAF50) : const Color(0xFFFF5252),
+          backgroundColor: success
+              ? const Color(0xFF4CAF50)
+              : const Color(0xFFFF5252),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(
@@ -580,22 +662,24 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   Future<void> _loadGame() async {
     if (_isProcessingTurn || _waitingForCardPick) return;
+    final previousBoardId = widget.cityBoard.boardId;
     final loadedState = await SaveService.instance.loadGame();
 
     if (loadedState != null && mounted) {
       // Older saves could be created in the middle of a turn. They cannot
       // safely recreate an open Flutter dialog, so recover them at a stable
       // pre-roll boundary for the same player.
-      final recoveredState =
-          loadedState.canRoll
-              ? loadedState
-              : loadedState.copyWith(
-                logicPhase: TurnLogicPhase.preRoll,
-                animationState: TurnAnimationState.idle,
-              );
+      final recoveredState = loadedState.canRoll
+          ? loadedState
+          : loadedState.copyWith(
+              logicPhase: TurnLogicPhase.preRoll,
+              animationState: TurnAnimationState.idle,
+            );
+      _cancelScheduledTurnActions();
+      _turnOperationId++;
+      widget.session.invalidatePendingWork();
       setState(() {
-        gameState = recoveredState;
-        engine = GameEngine(gameState);
+        _replaceGameState(recoveredState);
         _isPaused = false;
         _isProcessingTurn = false;
         _waitingForCardPick = false;
@@ -603,7 +687,11 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         _cardPickPlayer = null;
         _cardPickCompleter = null;
       });
-      _sync3DBoard();
+      widget.onGameLoaded?.call(recoveredState);
+      final boardChanged = recoveredState.cityBoardId != previousBoardId;
+      if (!boardChanged || widget.onGameLoaded == null) {
+        unawaited(_sync3DBoard());
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -611,11 +699,15 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             children: [
               const Icon(Icons.check_circle, color: Colors.white),
               const SizedBox(width: 12),
-              Text(
-                AppLocalizations.of(context)!.gameLoaded(gameState.roundNumber),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(
+                    context,
+                  )!.gameLoaded(gameState.roundNumber),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -632,11 +724,11 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
       // If it's AI turn, trigger their action
       if (gameState.currentPlayer.isAI && gameState.canRoll) {
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          if (mounted && !_isPaused && gameState.canRoll) {
-            _rollDice();
-          }
-        });
+        _scheduleCurrentTurnAction(
+          const Duration(milliseconds: 1000),
+          _rollDice,
+          requireRollReady: true,
+        );
       }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -645,11 +737,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             children: [
               const Icon(Icons.error, color: Colors.white),
               const SizedBox(width: 12),
-              Text(
-                AppLocalizations.of(context)!.failedToLoad,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context)!.failedToLoad,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -666,14 +760,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   @override
   Widget build(BuildContext context) {
     final theme = widget.boardTheme;
-    final backgroundGradient =
-        theme != null
-            ? LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [theme.boardColor, theme.centerBackground],
-            )
-            : AppTheme.backgroundGradient;
+    final backgroundGradient = theme != null
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [theme.boardColor, theme.centerBackground],
+          )
+        : AppTheme.backgroundGradient;
 
     return Scaffold(
       body: Container(
@@ -692,10 +785,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                     // The city guide is an overlay. Reserve its row so it
                     // never covers a player card on four-player layouts.
                     padding: const EdgeInsets.only(top: 46),
-                    child:
-                        useLandscape
-                            ? _buildLandscapeLayout()
-                            : _buildPortraitLayout(),
+                    child: useLandscape
+                        ? _buildLandscapeLayout()
+                        : _buildPortraitLayout(),
                   );
                 },
               ),
@@ -703,10 +795,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                 top: 8,
                 left: _show3DBoard ? null : 0,
                 right: _show3DBoard ? 8 : 0,
-                child:
-                    _show3DBoard
-                        ? _buildCityBadge()
-                        : Center(child: _buildCityBadge()),
+                child: _show3DBoard
+                    ? _buildCityBadge()
+                    : Center(child: _buildCityBadge()),
               ),
               // Power-up cards button (if has cards) - top left overlay
               if (!_show3DBoard &&
@@ -720,7 +811,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                     label:
                         '${gameState.getPowerUps(gameState.currentPlayer.id).length}',
                     color: Colors.amber,
-                    onTap: _showPowerUpHand,
+                    onTap: _canUseStableInteractions ? _showPowerUpHand : null,
                   ),
                 ),
               // Phase 3: Active event indicators
@@ -730,16 +821,15 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                   left: 8,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children:
-                        gameState.activeEvents
-                            .where((e) => !e.isExpired)
-                            .map(
-                              (event) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: ActiveEventIndicator(activeEvent: event),
-                              ),
-                            )
-                            .toList(),
+                    children: gameState.activeEvents
+                        .where((e) => !e.isExpired)
+                        .map(
+                          (event) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: ActiveEventIndicator(activeEvent: event),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               if (!_show3DBoard && _waitingForCardPick)
@@ -765,13 +855,14 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     final l10n = AppLocalizations.of(context)!;
     final city = widget.cityBoard.localizedDisplayName(l10n);
     final country = widget.cityBoard.country.localizedDisplayName(l10n);
+    final canInspect = _canUseStableInteractions;
 
     return Material(
       color: Colors.black.withValues(alpha: 0.42),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
-        onTap: _showCityGuide,
+        onTap: canInspect ? _showCityGuide : null,
         child: Container(
           constraints: BoxConstraints(
             maxWidth: MediaQuery.sizeOf(context).width < 600 ? 180 : 260,
@@ -792,18 +883,18 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: canInspect ? Colors.white : Colors.white54,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               const SizedBox(width: 5),
-              const Icon(
+              Icon(
                 Icons.info_outline_rounded,
                 size: 14,
-                color: Colors.white70,
+                color: canInspect ? Colors.white70 : Colors.white24,
               ),
             ],
           ),
@@ -827,8 +918,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                 onScaleStart: _on3DGestureStart,
                 onScaleUpdate: _on3DGestureUpdate,
                 onScaleEnd: _on3DGestureEnd,
-                onTapUp:
-                    (details) => _on3DBoardTap(details, constraints.biggest),
+                onTapUp: _canUseStableInteractions || _waitingForCardPick
+                    ? (details) => _on3DBoardTap(details, constraints.biggest)
+                    : null,
                 child: const SizedBox.expand(),
               ),
             ),
@@ -904,6 +996,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   void _on3DBoardTap(TapUpDetails details, Size boardSize) {
     if (boardSize.width <= 0 || boardSize.height <= 0) return;
+    if (!_canUseStableInteractions && !_waitingForCardPick) return;
     unawaited(
       _godotBoardController.pickBoardObject(
         normalizedX: details.localPosition.dx / boardSize.width,
@@ -914,8 +1007,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   Widget _build3DCurrentPlayerHud() {
     final player = gameState.currentPlayer;
+    final canInspect = _canUseStableInteractions;
     return Semantics(
       button: true,
+      enabled: canInspect,
       label: 'Open ${player.name} portfolio',
       child: Tooltip(
         message: 'View ${player.name} portfolio',
@@ -940,13 +1035,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               borderRadius: BorderRadius.circular(999),
-              onTap:
-                  () => showPropertyPortfolioDialog(
-                    context: context,
-                    player: player,
-                    tiles: gameState.tiles,
-                    gameState: gameState,
-                  ),
+              onTap: canInspect ? () => _showPlayerPortfolio(player) : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 13,
@@ -1000,24 +1089,23 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         _build3DOverlayButton(
           icon: Icons.menu_rounded,
           tooltip: 'Game menu',
-          onTap: _showGameMenu,
+          onTap: _canOpenGameMenu ? _showGameMenu : null,
         ),
         const SizedBox(width: 7),
         _build3DOverlayButton(
           icon: _isMusicPlaying ? Icons.music_note : Icons.music_off,
           tooltip: _isMusicPlaying ? 'Mute music' : 'Play music',
           onTap: _toggleMusic,
-          color:
-              _isMusicPlaying
-                  ? const Color(0xE61D765F)
-                  : const Color(0xE6111A33),
+          color: _isMusicPlaying
+              ? const Color(0xE61D765F)
+              : const Color(0xE6111A33),
         ),
         if (!compact && !currentPlayer.isAI && widget.tradingEnabled) ...[
           const SizedBox(width: 7),
           _build3DOverlayButton(
             icon: Icons.swap_horiz_rounded,
             tooltip: 'Trade',
-            onTap: _showTradeDialog,
+            onTap: _canUseStableInteractions ? _showTradeDialog : null,
             color: const Color(0xE6197C78),
           ),
         ],
@@ -1026,7 +1114,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           _build3DOverlayButton(
             icon: Icons.account_balance_rounded,
             tooltip: 'Bank',
-            onTap: _showMortgageDialog,
+            onTap: _canUseStableInteractions ? _showMortgageDialog : null,
             color: const Color(0xE65A3B87),
           ),
         ],
@@ -1037,7 +1125,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             child: _build3DOverlayButton(
               icon: Icons.style_rounded,
               tooltip: 'Power-up cards',
-              onTap: _showPowerUpHand,
+              onTap: _canUseStableInteractions ? _showPowerUpHand : null,
               color: const Color(0xE69A6C16),
             ),
           ),
@@ -1047,7 +1135,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           _build3DOverlayButton(
             icon: Icons.more_horiz_rounded,
             tooltip: 'More actions',
-            onTap: _show3DMoreActions,
+            onTap: _canUseStableInteractions ? _show3DMoreActions : null,
           ),
         ],
       ],
@@ -1055,66 +1143,63 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   void _show3DMoreActions() {
+    if (!_canUseStableInteractions) return;
     final player = gameState.currentPlayer;
     final powerUpCount = gameState.getPowerUps(player.id).length;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF131C34),
       showDragHandle: true,
-      builder:
-          (sheetContext) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.tradingEnabled)
-                  ListTile(
-                    leading: const Icon(
-                      Icons.swap_horiz_rounded,
-                      color: Colors.tealAccent,
-                    ),
-                    title: const Text(
-                      'Trade',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      _showTradeDialog();
-                    },
-                  ),
-                if (widget.bankEnabled)
-                  ListTile(
-                    leading: const Icon(
-                      Icons.account_balance_rounded,
-                      color: Colors.deepPurpleAccent,
-                    ),
-                    title: const Text(
-                      'Bank',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      _showMortgageDialog();
-                    },
-                  ),
-                if (powerUpCount > 0)
-                  ListTile(
-                    leading: const Icon(
-                      Icons.style_rounded,
-                      color: Colors.amber,
-                    ),
-                    title: Text(
-                      'Power-up cards ($powerUpCount)',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      _showPowerUpHand();
-                    },
-                  ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.tradingEnabled)
+              ListTile(
+                leading: const Icon(
+                  Icons.swap_horiz_rounded,
+                  color: Colors.tealAccent,
+                ),
+                title: const Text(
+                  'Trade',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showTradeDialog();
+                },
+              ),
+            if (widget.bankEnabled)
+              ListTile(
+                leading: const Icon(
+                  Icons.account_balance_rounded,
+                  color: Colors.deepPurpleAccent,
+                ),
+                title: const Text(
+                  'Bank',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showMortgageDialog();
+                },
+              ),
+            if (powerUpCount > 0)
+              ListTile(
+                leading: const Icon(Icons.style_rounded, color: Colors.amber),
+                title: Text(
+                  'Power-up cards ($powerUpCount)',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showPowerUpHand();
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1156,24 +1241,22 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   Widget _build3DRollControl() {
     final boardReady = _godotBoardController.isBoardReady;
-    final canRoll = boardReady && gameState.canRoll && !_isProcessingTurn;
+    final canRoll = _canStartRoll(boardReady: boardReady);
     final isRolling =
         gameState.animationState == TurnAnimationState.rollingDice;
     final isMoving = gameState.animationState == TurnAnimationState.movingToken;
-    final label =
-        !boardReady
-            ? 'LOADING BOARD'
-            : isRolling
-            ? 'ROLLING…'
-            : isMoving
-            ? 'MOVING…'
-            : 'ROLL FOR ${gameState.currentPlayer.name.toUpperCase()}';
-    final diceValue =
-        gameState.die1Value <= 0
-            ? 'READY'
-            : gameState.diceCount == 1
-            ? '${gameState.die1Value}'
-            : '${gameState.die1Value} + ${gameState.die2Value}';
+    final label = !boardReady
+        ? 'LOADING BOARD'
+        : isRolling
+        ? 'ROLLING…'
+        : isMoving
+        ? 'MOVING…'
+        : 'ROLL FOR ${gameState.currentPlayer.name.toUpperCase()}';
+    final diceValue = gameState.die1Value <= 0
+        ? 'READY'
+        : gameState.diceCount == 1
+        ? '${gameState.die1Value}'
+        : '${gameState.die1Value} + ${gameState.die2Value}';
 
     return AnimatedBuilder(
       animation: _glowController,
@@ -1228,10 +1311,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
               const SizedBox(width: 8),
               Flexible(
                 child: Material(
-                  color:
-                      canRoll
-                          ? const Color(0xFFF2C452)
-                          : const Color(0xFF26324E),
+                  color: canRoll
+                      ? const Color(0xFFF2C452)
+                      : const Color(0xFF26324E),
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
@@ -1257,10 +1339,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                             Icon(
                               Icons.casino_rounded,
                               size: 23,
-                              color:
-                                  canRoll
-                                      ? const Color(0xFF142033)
-                                      : Colors.white54,
+                              color: canRoll
+                                  ? const Color(0xFF142033)
+                                  : Colors.white54,
                             ),
                           const SizedBox(width: 9),
                           Flexible(
@@ -1269,10 +1350,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color:
-                                    canRoll
-                                        ? const Color(0xFF142033)
-                                        : Colors.white70,
+                                color: canRoll
+                                    ? const Color(0xFF142033)
+                                    : Colors.white70,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.45,
@@ -1358,7 +1438,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   Widget _build3DOverlayButton({
     required IconData icon,
     required String tooltip,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     Color color = const Color(0xE6111A33),
   }) {
     return Material(
@@ -1368,6 +1448,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         tooltip: tooltip,
         onPressed: onTap,
         color: Colors.white,
+        disabledColor: Colors.white38,
         icon: Icon(icon),
       ),
     );
@@ -1395,13 +1476,17 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             tiles: gameState.tiles,
             boardTheme: widget.boardTheme,
             centerControls: _buildCenterControls(),
-            onMenuTap: _showGameMenu,
-            onTradeTap: widget.tradingEnabled ? _showTradeDialog : null,
-            onBankTap: widget.bankEnabled ? _showMortgageDialog : null,
+            onMenuTap: _canOpenGameMenu ? _showGameMenu : null,
+            onTradeTap: widget.tradingEnabled && _canUseStableInteractions
+                ? _showTradeDialog
+                : null,
+            onBankTap: widget.bankEnabled && _canUseStableInteractions
+                ? _showMortgageDialog
+                : null,
             showActionButtons:
                 !gameState.currentPlayer.isAI &&
                 (widget.tradingEnabled || widget.bankEnabled),
-            onTileTap: _showTileInfo,
+            onTileTap: _canUseStableInteractions ? _showTileInfo : null,
             isChanceHighlighted: _waitingForCardPick && _isChanceCard,
             isChestHighlighted: _waitingForCardPick && !_isChanceCard,
             onChanceTap: () => _onCardDeckTap(true),
@@ -1428,20 +1513,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   Widget _buildCompactPlayerPill(Player player, {bool vertical = false}) {
     final isCurrent = player.id == gameState.currentPlayer.id;
     return Material(
-      color:
-          isCurrent
-              ? player.color.withValues(alpha: 0.28)
-              : const Color(0xC9142038),
+      color: isCurrent
+          ? player.color.withValues(alpha: 0.28)
+          : const Color(0xC9142038),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
+        key: Key('compact-player-${player.id}'),
         borderRadius: BorderRadius.circular(14),
-        onTap:
-            () => showPropertyPortfolioDialog(
-              context: context,
-              player: player,
-              tiles: gameState.tiles,
-              gameState: gameState,
-            ),
+        onTap: _canUseStableInteractions
+            ? () => _showPlayerPortfolio(player)
+            : null,
         child: Container(
           width: vertical ? double.infinity : 104,
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
@@ -1492,10 +1573,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Widget _buildCompactPlayerStrip() {
-    final players =
-        gameState.players
-            .where((p) => p.status == PlayerStatus.active)
-            .toList();
+    final players = gameState.players
+        .where((p) => p.status == PlayerStatus.active)
+        .toList();
     return SizedBox(
       key: const Key('compact-2d-hud'),
       height: 58,
@@ -1511,7 +1591,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   Widget _buildCompact2DActionBar() {
     final player = gameState.currentPlayer;
-    final canRoll = gameState.canRoll && !_isProcessingTurn;
+    final canRoll = _canStartRoll();
     final powerUpCount = gameState.getPowerUps(player.id).length;
     final hasMoreActions =
         !player.isAI &&
@@ -1530,7 +1610,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           IconButton(
             key: const Key('compact-menu-button'),
             tooltip: 'Game menu',
-            onPressed: _showGameMenu,
+            onPressed: _canOpenGameMenu ? _showGameMenu : null,
             color: Colors.white,
             icon: const Icon(Icons.menu_rounded),
           ),
@@ -1544,33 +1624,44 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           ),
           if (hasMoreActions)
             IconButton(
+              key: const Key('compact-more-actions-button'),
               tooltip: 'More actions',
-              onPressed: _show3DMoreActions,
+              onPressed: _canUseStableInteractions ? _show3DMoreActions : null,
               color: Colors.white,
               icon: const Icon(Icons.more_horiz_rounded),
             ),
           const SizedBox(width: 4),
           Expanded(
-            child: FilledButton.icon(
+            child: FilledButton(
               key: const Key('compact-roll-button'),
               onPressed: canRoll ? _rollDice : null,
-              icon: const Icon(Icons.casino_rounded),
-              label: Text(
-                canRoll
-                    ? AppLocalizations.of(context)!.rollDice
-                    : gameState.animationState == TurnAnimationState.movingToken
-                    ? 'MOVING…'
-                    : 'PLEASE WAIT…',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFF2BD49),
                 foregroundColor: const Color(0xFF111A33),
                 disabledBackgroundColor: Colors.white12,
                 disabledForegroundColor: Colors.white54,
                 minimumSize: const Size(0, 46),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.casino_rounded, size: 20),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      canRoll
+                          ? AppLocalizations.of(context)!.rollDice
+                          : gameState.animationState ==
+                                TurnAnimationState.movingToken
+                          ? 'MOVING…'
+                          : 'PLEASE WAIT…',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1622,10 +1713,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Widget _buildCompactLandscapeLayout(BoxConstraints constraints) {
-    final players =
-        gameState.players
-            .where((p) => p.status == PlayerStatus.active)
-            .toList();
+    final players = gameState.players
+        .where((p) => p.status == PlayerStatus.active)
+        .toList();
     final sidebarWidth = min(196.0, max(164.0, constraints.maxWidth * 0.24));
     final boardSize = max(
       0.0,
@@ -1643,11 +1733,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                   padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
                   itemCount: players.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 6),
-                  itemBuilder:
-                      (_, index) => _buildCompactPlayerPill(
-                        players[index],
-                        vertical: true,
-                      ),
+                  itemBuilder: (_, index) =>
+                      _buildCompactPlayerPill(players[index], vertical: true),
                 ),
               ),
               _buildCompact2DActionBar(),
@@ -1664,10 +1751,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Widget _buildLandscapeLayout() {
-    final activePlayers =
-        gameState.players
-            .where((p) => p.status == PlayerStatus.active)
-            .toList();
+    final activePlayers = gameState.players
+        .where((p) => p.status == PlayerStatus.active)
+        .toList();
     final halfCount = (activePlayers.length / 2).ceil();
 
     return LayoutBuilder(
@@ -1715,10 +1801,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Widget _buildPortraitLayout() {
-    final activePlayers =
-        gameState.players
-            .where((p) => p.status == PlayerStatus.active)
-            .toList();
+    final activePlayers = gameState.players
+        .where((p) => p.status == PlayerStatus.active)
+        .toList();
     final halfCount = (activePlayers.length / 2).ceil();
 
     return LayoutBuilder(
@@ -1769,20 +1854,20 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     return Container(
       margin: const EdgeInsets.all(8),
       child: Column(
-        children:
-            players.map((player) {
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: PlayerCard(
-                    player: player,
-                    isCurrentPlayer: player.id == gameState.currentPlayer.id,
-                    tiles: gameState.tiles,
-                    gameState: gameState,
-                  ),
-                ),
-              );
-            }).toList(),
+        children: players.map((player) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: PlayerCard(
+                player: player,
+                isCurrentPlayer: player.id == gameState.currentPlayer.id,
+                tiles: gameState.tiles,
+                gameState: gameState,
+                portfolioEnabled: _canUseStableInteractions,
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -1791,27 +1876,27 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
-        children:
-            players.map((player) {
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: PlayerCardCompact(
-                    player: player,
-                    isCurrentPlayer: player.id == gameState.currentPlayer.id,
-                    tiles: gameState.tiles,
-                    gameState: gameState,
-                  ),
-                ),
-              );
-            }).toList(),
+        children: players.map((player) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: PlayerCardCompact(
+                player: player,
+                isCurrentPlayer: player.id == gameState.currentPlayer.id,
+                tiles: gameState.tiles,
+                gameState: gameState,
+                portfolioEnabled: _canUseStableInteractions,
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildCenterControls({bool boardReady = true}) {
     // Only allow roll if game state allows AND we're not processing a turn
-    final canRoll = boardReady && gameState.canRoll && !_isProcessingTurn;
+    final canRoll = _canStartRoll(boardReady: boardReady);
 
     return CenterControls(
       die1: gameState.die1Value,
@@ -1827,15 +1912,18 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   Future<void> _rollDice() async {
     // Prevent double-tap exploits
-    if (_isProcessingTurn) return;
+    if (!_canStartRoll()) return;
 
     // Lock turn processing
+    _cancelScheduledTurnActions();
     setState(() {
       _isProcessingTurn = true;
-      gameState = gameState.copyWith(
-        animationState: TurnAnimationState.rollingDice,
+      _replaceGameState(
+        gameState.copyWith(animationState: TurnAnimationState.rollingDice),
       );
     });
+    _turnOperationId++;
+    final operation = _captureTurnOperation();
     final use3DRoll = _show3DBoard && _godotBoardController.isBoardReady;
     if (!use3DRoll) {
       _diceController.forward(from: 0);
@@ -1881,6 +1969,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     if (!use3DRoll) {
       await Future.delayed(AnimationDurations.diceRoll);
+      if (!_isTurnOperationActive(operation)) return;
       AudioService.instance.onDiceLand();
     }
 
@@ -1891,18 +1980,19 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     // Update dice values and start moving
     setState(() {
-      gameState = gameState.copyWith(
-        die1Value: die1,
-        die2Value: die2,
-        lastDiceRoll: roll,
-        animationState:
-            use3DRoll
-                ? TurnAnimationState.rollingDice
-                : TurnAnimationState.movingToken,
-        logicPhase: TurnLogicPhase.rolled,
-        totalDiceRolls: newTotalRolls,
-        totalDiceSum: newTotalSum,
-        doublesRolledTotal: newDoublesTotal,
+      _replaceGameState(
+        gameState.copyWith(
+          die1Value: die1,
+          die2Value: die2,
+          lastDiceRoll: roll,
+          animationState: use3DRoll
+              ? TurnAnimationState.rollingDice
+              : TurnAnimationState.movingToken,
+          logicPhase: TurnLogicPhase.rolled,
+          totalDiceRolls: newTotalRolls,
+          totalDiceSum: newTotalSum,
+          doublesRolledTotal: newDoublesTotal,
+        ),
       );
     });
 
@@ -1913,38 +2003,37 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     final endPosition = (startPosition + roll) % tileCount;
     var movedInGodot = false;
 
-    if (_show3DBoard && _godotBoardController.isBoardReady) {
+    if (use3DRoll) {
       final command = _godotBoardController.createRollCommand(
         gameState: gameState,
         playerIndex: gameState.currentPlayerIndex,
         die1: die1,
         die2: die2,
       );
-      try {
-        final movementFuture = _godotBoardController.animateRoll(command);
-        await Future.delayed(const Duration(milliseconds: 1040));
-        AudioService.instance.onDiceLand();
-        if (mounted) {
-          setState(() {
-            gameState = gameState.copyWith(
-              animationState: TurnAnimationState.movingToken,
-            );
-          });
-        }
-        final movement = await movementFuture;
-        movedInGodot =
-            movement.playerId == player.id &&
-            movement.logicalPosition == endPosition;
-      } on Object {
-        movedInGodot = false;
-        if (mounted) {
-          setState(() {
-            gameState = gameState.copyWith(
-              animationState: TurnAnimationState.movingToken,
-            );
-          });
-        }
-      }
+      // Attach the failure handler immediately. Native rejection can happen
+      // before the minimum dice animation finishes, and leaving that Future
+      // temporarily unobserved would surface as an unhandled async error.
+      final movementFuture = _godotBoardController
+          .animateRoll(command)
+          .then<GodotMovementComplete?>(
+            (movement) => movement,
+            onError: (Object _, StackTrace _) => null,
+          );
+      await Future.delayed(const Duration(milliseconds: 1040));
+      if (!_isTurnOperationActive(operation)) return;
+      AudioService.instance.onDiceLand();
+      setState(() {
+        _replaceGameState(
+          gameState.copyWith(animationState: TurnAnimationState.movingToken),
+        );
+      });
+      final movement = await movementFuture;
+      if (!_isTurnOperationActive(operation)) return;
+      movedInGodot =
+          movement != null &&
+          movement.playerId == player.id &&
+          movement.logicalPosition == endPosition;
+      if (!movedInGodot) _switchTo2DRollFallback();
     }
 
     if (movedInGodot) {
@@ -1959,6 +2048,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     } else {
       for (int i = 0; i < roll; i++) {
         await Future.delayed(AnimationDurations.tokenHop);
+        if (!_isTurnOperationActive(operation)) return;
 
         AudioService.instance.onTokenStep();
         setState(() {
@@ -1978,26 +2068,125 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     // Highlight landing tile
     setState(() {
-      gameState = gameState.copyWith(
-        highlightedTileIndex: endPosition,
-        animationState: TurnAnimationState.idle,
-        logicPhase: TurnLogicPhase.tileResolution,
+      _replaceGameState(
+        gameState.copyWith(
+          highlightedTileIndex: endPosition,
+          animationState: TurnAnimationState.idle,
+          logicPhase: TurnLogicPhase.tileResolution,
+        ),
       );
     });
     await _sync3DBoard();
+    if (!_isTurnOperationActive(operation)) return;
 
     // Wait for the bounce animation to complete before showing dialogs
     await Future.delayed(const Duration(milliseconds: 600));
+    if (!_isTurnOperationActive(operation)) return;
 
     // Resolve the tile landing
-    await _resolveTileLanding(player, endPosition);
+    await _resolveTileLanding(player, endPosition, operation: operation);
   }
+
+  void _switchTo2DRollFallback() {
+    if (!mounted || !_show3DBoard) return;
+    setState(() {
+      _show3DBoard = false;
+      _replaceGameState(
+        gameState.copyWith(animationState: TurnAnimationState.movingToken),
+      );
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.continuedOn2DBoard),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  _TurnOperationToken _captureTurnOperation({Player? player}) =>
+      _TurnOperationToken(
+        session: widget.session,
+        sessionGeneration: widget.session.workGeneration,
+        operationId: _turnOperationId,
+        gameId: gameState.id,
+        playerId: (player ?? gameState.currentPlayer).id,
+      );
+
+  bool _isTurnOperationActive(_TurnOperationToken operation) =>
+      mounted &&
+      identical(operation.session, widget.session) &&
+      widget.session.acceptsInput &&
+      operation.sessionGeneration == widget.session.workGeneration &&
+      operation.operationId == _turnOperationId &&
+      operation.gameId == gameState.id &&
+      operation.playerId == gameState.currentPlayer.id;
+
+  void _scheduleCurrentTurnAction(
+    Duration delay,
+    FutureOr<void> Function() action, {
+    bool requireRollReady = false,
+    Player? expectedPlayer,
+  }) {
+    final operation = _captureTurnOperation(player: expectedPlayer);
+    late final Timer timer;
+    timer = Timer(delay, () async {
+      _scheduledTurnTimers.remove(timer);
+      if (!_isTurnOperationActive(operation) ||
+          _isPaused ||
+          !widget.isActive ||
+          (requireRollReady && !_canStartRoll())) {
+        return;
+      }
+      await action();
+    });
+    _scheduledTurnTimers.add(timer);
+  }
+
+  void _cancelScheduledTurnActions() {
+    for (final timer in _scheduledTurnTimers) {
+      timer.cancel();
+    }
+    _scheduledTurnTimers.clear();
+  }
+
+  bool _canStartRoll({bool? boardReady}) =>
+      (boardReady ?? (!_show3DBoard || _godotBoardController.isBoardReady)) &&
+      mounted &&
+      widget.session.acceptsInput &&
+      widget.isActive &&
+      !_isPaused &&
+      !_isProcessingTurn &&
+      gameState.canRoll;
+
+  bool get _canOpenGameMenu => _canUseStableInteractions;
+
+  /// Nonessential board inspection and management is only safe at the clean
+  /// human pre-roll boundary. Dice/card controls and camera/music interactions
+  /// use their own narrower gates so the required action remains available.
+  bool get _canUseStableInteractions =>
+      mounted &&
+      widget.session.acceptsInput &&
+      widget.isActive &&
+      !_isPaused &&
+      !_isProcessingTurn &&
+      _scheduledTurnTimers.isEmpty &&
+      !_waitingForCardPick &&
+      !gameState.currentPlayer.isAI &&
+      gameState.currentPlayer.jailTurnsRemaining == 0 &&
+      gameState.canRoll &&
+      gameState.logicPhase == TurnLogicPhase.preRoll &&
+      gameState.animationState == TurnAnimationState.idle;
 
   Future<void> _resolveTileLanding(
     Player player,
     int tileIndex, {
     bool skipEndTurn = false,
+    _TurnOperationToken? operation,
   }) async {
+    if (!mounted || (operation != null && !_isTurnOperationActive(operation))) {
+      return;
+    }
     final result = engine.resolveTileLanding(player, tileIndex);
 
     switch (result.actionType) {
@@ -2019,7 +2208,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         break;
 
       case TileActionType.goToJail:
-        _handleGoToJail(player);
+        await _handleGoToJail(player);
         break;
 
       case TileActionType.drawCard:
@@ -2044,6 +2233,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         break;
     }
 
+    if (!mounted || (operation != null && !_isTurnOperationActive(operation))) {
+      return;
+    }
+
     if (skipEndTurn) return;
 
     // Check win condition
@@ -2053,6 +2246,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     // End turn
     await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted || (operation != null && !_isTurnOperationActive(operation))) {
+      return;
+    }
     _endTurn();
   }
 
@@ -2076,7 +2272,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   Future<void> _handleBuyOption(Player player, TileData tile) async {
     // AI automatically decides whether to buy using enhanced AI engine
     if (player.isAI) {
+      final operation = _captureTurnOperation(player: player);
       await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted || !_isTurnOperationActive(operation)) return;
 
       final aiEngine = _aiEngines[player.id];
       final shouldBuy =
@@ -2092,6 +2290,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           Icons.home,
           Colors.green,
         );
+        if (!_isTurnOperationActive(operation)) return;
         if (engine.buyProperty(player, tile)) {
           AudioService.instance.onBuyProperty();
           setState(() {});
@@ -2104,24 +2303,26 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       return;
     }
 
-    // Human player gets dialog
-    await showBuyPropertyDialog(
+    // Return a decision first, then keep the selected branch inside this
+    // awaited tile resolution. This prevents Skip from racing end-turn while
+    // an auction is still open.
+    final decision = await showBuyPropertyDialog(
       context: context,
       tile: tile,
       playerCash: player.cash,
       purchasePrice: engine.getPurchasePrice(player, tile),
-      onBuy: () {
+    );
+    if (!mounted || !widget.session.acceptsInput) return;
+    switch (decision ?? BuyPropertyDecision.skip) {
+      case BuyPropertyDecision.buy:
         if (engine.buyProperty(player, tile)) {
           AudioService.instance.onBuyProperty();
           setState(() {});
-          unawaited(_sync3DBoard());
+          await _sync3DBoard();
         }
-      },
-      onSkip: () async {
-        // Player chose not to buy - start auction
+      case BuyPropertyDecision.skip:
         await _startAuction(tile);
-      },
-    );
+    }
   }
 
   bool _defaultAIShouldBuy(Player player, TileData tile) {
@@ -2135,10 +2336,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     // Skip auction if disabled - property stays unowned
     if (!widget.auctionEnabled) return;
 
-    final activePlayers =
-        gameState.players
-            .where((p) => p.status == PlayerStatus.active)
-            .toList();
+    final activePlayers = gameState.players
+        .where((p) => p.status == PlayerStatus.active)
+        .toList();
 
     if (activePlayers.length < 2) return;
 
@@ -2174,7 +2374,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   ) async {
     // AI automatically decides whether to upgrade using enhanced AI engine
     if (player.isAI) {
+      final operation = _captureTurnOperation(player: player);
       await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted || !_isTurnOperationActive(operation)) return;
 
       final aiEngine = _aiEngines[player.id];
       final shouldUpgrade =
@@ -2182,20 +2384,20 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           (player.cash >= property.upgradeCost + 200);
 
       if (shouldUpgrade) {
-        final levelName =
-            property.upgradeLevel < 4
-                ? AppLocalizations.of(
-                  context,
-                )!.buildHouse.toLowerCase().replaceAll('!', '')
-                : AppLocalizations.of(
-                  context,
-                )!.buildHotel.toLowerCase().replaceAll('!', '');
+        final levelName = property.upgradeLevel < 4
+            ? AppLocalizations.of(
+                context,
+              )!.buildHouse.toLowerCase().replaceAll('!', '')
+            : AppLocalizations.of(
+                context,
+              )!.buildHotel.toLowerCase().replaceAll('!', '');
         await _showAIActionNotification(
           player.name,
           AppLocalizations.of(context)!.aiBuiltOn(levelName, property.name),
           Icons.construction,
           Colors.green,
         );
+        if (!_isTurnOperationActive(operation)) return;
         if (engine.upgradeProperty(player, property)) {
           AudioService.instance.onUpgrade();
           setState(() {});
@@ -2240,18 +2442,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     if (tile is UtilityTileData) {
       rentType = RentType.utility;
       diceRoll = gameState.lastDiceRoll;
-      ownedCount =
-          gameState.tiles
-              .whereType<UtilityTileData>()
-              .where((u) => u.ownerId == ownerId)
-              .length;
+      ownedCount = gameState.tiles
+          .whereType<UtilityTileData>()
+          .where((u) => u.ownerId == ownerId)
+          .length;
     } else if (tile is RailroadTileData) {
       rentType = RentType.railroad;
-      ownedCount =
-          gameState.tiles
-              .whereType<RailroadTileData>()
-              .where((r) => r.ownerId == ownerId)
-              .length;
+      ownedCount = gameState.tiles
+          .whereType<RailroadTileData>()
+          .where((r) => r.ownerId == ownerId)
+          .length;
     }
 
     // AI automatically pays rent with notification
@@ -2376,65 +2576,64 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       await showDialog(
         context: context,
         barrierDismissible: false,
-        builder:
-            (context) => Dialog(
-              backgroundColor: Colors.transparent,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 300),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2D2D44),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.orange, width: 2),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('🚔', style: TextStyle(fontSize: 64)),
-                    const SizedBox(height: 16),
-                    Text(
-                      AppLocalizations.of(context)!.goToJailTitle,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      AppLocalizations.of(context)!.goToJailMessage,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)!.ok,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 300),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2D2D44),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.orange, width: 2),
             ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🚔', style: TextStyle(fontSize: 64)),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.goToJailTitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of(context)!.goToJailMessage,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    AppLocalizations.of(context)!.ok,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
   }
@@ -2490,11 +2689,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         // Show property selection dialog for human players
         if (!player.isAI && mounted) {
           // Get all upgradable properties owned by the player
-          final ownedProperties =
-              gameState.tiles
-                  .whereType<PropertyTileData>()
-                  .where((p) => p.ownerId == player.id && p.canUpgrade)
-                  .toList();
+          final ownedProperties = gameState.tiles
+              .whereType<PropertyTileData>()
+              .where((p) => p.ownerId == player.id && p.canUpgrade)
+              .toList();
 
           if (ownedProperties.isNotEmpty) {
             bool houseUsed = false;
@@ -2519,11 +2717,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           }
         } else {
           // AI: automatically upgrade first available property
-          final ownedProperties =
-              gameState.tiles
-                  .whereType<PropertyTileData>()
-                  .where((p) => p.ownerId == player.id && p.canUpgrade)
-                  .toList();
+          final ownedProperties = gameState.tiles
+              .whereType<PropertyTileData>()
+              .where((p) => p.ownerId == player.id && p.canUpgrade)
+              .toList();
           if (ownedProperties.isNotEmpty) {
             ownedProperties.first.upgradeLevel++;
           }
@@ -2559,11 +2756,10 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           }
         } else {
           // AI: teleport to a random unowned property if available
-          final unownedProperties =
-              gameState.tiles
-                  .whereType<PropertyTileData>()
-                  .where((p) => p.ownerId == null)
-                  .toList();
+          final unownedProperties = gameState.tiles
+              .whereType<PropertyTileData>()
+              .where((p) => p.ownerId == null)
+              .toList();
           if (unownedProperties.isNotEmpty) {
             final randomProperty =
                 unownedProperties[_random.nextInt(unownedProperties.length)];
@@ -2604,13 +2800,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder:
-              (_) => MemoryMatchGame(
-                onComplete: () => Navigator.pop(context),
-                onScoreEarned: (score) {
-                  earnedScore = score;
-                },
-              ),
+          builder: (_) => MemoryMatchGame(
+            onComplete: () => Navigator.pop(context),
+            onScoreEarned: (score) {
+              earnedScore = score;
+            },
+          ),
         ),
       );
     } else {
@@ -2618,13 +2813,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder:
-              (_) => QuickTapGame(
-                onComplete: () => Navigator.pop(context),
-                onScoreEarned: (score) {
-                  earnedScore = score;
-                },
-              ),
+          builder: (_) => QuickTapGame(
+            onComplete: () => Navigator.pop(context),
+            onScoreEarned: (score) {
+              earnedScore = score;
+            },
+          ),
         ),
       );
     }
@@ -2672,6 +2866,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   // Phase 3: Power-Up Card Usage
   // ==========================================================================
   void _usePowerUpCard(PowerUpCard card) {
+    if (!_canUseStableInteractions) return;
     final player = gameState.currentPlayer;
     applyPowerUpCard(player, card, gameState);
     setState(() {});
@@ -2682,6 +2877,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   // Phase 3: Show Power-Up Hand (for human players)
   // ==========================================================================
   void _showPowerUpHand() {
+    if (!_canUseStableInteractions) return;
     final player = gameState.currentPlayer;
     final cards = gameState.getPowerUps(player.id);
 
@@ -2698,40 +2894,37 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder:
-          (context) => Container(
-            height: 280,
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+      builder: (context) => Container(
+        height: 280,
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                AppLocalizations.of(context)!.yourPowerUpCards,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    AppLocalizations.of(context)!.yourPowerUpCards,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: PowerUpHand(
-                    cards: cards,
-                    onCardTap: (card) {
-                      Navigator.pop(context);
-                      _usePowerUpCard(card);
-                    },
-                  ),
-                ),
-              ],
+            Expanded(
+              child: PowerUpHand(
+                cards: cards,
+                onCardTap: (card) {
+                  Navigator.pop(context);
+                  _usePowerUpCard(card);
+                },
+              ),
             ),
-          ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2796,25 +2989,25 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     if (isChance != _isChanceCard) return; // Wrong deck tapped
     if (_cardPickPlayer == null) return;
 
-    final localizedCards =
-        isChance ? _localizedChanceCards : _localizedChestCards;
+    final localizedCards = isChance
+        ? _localizedChanceCards
+        : _localizedChestCards;
     final fallbackCards = isChance ? _chanceCards : _chestCards;
     final cards = localizedCards.isNotEmpty ? localizedCards : fallbackCards;
 
     // Shuffle and pick 5 random cards for the player to choose from
     final shuffledCards = List<Map<String, dynamic>>.from(cards)
       ..shuffle(_random);
-    final pickableCards =
-        shuffledCards
-            .take(5)
-            .map(
-              (c) => PickableCard(
-                text: c['text'] as String,
-                effect: c['effect'] as String,
-                action: c['action'] as String,
-              ),
-            )
-            .toList();
+    final pickableCards = shuffledCards
+        .take(5)
+        .map(
+          (c) => PickableCard(
+            text: c['text'] as String,
+            effect: c['effect'] as String,
+            action: c['action'] as String,
+          ),
+        )
+        .toList();
 
     AudioService.instance.onDrawCard();
     showCardPickDialog(
@@ -2845,8 +3038,9 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   Future<void> _handleDrawCard(Player player, TileData tile) async {
     final isChance = tile.type == TileType.chance;
 
-    final localizedCards =
-        isChance ? _localizedChanceCards : _localizedChestCards;
+    final localizedCards = isChance
+        ? _localizedChanceCards
+        : _localizedChestCards;
     final fallbackCards = isChance ? _chanceCards : _chestCards;
     final cards = localizedCards.isNotEmpty ? localizedCards : fallbackCards;
 
@@ -2897,9 +3091,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
 
     setState(() {
-      gameState = gameState.copyWith(
-        status: GameStatus.finished,
-        winnerId: winnerId,
+      _replaceGameState(
+        gameState.copyWith(status: GameStatus.finished, winnerId: winnerId),
       );
     });
     _showGameOverDialog(winner);
@@ -2955,19 +3148,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       }
     }
 
-    // Phase 3: Use Victory Screen instead of simple dialog
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => VictoryScreen(
-                winner: winner,
-                allPlayers: gameState.players,
-                gameTurns: _totalRounds,
-                onPlayAgain: widget.onRestart,
-                onGoHome: widget.onQuit,
-              ),
+      widget.onGameFinished(
+        GameResult(
+          winner: winner,
+          players: List<Player>.unmodifiable(gameState.players),
+          turns: _totalRounds,
         ),
       );
     }
@@ -2978,23 +3164,22 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     if (gameState.hasExtraTurn) {
       setState(() {
         _isProcessingTurn = false; // Unlock for next roll
-        gameState = gameState.copyWith(
-          hasExtraTurn: false,
-          highlightedTileIndex: null,
-          logicPhase: TurnLogicPhase.preRoll,
+        _replaceGameState(
+          gameState.copyWith(
+            hasExtraTurn: false,
+            highlightedTileIndex: null,
+            logicPhase: TurnLogicPhase.preRoll,
+          ),
         );
       });
 
       // Continue with same player
       if (gameState.currentPlayer.isAI) {
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          if (mounted &&
-              !_isPaused &&
-              gameState.canRoll &&
-              !_isProcessingTurn) {
-            _rollDice();
-          }
-        });
+        _scheduleCurrentTurnAction(
+          const Duration(milliseconds: 1500),
+          _rollDice,
+          requireRollReady: true,
+        );
       }
       _sync3DBoard();
       _updateMusicIntensity();
@@ -3019,10 +3204,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       gameState.tickActivePowerUps();
 
       _isProcessingTurn = false; // Unlock for next player's turn
-      gameState = gameState.copyWith(
-        currentPlayerIndex: nextIndex,
-        highlightedTileIndex: null,
-        logicPhase: TurnLogicPhase.preRoll,
+      _replaceGameState(
+        gameState.copyWith(
+          currentPlayerIndex: nextIndex,
+          highlightedTileIndex: null,
+          logicPhase: TurnLogicPhase.preRoll,
+        ),
       );
 
       // Phase 3: Check for random event trigger at new round
@@ -3036,21 +3223,21 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     // Check if next player is in jail
     final nextPlayer = gameState.currentPlayer;
     if (nextPlayer.jailTurnsRemaining > 0) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted && !_isPaused) {
-          _handleJailTurn(nextPlayer);
-        }
-      });
+      _scheduleCurrentTurnAction(
+        const Duration(milliseconds: 500),
+        () => _handleJailTurn(nextPlayer),
+        expectedPlayer: nextPlayer,
+      );
       return;
     }
 
     // If next player is AI, auto-roll after a delay
     if (gameState.currentPlayer.isAI) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted && !_isPaused && gameState.canRoll && !_isProcessingTurn) {
-          _rollDice();
-        }
-      });
+      _scheduleCurrentTurnAction(
+        const Duration(milliseconds: 1500),
+        _rollDice,
+        requireRollReady: true,
+      );
     }
   }
 
@@ -3060,40 +3247,42 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         activePlayers.any((player) => player.cash <= 300) ||
         (gameState.players.length > 2 && activePlayers.length <= 2) ||
         _totalRounds >= 12;
-    final intensity =
-        isTense
-            ? MusicIntensity.tense
-            : _totalRounds <= 2
-            ? MusicIntensity.relaxed
-            : MusicIntensity.standard;
+    final intensity = isTense
+        ? MusicIntensity.tense
+        : _totalRounds <= 2
+        ? MusicIntensity.relaxed
+        : MusicIntensity.standard;
     unawaited(AudioService.instance.setMusicIntensity(intensity));
   }
 
   Future<void> _handleJailTurn(Player player) async {
     // AI automatically decides
     if (player.isAI) {
+      final operation = _captureTurnOperation(player: player);
       await Future.delayed(const Duration(milliseconds: 800));
+      if (!_isTurnOperationActive(operation)) return;
 
       // AI pays fine if they can afford it, otherwise stays
       if (player.cash >= GameConstants.jailBailAmount) {
         engine.payJailBail(player);
         setState(() {});
         // Now AI can roll
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted && !_isPaused && gameState.canRoll) {
-            _rollDice();
-          }
-        });
+        _scheduleCurrentTurnAction(
+          const Duration(milliseconds: 500),
+          _rollDice,
+          requireRollReady: true,
+          expectedPlayer: player,
+        );
       } else {
         // AI stays in jail
         setState(() {
           player.jailTurnsRemaining--;
         });
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            _endTurn();
-          }
-        });
+        _scheduleCurrentTurnAction(
+          const Duration(milliseconds: 500),
+          _endTurn,
+          expectedPlayer: player,
+        );
       }
       return;
     }
@@ -3115,11 +3304,11 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           player.jailTurnsRemaining--;
         });
         // End turn immediately
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            _endTurn();
-          }
-        });
+        _scheduleCurrentTurnAction(
+          const Duration(milliseconds: 500),
+          _endTurn,
+          expectedPlayer: player,
+        );
       },
     );
   }
@@ -3131,30 +3320,33 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     required IconData icon,
     required String label,
     required Color color,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
-    return Material(
-      color: color.withOpacity(0.9),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
+    return Opacity(
+      opacity: onTap == null ? 0.45 : 1,
+      child: Material(
+        color: color.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 18),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white, size: 18),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -3165,14 +3357,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   // Phase 4: Trade Dialog
   // ==========================================================================
   void _showTradeDialog() {
+    if (!_canUseStableInteractions) return;
     final currentPlayer = gameState.currentPlayer;
-    final otherPlayers =
-        gameState.players
-            .where(
-              (p) =>
-                  p.id != currentPlayer.id && p.status == PlayerStatus.active,
-            )
-            .toList();
+    final otherPlayers = gameState.players
+        .where(
+          (p) => p.id != currentPlayer.id && p.status == PlayerStatus.active,
+        )
+        .toList();
 
     if (otherPlayers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3194,11 +3385,14 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   }
 
   Future<void> _handleTradeProposal(TradeOffer offer) async {
+    if (!_canUseStableInteractions) return;
     final recipient = offer.recipient;
 
     // AI evaluates trade
     if (recipient.isAI) {
+      final operation = _captureTurnOperation();
       await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted || !_isTurnOperationActive(operation)) return;
 
       final aiEngine = _aiEngines[recipient.id];
       final shouldAccept =
@@ -3212,6 +3406,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           Icons.handshake,
           Colors.green,
         );
+        if (!_isTurnOperationActive(operation)) return;
         offer.execute();
         setState(() {});
         await _sync3DBoard();
@@ -3222,6 +3417,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           Icons.cancel,
           Colors.red,
         );
+        if (!_isTurnOperationActive(operation)) return;
       }
       return;
     }
@@ -3259,6 +3455,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   // Phase 4: Mortgage Dialog
   // ==========================================================================
   void _showMortgageDialog() {
+    if (!_canUseStableInteractions) return;
     final currentPlayer = gameState.currentPlayer;
 
     showPropertyManagementDialog(
@@ -3266,12 +3463,14 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       player: currentPlayer,
       tiles: gameState.tiles,
       onMortgage: (tile) {
+        if (!_canUseStableInteractions) return;
         if (engine.mortgageProperty(currentPlayer, tile)) {
           setState(() {});
           _sync3DBoard();
         }
       },
       onUnmortgage: (tile) {
+        if (!_canUseStableInteractions) return;
         if (engine.unmortgageProperty(currentPlayer, tile)) {
           setState(() {});
           _sync3DBoard();

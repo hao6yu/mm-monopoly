@@ -31,6 +31,8 @@
   "previous": "前へ",
   "next": "次へ",
   "startGame": "ゲーム開始",
+  "preparingGame": "ゲームを準備中…",
+  "failedToStartGame": "ゲームを開始できませんでした。もう一度お試しください。",
   "playerN": "プレイヤー{number}",
   "you": "あなた",
   "ai": "コンピューター",
@@ -509,5 +511,6 @@
   "cityHongKong": "香港",
   "cityMexicoCity": "メキシコシティ",
   "cityGuadalajara": "グアダラハラ",
-  "cityCancun": "カンクン"
+  "cityCancun": "カンクン",
+  "continuedOn2DBoard": "3Dボードが応答しないため、2Dボードでゲームを続けます。"
 }

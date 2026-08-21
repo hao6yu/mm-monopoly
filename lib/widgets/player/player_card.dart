@@ -14,6 +14,7 @@ class PlayerCard extends StatefulWidget {
   final bool isCurrentPlayer;
   final List<TileData>? tiles;
   final GameState? gameState;
+  final bool portfolioEnabled;
 
   const PlayerCard({
     super.key,
@@ -21,6 +22,7 @@ class PlayerCard extends StatefulWidget {
     required this.isCurrentPlayer,
     this.tiles,
     this.gameState,
+    this.portfolioEnabled = true,
   });
 
   @override
@@ -72,62 +74,67 @@ class _PlayerCardState extends State<PlayerCard>
     return AnimatedBuilder(
       animation: _glowAnimation,
       builder: (context, child) {
-        final glowIntensity =
-            isCurrentPlayer ? 0.4 + _glowAnimation.value * 0.4 : 0.0;
-        final borderWidth =
-            isCurrentPlayer ? 3.0 + _glowAnimation.value * 2 : 1.0;
+        final glowIntensity = isCurrentPlayer
+            ? 0.4 + _glowAnimation.value * 0.4
+            : 0.0;
+        final borderWidth = isCurrentPlayer
+            ? 3.0 + _glowAnimation.value * 2
+            : 1.0;
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {
-            if (widget.tiles != null && widget.gameState != null) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!context.mounted) return;
-                showPropertyPortfolioDialog(
-                  context: context,
-                  player: player,
-                  tiles: widget.tiles!,
-                  gameState: widget.gameState!,
-                );
-              });
-            }
-          },
+          onTap:
+              widget.portfolioEnabled &&
+                  widget.tiles != null &&
+                  widget.gameState != null
+              ? () {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    showPropertyPortfolioDialog(
+                      context: context,
+                      player: player,
+                      tiles: widget.tiles!,
+                      gameState: widget.gameState!,
+                    );
+                  });
+                }
+              : null,
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors:
-                    isCurrentPlayer
-                        ? [
-                          player.color.withOpacity(0.5),
-                          player.color.withOpacity(0.3),
-                        ]
-                        : [
-                          Colors.grey.shade800.withOpacity(0.8),
-                          Colors.grey.shade900.withOpacity(0.8),
-                        ],
+                colors: isCurrentPlayer
+                    ? [
+                        player.color.withValues(alpha: 0.5),
+                        player.color.withValues(alpha: 0.3),
+                      ]
+                    : [
+                        Colors.grey.shade800.withValues(alpha: 0.8),
+                        Colors.grey.shade900.withValues(alpha: 0.8),
+                      ],
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isCurrentPlayer ? Colors.amber : Colors.grey.shade700,
                 width: borderWidth,
               ),
-              boxShadow:
-                  isCurrentPlayer
-                      ? [
-                        BoxShadow(
-                          color: Colors.amber.withOpacity(glowIntensity),
-                          blurRadius: 15 + _glowAnimation.value * 10,
-                          spreadRadius: 2 + _glowAnimation.value * 4,
+              boxShadow: isCurrentPlayer
+                  ? [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: glowIntensity),
+                        blurRadius: 15 + _glowAnimation.value * 10,
+                        spreadRadius: 2 + _glowAnimation.value * 4,
+                      ),
+                      BoxShadow(
+                        color: player.color.withValues(
+                          alpha: glowIntensity * 0.5,
                         ),
-                        BoxShadow(
-                          color: player.color.withOpacity(glowIntensity * 0.5),
-                          blurRadius: 25,
-                          spreadRadius: 5,
-                        ),
-                      ]
-                      : [],
+                        blurRadius: 25,
+                        spreadRadius: 5,
+                      ),
+                    ]
+                  : [],
             ),
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -228,7 +235,7 @@ class _PlayerCardState extends State<PlayerCard>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -256,7 +263,7 @@ class _PlayerCardState extends State<PlayerCard>
       width: double.infinity,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
+        color: Colors.black.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -268,33 +275,31 @@ class _PlayerCardState extends State<PlayerCard>
           ),
           const SizedBox(height: 6),
           Expanded(
-            child:
-                player.propertyIds.isEmpty
-                    ? Center(
-                      child: Text(
-                        AppLocalizations.of(context)!.nothing,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    )
-                    : SingleChildScrollView(
-                      child: Wrap(
-                        spacing: 5,
-                        runSpacing: 5,
-                        children:
-                            player.propertyIds
-                                .map(
-                                  (p) => _PropertyChip(
-                                    propertyId: p,
-                                    tiles: widget.tiles,
-                                  ),
-                                )
-                                .toList(),
+            child: player.propertyIds.isEmpty
+                ? Center(
+                    child: Text(
+                      AppLocalizations.of(context)!.nothing,
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
+                  )
+                : SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 5,
+                      runSpacing: 5,
+                      children: player.propertyIds
+                          .map(
+                            (p) => _PropertyChip(
+                              propertyId: p,
+                              tiles: widget.tiles,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -308,6 +313,7 @@ class PlayerCardCompact extends StatefulWidget {
   final bool isCurrentPlayer;
   final List<TileData>? tiles;
   final GameState? gameState;
+  final bool portfolioEnabled;
 
   const PlayerCardCompact({
     super.key,
@@ -315,6 +321,7 @@ class PlayerCardCompact extends StatefulWidget {
     required this.isCurrentPlayer,
     this.tiles,
     this.gameState,
+    this.portfolioEnabled = true,
   });
 
   @override
@@ -379,62 +386,67 @@ class _PlayerCardCompactState extends State<PlayerCardCompact>
     return AnimatedBuilder(
       animation: _glowAnimation,
       builder: (context, child) {
-        final glowIntensity =
-            isCurrentPlayer ? 0.4 + _glowAnimation.value * 0.4 : 0.0;
-        final borderWidth =
-            isCurrentPlayer ? 2.0 + _glowAnimation.value * 2 : 1.0;
+        final glowIntensity = isCurrentPlayer
+            ? 0.4 + _glowAnimation.value * 0.4
+            : 0.0;
+        final borderWidth = isCurrentPlayer
+            ? 2.0 + _glowAnimation.value * 2
+            : 1.0;
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {
-            if (widget.tiles != null && widget.gameState != null) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!context.mounted) return;
-                showPropertyPortfolioDialog(
-                  context: context,
-                  player: player,
-                  tiles: widget.tiles!,
-                  gameState: widget.gameState!,
-                );
-              });
-            }
-          },
+          onTap:
+              widget.portfolioEnabled &&
+                  widget.tiles != null &&
+                  widget.gameState != null
+              ? () {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    showPropertyPortfolioDialog(
+                      context: context,
+                      player: player,
+                      tiles: widget.tiles!,
+                      gameState: widget.gameState!,
+                    );
+                  });
+                }
+              : null,
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors:
-                    isCurrentPlayer
-                        ? [
-                          player.color.withOpacity(0.5),
-                          player.color.withOpacity(0.3),
-                        ]
-                        : [
-                          Colors.grey.shade800.withOpacity(0.8),
-                          Colors.grey.shade900.withOpacity(0.8),
-                        ],
+                colors: isCurrentPlayer
+                    ? [
+                        player.color.withValues(alpha: 0.5),
+                        player.color.withValues(alpha: 0.3),
+                      ]
+                    : [
+                        Colors.grey.shade800.withValues(alpha: 0.8),
+                        Colors.grey.shade900.withValues(alpha: 0.8),
+                      ],
               ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isCurrentPlayer ? Colors.amber : Colors.grey.shade700,
                 width: borderWidth,
               ),
-              boxShadow:
-                  isCurrentPlayer
-                      ? [
-                        BoxShadow(
-                          color: Colors.amber.withOpacity(glowIntensity),
-                          blurRadius: 12 + _glowAnimation.value * 8,
-                          spreadRadius: 1 + _glowAnimation.value * 3,
+              boxShadow: isCurrentPlayer
+                  ? [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: glowIntensity),
+                        blurRadius: 12 + _glowAnimation.value * 8,
+                        spreadRadius: 1 + _glowAnimation.value * 3,
+                      ),
+                      BoxShadow(
+                        color: player.color.withValues(
+                          alpha: glowIntensity * 0.5,
                         ),
-                        BoxShadow(
-                          color: player.color.withOpacity(glowIntensity * 0.5),
-                          blurRadius: 20,
-                          spreadRadius: 3,
-                        ),
-                      ]
-                      : [],
+                        blurRadius: 20,
+                        spreadRadius: 3,
+                      ),
+                    ]
+                  : [],
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -519,7 +531,7 @@ class _PlayerCardCompactState extends State<PlayerCardCompact>
                           width: double.infinity,
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Row(
@@ -532,31 +544,29 @@ class _PlayerCardCompactState extends State<PlayerCardCompact>
                               ),
                               const SizedBox(width: 4),
                               Expanded(
-                                child:
-                                    player.propertyIds.isEmpty
-                                        ? Text(
-                                          AppLocalizations.of(
-                                            context,
-                                          )!.noPropertiesAvailable,
-                                          style: TextStyle(
-                                            color: Colors.grey.shade500,
-                                            fontSize: 10,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        )
-                                        : Wrap(
-                                          spacing: 3,
-                                          runSpacing: 3,
-                                          children:
-                                              player.propertyIds
-                                                  .map(
-                                                    (p) => _PropertyChip(
-                                                      propertyId: p,
-                                                      tiles: tiles,
-                                                    ),
-                                                  )
-                                                  .toList(),
+                                child: player.propertyIds.isEmpty
+                                    ? Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.noPropertiesAvailable,
+                                        style: TextStyle(
+                                          color: Colors.grey.shade500,
+                                          fontSize: 10,
+                                          fontStyle: FontStyle.italic,
                                         ),
+                                      )
+                                    : Wrap(
+                                        spacing: 3,
+                                        runSpacing: 3,
+                                        children: player.propertyIds
+                                            .map(
+                                              (p) => _PropertyChip(
+                                                propertyId: p,
+                                                tiles: tiles,
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
                               ),
                             ],
                           ),
@@ -701,8 +711,8 @@ class _TurnIndicatorState extends State<_TurnIndicator>
               borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.amber.withOpacity(
-                    0.3 + _glowAnimation.value * 0.5,
+                  color: Colors.amber.withValues(
+                    alpha: 0.3 + _glowAnimation.value * 0.5,
                   ),
                   blurRadius: 6 + _glowAnimation.value * 10,
                   spreadRadius: _glowAnimation.value * 3,
@@ -816,30 +826,29 @@ class _PropertyChip extends StatelessWidget {
             color: _color,
             borderRadius: BorderRadius.circular(2),
             border: Border.all(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha: 0.5),
               width: 0.5,
             ),
           ),
-          child:
-              _upgradeLevel > 0
-                  ? Center(
-                    child: Text(
-                      _upgradeLevel == 5 ? 'H' : '$_upgradeLevel',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black,
-                            offset: Offset(0.5, 0.5),
-                            blurRadius: 1,
-                          ),
-                        ],
-                      ),
+          child: _upgradeLevel > 0
+              ? Center(
+                  child: Text(
+                    _upgradeLevel == 5 ? 'H' : '$_upgradeLevel',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black,
+                          offset: Offset(0.5, 0.5),
+                          blurRadius: 1,
+                        ),
+                      ],
                     ),
-                  )
-                  : null,
+                  ),
+                )
+              : null,
         ),
         if (_isMortgaged)
           Positioned.fill(
@@ -854,11 +863,10 @@ class _PropertyChip extends StatelessWidget {
 class _DiagonalStripePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = Colors.red.withOpacity(0.7)
-          ..strokeWidth = 1.5
-          ..style = PaintingStyle.stroke;
+    final paint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.7)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
 
     // Draw diagonal line from top-left to bottom-right
     canvas.drawLine(const Offset(0, 0), Offset(size.width, size.height), paint);

@@ -34,6 +34,8 @@
   "previous": "Anterior",
   "next": "Siguiente",
   "startGame": "Iniciar Partida",
+  "preparingGame": "Preparando la partida…",
+  "failedToStartGame": "No se pudo iniciar la partida. Inténtalo de nuevo.",
   "playerN": "Jugador {number}",
   "you": "Tú",
   "ai": "IA",
@@ -543,5 +545,6 @@
   "cityHongKong": "Hong Kong",
   "cityMexicoCity": "Ciudad de México",
   "cityGuadalajara": "Guadalajara",
-  "cityCancun": "Cancún"
+  "cityCancun": "Cancún",
+  "continuedOn2DBoard": "El tablero 3D dejó de responder. La partida continúa en el tablero 2D."
 }

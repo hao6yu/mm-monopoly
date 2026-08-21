@@ -74,6 +74,7 @@ class GodotBoardController extends ChangeNotifier {
     };
     final completedGroupOwners = _completedColorGroupOwners(gameState.tiles);
     return GodotBoardSceneState(
+      sessionId: gameState.id,
       boardId: boardId,
       logicalTileCount: logicalTileCount,
       visualSpotCount: visualSpotCount,
@@ -202,6 +203,7 @@ class GodotBoardController extends ChangeNotifier {
     const visualSpotCount = GodotBoardProtocol.cityVisualSpotCount;
     final spaces = die1 + die2;
     return GodotRollCommand(
+      sessionId: gameState.id,
       commandId: '${DateTime.now().microsecondsSinceEpoch}_${player.id}',
       playerId: player.id,
       playerIndex: playerIndex,
@@ -224,11 +226,16 @@ class GodotBoardController extends ChangeNotifier {
     final completer = Completer<GodotMovementComplete>();
     _pendingMoves[command.commandId] = completer;
     try {
-      await _channel.invokeMethod<bool>(
+      final accepted = await _channel.invokeMethod<bool>(
         'animateRoll',
         jsonEncode(command.toJson()),
       );
-      return await completer.future.timeout(const Duration(seconds: 12));
+      if (accepted != true) {
+        throw StateError('The 3D board rejected the movement command.');
+      }
+      // Godot cancels a hosted roll at 9.5 seconds. Give that cancellation a
+      // short bridge margin, then reveal the animated 2D recovery promptly.
+      return await completer.future.timeout(const Duration(seconds: 10));
     } finally {
       _pendingMoves.remove(command.commandId);
     }

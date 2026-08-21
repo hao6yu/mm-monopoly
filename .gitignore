@@ -50,9 +50,11 @@ app.*.map.json
 
 # Android
 /android/.gradle/
+/android/.kotlin/
 /android/captures/
 /android/gradlew
 /android/gradlew.bat
+/android/gradle/wrapper/gradle-wrapper.jar
 /android/local.properties
 /android/**/GeneratedPluginRegistrant.java
 /android/key.properties
@@ -60,6 +62,7 @@ app.*.map.json
 
 # iOS/XCode
 /ios/.generated/
+/ios/.symlinks/
 /ios/Flutter/App.framework
 /ios/Flutter/Flutter.framework
 /ios/Flutter/Flutter.podspec

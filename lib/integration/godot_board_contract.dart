@@ -141,6 +141,7 @@ class GodotBoardTileState {
 
 class GodotBoardSceneState {
   const GodotBoardSceneState({
+    required this.sessionId,
     required this.boardId,
     required this.logicalTileCount,
     required this.visualSpotCount,
@@ -153,6 +154,7 @@ class GodotBoardSceneState {
     required this.players,
   });
 
+  final String sessionId;
   final String boardId;
   final int logicalTileCount;
   final int visualSpotCount;
@@ -167,6 +169,7 @@ class GodotBoardSceneState {
   Map<String, Object?> toJson() => {
     'schemaVersion': GodotBoardProtocol.schemaVersion,
     'type': 'scene_state',
+    'sessionId': sessionId,
     'boardId': boardId,
     'logicalTileCount': logicalTileCount,
     'visualSpotCount': visualSpotCount,
@@ -211,6 +214,7 @@ class GodotBoardSelection {
 
 class GodotRollCommand {
   const GodotRollCommand({
+    required this.sessionId,
     required this.commandId,
     required this.playerId,
     required this.playerIndex,
@@ -223,6 +227,7 @@ class GodotRollCommand {
     required this.visualPath,
   });
 
+  final String sessionId;
   final String commandId;
   final String playerId;
   final int playerIndex;
@@ -239,6 +244,7 @@ class GodotRollCommand {
   Map<String, Object?> toJson() => {
     'schemaVersion': GodotBoardProtocol.schemaVersion,
     'type': 'animate_roll',
+    'sessionId': sessionId,
     'commandId': commandId,
     'playerId': playerId,
     'playerIndex': playerIndex,

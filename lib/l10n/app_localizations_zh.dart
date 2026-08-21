@@ -102,6 +102,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get startGame => '开始游戏';
 
   @override
+  String get preparingGame => '正在准备游戏…';
+
+  @override
+  String get failedToStartGame => '无法开始游戏，请重试。';
+
+  @override
   String playerN(int number) {
     return '玩家 $number';
   }
@@ -1557,4 +1563,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cityCancun => '坎昆';
+
+  @override
+  String get continuedOn2DBoard => '3D 棋盘已停止响应，游戏将切换到 2D 棋盘继续。';
 }

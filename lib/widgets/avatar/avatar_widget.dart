@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -33,13 +34,14 @@ class AvatarWidget extends StatelessWidget {
           shape: BoxShape.circle,
           border: showBorder
               ? Border.all(
-                  color: borderColor ?? (isSelected ? Colors.amber : Colors.white),
+                  color:
+                      borderColor ?? (isSelected ? Colors.amber : Colors.white),
                   width: isSelected ? 3 : 2,
                 )
               : null,
           boxShadow: [
             BoxShadow(
-              color: avatar.primaryColor.withOpacity(0.4),
+              color: avatar.primaryColor.withValues(alpha: 0.4),
               blurRadius: isSelected ? 12 : 6,
               spreadRadius: isSelected ? 2 : 0,
             ),
@@ -80,13 +82,14 @@ class AvatarWidget extends StatelessWidget {
         ),
         border: showBorder
             ? Border.all(
-                color: borderColor ?? (isSelected ? Colors.amber : Colors.white),
+                color:
+                    borderColor ?? (isSelected ? Colors.amber : Colors.white),
                 width: isSelected ? 3 : 2,
               )
             : null,
         boxShadow: [
           BoxShadow(
-            color: avatar.primaryColor.withOpacity(0.4),
+            color: avatar.primaryColor.withValues(alpha: 0.4),
             blurRadius: isSelected ? 12 : 6,
             spreadRadius: isSelected ? 2 : 0,
           ),
@@ -94,15 +97,8 @@ class AvatarWidget extends StatelessWidget {
       ),
       child: Center(
         child: showEmoji
-            ? Text(
-                avatar.emoji,
-                style: TextStyle(fontSize: size * 0.5),
-              )
-            : Icon(
-                avatar.iconData,
-                color: Colors.white,
-                size: size * 0.5,
-              ),
+            ? Text(avatar.emoji, style: TextStyle(fontSize: size * 0.5))
+            : Icon(avatar.iconData, color: Colors.white, size: size * 0.5),
       ),
     );
   }
@@ -140,9 +136,10 @@ class _AnimatedAvatarWidgetState extends State<AnimatedAvatarWidget>
       vsync: this,
     );
 
-    _bounceAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _bounceAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     if (widget.isActive) {
       _controller.repeat();
@@ -171,8 +168,9 @@ class _AnimatedAvatarWidgetState extends State<AnimatedAvatarWidget>
     return AnimatedBuilder(
       animation: _bounceAnimation,
       builder: (context, child) {
-        final bounce =
-            widget.isActive ? sin(_bounceAnimation.value * pi) * 4 : 0.0;
+        final bounce = widget.isActive
+            ? sin(_bounceAnimation.value * pi) * 4
+            : 0.0;
         return Transform.translate(
           offset: Offset(0, -bounce),
           child: AvatarWidget(
@@ -211,19 +209,16 @@ class AvatarToken extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(
-            color: playerColor,
-            width: 3,
-          ),
+          border: Border.all(color: playerColor, width: 3),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.4),
               blurRadius: 4,
               offset: const Offset(1, 1),
             ),
             if (isCurrentPlayer)
               BoxShadow(
-                color: playerColor.withOpacity(0.6),
+                color: playerColor.withValues(alpha: 0.6),
                 blurRadius: 10,
                 spreadRadius: 2,
               ),
@@ -257,29 +252,23 @@ class AvatarToken extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: playerColor,
-        border: Border.all(
-          color: Colors.white,
-          width: 2,
-        ),
+        border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 4,
             offset: const Offset(1, 1),
           ),
           if (isCurrentPlayer)
             BoxShadow(
-              color: playerColor.withOpacity(0.6),
+              color: playerColor.withValues(alpha: 0.6),
               blurRadius: 10,
               spreadRadius: 2,
             ),
         ],
       ),
       child: Center(
-        child: Text(
-          avatar.emoji,
-          style: TextStyle(fontSize: size * 0.55),
-        ),
+        child: Text(avatar.emoji, style: TextStyle(fontSize: size * 0.55)),
       ),
     );
   }
@@ -290,11 +279,7 @@ class VictoryAvatarWidget extends StatefulWidget {
   final Avatar avatar;
   final double size;
 
-  const VictoryAvatarWidget({
-    super.key,
-    required this.avatar,
-    this.size = 120,
-  });
+  const VictoryAvatarWidget({super.key, required this.avatar, this.size = 120});
 
   @override
   State<VictoryAvatarWidget> createState() => _VictoryAvatarWidgetState();
@@ -308,6 +293,7 @@ class _VictoryAvatarWidgetState extends State<VictoryAvatarWidget>
   late Animation<double> _bounceAnimation;
   late Animation<double> _rotateAnimation;
   late Animation<double> _scaleAnimation;
+  Timer? _danceTimer;
 
   @override
   void initState() {
@@ -320,13 +306,17 @@ class _VictoryAvatarWidgetState extends State<VictoryAvatarWidget>
     );
     _bounceAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0, end: -30)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 0,
+          end: -30,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 50,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: -30, end: 0)
-            .chain(CurveTween(curve: Curves.bounceOut)),
+        tween: Tween<double>(
+          begin: -30,
+          end: 0,
+        ).chain(CurveTween(curve: Curves.bounceOut)),
         weight: 50,
       ),
     ]).animate(_bounceController);
@@ -337,18 +327,12 @@ class _VictoryAvatarWidgetState extends State<VictoryAvatarWidget>
       vsync: this,
     );
     _rotateAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0, end: 0.1),
-        weight: 25,
-      ),
+      TweenSequenceItem(tween: Tween<double>(begin: 0, end: 0.1), weight: 25),
       TweenSequenceItem(
         tween: Tween<double>(begin: 0.1, end: -0.1),
         weight: 50,
       ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: -0.1, end: 0),
-        weight: 25,
-      ),
+      TweenSequenceItem(tween: Tween<double>(begin: -0.1, end: 0), weight: 25),
     ]).animate(_rotateController);
 
     // Scale pulse
@@ -356,38 +340,44 @@ class _VictoryAvatarWidgetState extends State<VictoryAvatarWidget>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.2),
-        weight: 50,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.2, end: 1.0),
-        weight: 50,
-      ),
-    ]).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
-    );
+    _scaleAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween<double>(begin: 1.0, end: 1.2),
+            weight: 50,
+          ),
+          TweenSequenceItem(
+            tween: Tween<double>(begin: 1.2, end: 1.0),
+            weight: 50,
+          ),
+        ]).animate(
+          CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+        );
 
     // Start animations
     _startVictoryDance();
   }
 
-  void _startVictoryDance() async {
-    while (mounted) {
-      _bounceController.forward(from: 0);
-      await Future.delayed(const Duration(milliseconds: 200));
-      if (!mounted) break;
+  void _startVictoryDance() {
+    if (!mounted) return;
+    _bounceController.forward(from: 0);
+    _danceTimer = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
       _rotateController.forward(from: 0);
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (!mounted) break;
-      _scaleController.forward(from: 0);
-      await Future.delayed(const Duration(milliseconds: 1000));
-    }
+      _danceTimer = Timer(const Duration(milliseconds: 300), () {
+        if (!mounted) return;
+        _scaleController.forward(from: 0);
+        _danceTimer = Timer(
+          const Duration(milliseconds: 1000),
+          _startVictoryDance,
+        );
+      });
+    });
   }
 
   @override
   void dispose() {
+    _danceTimer?.cancel();
     _bounceController.dispose();
     _rotateController.dispose();
     _scaleController.dispose();
@@ -428,7 +418,7 @@ class _VictoryAvatarWidgetState extends State<VictoryAvatarWidget>
           border: Border.all(color: Colors.amber, width: 4),
           boxShadow: [
             BoxShadow(
-              color: Colors.amber.withOpacity(0.6),
+              color: Colors.amber.withValues(alpha: 0.6),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -469,7 +459,7 @@ class _VictoryAvatarWidgetState extends State<VictoryAvatarWidget>
         border: Border.all(color: Colors.amber, width: 4),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withOpacity(0.6),
+            color: Colors.amber.withValues(alpha: 0.6),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -513,10 +503,7 @@ class _SadAvatarWidgetState extends State<SadAvatarWidget>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
     _shakeAnimation = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: -5.0), weight: 10),
@@ -530,13 +517,17 @@ class _SadAvatarWidgetState extends State<SadAvatarWidget>
     _dropAnimation = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.0), weight: 50),
       TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: 5.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween(
+          begin: 0.0,
+          end: 5.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 25,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 5.0, end: 0.0)
-            .chain(CurveTween(curve: Curves.bounceOut)),
+        tween: Tween(
+          begin: 5.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.bounceOut)),
         weight: 25,
       ),
     ]).animate(_controller);
@@ -559,10 +550,7 @@ class _SadAvatarWidgetState extends State<SadAvatarWidget>
       builder: (context, child) {
         return Transform.translate(
           offset: Offset(_shakeAnimation.value, _dropAnimation.value),
-          child: AvatarWidget(
-            avatar: widget.avatar,
-            size: widget.size,
-          ),
+          child: AvatarWidget(avatar: widget.avatar, size: widget.size),
         );
       },
     );
