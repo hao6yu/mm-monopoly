@@ -1,9 +1,10 @@
 # Property Tycoon 3D + UI/UX release-readiness review
 
-**Review date:** August 20, 2026 · **Reviewed revision:** `7f498c7` (`main`) · **App version:** `2.0.1+12`
+**Baseline review:** August 20, 2026 · `7f498c7` (`main`) · **App version:** `2.0.1+12`
+**Feature-branch follow-up:** August 21, 2026 · `codex/3d-ui-release-blockers` at `1ccbbf4`
 **Decision:** **Hold release**
 
-The 3D direction is worth continuing, and the newer city/navy/teal/gold screens establish a strong visual target. The current build is not ready to ship, however. The most important problems are not subjective polish issues: a live game can become a corrupted hybrid after opening Help, the pawn is mathematically embedded in and offset from its road, several independent animation systems fight over the pawn transform, a reopened Android 3D board can wait forever, supported phone landscape layouts overflow, and the release build currently needs remediation.
+The 3D direction is worth continuing, and the newer city/navy/teal/gold screens establish a strong visual target. The reviewed `main` baseline was not ready to ship. Its most important problems were not subjective polish issues: a live game could become a corrupted hybrid after opening Help, the pawn was mathematically embedded in and offset from its road, several independent animation systems fought over the pawn transform, a reopened Android 3D board could wait forever, supported phone landscape layouts overflowed, and the release build needed remediation. The feature branch fixes those foundations; remaining device/performance breadth, special movement, character identity/rigging, small-phone 3D HUD, accessibility, localization, and release-engineering work still justify the Hold decision.
 
 This document separates what was reproduced in a simulator from what was established through source, test, and build review. It also covers screens that cannot currently be reached through normal navigation.
 
@@ -15,41 +16,164 @@ This document separates what was reproduced in a simulator from what was establi
 
 The rest of this document preserves the audit of `main` as the historical baseline. This update records what has changed on the feature branch and keeps unresolved findings visible instead of treating a successful desktop build as release approval.
 
+### Pre-optimization physical iPad baseline — `8003401`
+
+A signed profile build from feature-branch commit `8003401` was installed and exercised on a connected **iPad Air (5th generation)** running **iPadOS 27.0 beta**, at the native 2746 × 1908 landscape capture size. The live session used Atlantic City with four players (two humans and two AI players). The embedded iOS Godot runtime launched successfully, rendered the exported pack, survived both landscape orientations, and produced no Flutter/native console exception during the observed idle session. This closes the basic physical-launch compatibility question, but it does not approve the 3D experience for release.
+
+The device pass on commit `8003401` confirmed the following issues in the
+interaction rather than only in source review. They are the before-state for
+the follow-up implementation described immediately below:
+
+- Start Game appeared unresponsive for several seconds while content and the board were prepared; there was no immediate busy state or progress feedback.
+- The visible help taught tap, one-finger drag, and pinch, but exposed no way to orbit/change the camera angle even though Godot supports orbit input.
+- Every roll forced camera cuts between the board/player and dice, creating avoidable back-and-forth motion and overriding the user's chosen view.
+- The human Roll surface remained visually actionable during AI turns; human input and scheduled AI authorization were not clearly separated.
+- Default framing devoted too much of the screen to ocean/sky while property, landmark, ownership, and status text became unreadably small.
+- Pawn ground contact is materially improved, but the plinth/ring footprint still exceeds the road width at outer tiles. Floating `SOLD`/`BUILDING` labels and decorative clouds can obscure playable content.
+- The four-player HUD shows only the current-player pill. It omits opponent/AI identity, round, status, property context, and an explicit AI-thinking or human-handoff state.
+- A short idle sequence showed stable pawn roots with no obvious residual bob/hop jitter. Boats and ambient elements continued animating as intended.
+
+The current follow-up remediates the first four findings in code: Start Game
+paints an immediate, blocking, accessible preparation state; one finger pans
+while two fingers orbit and pinch simultaneously; roll, route, landing, and
+restore camera cuts no longer override the player's view; and human dice
+surfaces are disabled throughout every AI action while the AI scheduler retains
+its own single-roll authorization. The default landscape framing is closer,
+rotation recenters an off-board pan, embedded clouds and floating development
+labels are hidden, and the pawn plinth is narrower. A localized status rail now
+shows all players, Human/AI identity, cash, round, jail/skip/bankruptcy state,
+AI phase, and human handoff; tapping an eligible player opens their portfolio.
+Property count and current-location context remain absent from the rail.
+
+An Instruments **Game Performance Overview** trace captured 20 seconds of the idle four-player board. It held approximately **60 FPS with zero skipped frames** and remained at a nominal thermal state during the short sample, but consumed approximately **79–83% GPU**, about **53% of one CPU core**, reached **1,355.9 MiB peak physical footprint**, and allocated **698.8 MiB through Metal**. Average GPU active time was about **13.6 ms** per 16.7 ms frame. This is inadequate headroom on an M1-class iPad for movement, long-session thermals, or older supported devices. Mobile render cost and memory are therefore measured release blockers, not merely a future optimization suggestion.
+
+The same trace averaged approximately **53% of one CPU core**, issued **six
+Metal command buffers per frame**, reached approximately **19.4 ms maximum GPU
+active time**, and showed about **62 ms CPU-to-display latency**. The nominal
+thermal state covers only this 20-second observation and is not long-session
+thermal evidence.
+
+The feature branch now applies a first conservative renderer budget: only the
+embedded Godot surface renders at 75% native pixel density, its display link is
+capped at 60 FPS, MSAA is reduced from 4x to 2x, shadow maps are reduced from
+4096 to 2048/1024, the secondary fill light no longer casts shadows, and common
+procedural cylinders use half as many radial segments. Identical immutable
+primitive meshes now share buffers within one city, and tiny sphere details no
+longer cast unreadable shadows. Flutter/UIKit remains at native Retina
+resolution.
+
+### Post-fix physical iPad validation — August 21, 2026
+
+The signed profile app from the settled feature-branch source and iOS pack was
+installed and launched on the same iPad Air. A temporary, uncommitted profile
+QA entrypoint then opened the normal `AppNavigator` directly with Atlantic City,
+four players, two consecutive AI turns, and two following human turns. It used
+the same Flutter/game/native/Godot code and signed pack as the app; it bypassed
+only the menu/setup taps so repeatable gameplay could be observed without a
+provisionable physical-device UI-test runner.
+
+The exact scene-generation acknowledgement completed, each AI player rolled
+exactly once, both standard pawn moves and landings completed, and control
+passed to the first human. During AI motion the roll surface remained visibly
+disabled as `MOVING…`; after resolution it became `Roll for Human One`. The selected board
+view did not cut to the dice or jump between turns. Captured motion and settled
+frames showed attached bodies, tile-surface contact, road-centered anchors, and
+matching player colors. The localized rail showed all four players, AI/Human
+identity, active/waiting state, cash, round, AI motion, and the explicit human
+handoff. Portrait, landscape-left, and landscape-right captures retained the
+board, active pawn, rail, camera hint, and roll controls, with the view recentered
+after rotation. No Flutter, native, or Godot exception appeared in the attached
+console. Multi-touch orbit/pinch and the menu-to-setup preparation overlay still
+require direct user touch on the final app; Xcode Device Hub exposes the
+screen but its mirror is not available through the host automation accessibility
+layer.
+
+Two follow-up **Game Performance Overview** traces were recorded: one spanning
+the AI-to-human handoff and one 20-second idle human turn. Both held 60 FPS with
+zero skipped frames and stayed nominal during the short thermal sample. The
+idle comparison is the fair pre/post renderer comparison:
+
+| Metric | `8003401` baseline | Post-fix idle | Result |
+|---|---:|---:|---|
+| FPS / skipped frames | 60.00 / 0 | 60.00 / 0 | Stable |
+| Average GPU usage | 81.24% | 85.62% | **4.38 percentage points worse** |
+| Average / maximum GPU active time | 13.64 / 19.36 ms | 14.37 / 19.37 ms | No added GPU headroom |
+| CPU use, one-core equivalent | 52.65% | 58.40% | **5.75 percentage points worse** |
+| Peak physical footprint | 1,355.9 MiB | 870.4 MiB | **35.8% lower** |
+| Metal device allocation | 698.8 MiB | 440.1 MiB | **37.0% lower** |
+| CPU begin-to-display latency | 61.93 ms | 62.85 ms | Essentially flat |
+| Command buffers per frame | 6.00 | 6.00 | Unchanged |
+| Thermal state | Nominal | Nominal | Only a ~21-second sample |
+
+The renderer changes materially reduce memory, but they do not reduce GPU or
+CPU cost in this closer-framed four-player scene. The M1 iPad still maintains
+60 FPS in the observed standard rolls, but the lack of GPU headroom makes
+minimum-device, long-session, battery, and thermal validation a release gate.
+
+Startup readiness is now end-to-end rather than inferred from a running native
+engine. Every scene payload carries the game session and a monotonic state
+generation; Godot acknowledges `stateApplied` only after the requested city,
+tiles, players, pawn positions, active turn, and dice have been applied. The
+opaque loading cover waits for the first exact token, a session/city change, or
+a startup error; routine same-board synchronization keeps the applied scene
+visible to avoid a full-screen flash. Both human/AI roll gates always wait for
+the latest exact token.
+iOS no longer manufactures `boardReady` from LibGodot `isStarted`; it can
+replay only a readiness token observed from the connected GDScript scene. A
+15-second watchdog exposes Retry 3D and a session-persistent Use 2D board
+recovery. Atlantic City is now the bootstrap theme, avoiding the former New
+York-to-Atlantic double build on the default setup path; other cities still
+perform one initial procedural rebuild and should be profiled separately.
+Ready-time state delivery is native-owned: Flutter sends each generation once,
+the host caches it until the observed scene transition, and `boardReady` never
+causes Flutter to send the same payload again. Retry deliberately replays the
+cached generation once. The watchdog also bounds a platform view that never
+reports creation, and an early `stateApplied` cannot dismiss recovery until the
+view and scene are both ready.
+
+This pass also exposed correctness work adjacent to the four reported
+symptoms. The follow-up now advances the authoritative round number, expands
+every logical move through all intervening positions on the 52-waypoint visual
+road, starts new games with an explicit unrolled dice state, and schedules an
+AI-first opening turn only after exact scene readiness. Non-dice
+jail/card/teleport movement still snaps and remains tracked below.
+
 | Original gate | Feature-branch status |
 |---|---|
 | Live-game state integrity | **Remediated.** A single `GameSessionController` now owns authoritative state. In-game Help preserves the board in an `IndexedStack`, and load/restart/quit invalidate delayed work. Regression tests cover Help round trips and stale AI callbacks. |
-| Pawn placement and motion | **Remediated in source and exported packs; device validation pending.** Pawn roots now use tile-surface contact anchors. Visual bob, hop, landing, and model transforms have separate owners; a single cancellable sequence controls each move; landing completes before Flutter is notified. |
-| Pawn/road alignment and occupancy | **Remediated in source and exported packs; device validation pending.** A lone pawn is centered, two to four occupants use deterministic non-overlapping slots, and pawns, route markers, and destination beacons share the same anchor calculation. |
-| Repeat Android 3D sessions | **Remediated; device validation pending.** Reattached views receive a new session ID, cached state, and `boardReady`; detached rendering is lifecycle-paused; stale commands and callbacks are bounded and rejected. |
+| Pawn placement and motion | **Standard dice movement validated on physical iPad; special movement open.** Pawn roots use tile-surface contact anchors. Visual bob, hop, landing, and model transforms have separate owners; a single cancellable sequence controls each move; landing completes before Flutter is notified. Two consecutive AI rolls showed attached bodies, stable contact, and completed landings. Jail/card/teleport movement still needs an intentional animation contract and device validation. |
+| Pawn/road alignment and occupancy | **Standard routes validated; occupancy breadth pending.** A lone pawn is centered, two to four occupants use deterministic slots, pawns/markers share anchors, the plinth is narrower, every intervening 52-position road waypoint is emitted, and duration scales with segment distance. The two physical AI routes and settled anchors remained on the road. One-to-four co-occupancy, a complete lap, reverse movement, and every corner angle remain device gates. |
+| Repeat Android 3D sessions | **Remediated; device validation pending.** Reattached views receive a new native-view session, cached state, an observed scene-ready token, and an exact game-session/state-generation acknowledgement; detached rendering is lifecycle-paused; stale commands and callbacks are bounded and rejected. |
 | Victory/restart/quit | **Remediated.** Navigation owns the result screen, so Replay and Home no longer call a disposed game-board owner. System Back now follows app-owned confirmation behavior. |
-| Async turn safety | **Remediated.** AI timers are generation-scoped, auctions are awaited, unresolved turns disable modal-producing actions, pending card choices are cancelled on disposal, and restart suspends the old session before asynchronous setup. |
-| Supported orientations | **Substantially remediated; simulator/device spot-check pending.** Pause, buy, auction, card-pick, and spin dialogs now constrain and scroll their content, use compact action layouts, and have phone-landscape/large-text widget coverage. The compact city guide and load/save feedback were also corrected. |
-| Duplicate actions | **Remediated.** Start Game, Lucky Spin, and prize collection now use single-flight guards. |
-| 3D command recovery | **Remediated for automatic recovery.** Native rejection fails immediately; a failed, mismatched, or timed-out move switches to the visible 2D board before Flutter animates each fallback step. The Flutter watchdog now follows Godot's 9.5-second deadline at 10 seconds, while command freshness, replay, explicit game session, player, and cancellation checks protect retained engines. A user-selectable permanent “Use 2D” preference is still recommended. |
+| Async turn safety | **Remediated.** AI timers are generation-scoped, auctions are awaited, unresolved turns disable modal-producing actions, pending card choices are cancelled on disposal, restart suspends the old session before asynchronous setup, and the delayed event dialog now uses the same player/session/generation-scoped timer registry. |
+| Supported orientations | **Validated for the post-fix iPad board; broader layouts pending.** Portrait and both landscape orientations retained the 3D board, current pawn, player rail, camera hint, and roll controls, and rotation recentered the camera. Pause, buy, auction, card-pick, and spin dialogs constrain and scroll their content and have phone-landscape/large-text widget coverage; physical phone and split-view checks remain. |
+| Duplicate actions and Start feedback | **Remediated in code; device validation pending.** Start Game, Lucky Spin, and prize collection use single-flight guards. Start now paints a blocking localized preparation overlay before localized tiles/native setup begin, so the guarded action no longer appears frozen. |
+| 3D command recovery | **Remediated for automatic recovery.** Native rejection fails immediately; a failed, mismatched, or timed-out move switches to the visible 2D board before Flutter animates each fallback step. The movement watchdog follows Godot's 9.5-second deadline at 10 seconds, while command freshness, replay, explicit game session, player, and cancellation checks protect retained engines. Startup/state application has its own 15-second watchdog with Retry 3D and session-persistent Use 2D board actions. A saved cross-session 2D preference remains a follow-up. |
 | Android release build | **Remediated.** The stale splash-plugin registration is removed by upgrading `flutter_native_splash`; runtime/pack availability is validated; local release artifacts are intentionally unsigned instead of using a debug key. Production signing secrets and CI remain required. |
 | iOS dependency portability | **Remediated.** The seven tracked `.symlinks` entries that hard-coded another developer's home directory were removed and the generated directory is ignored. Running CocoaPods from `ios/` recreates the correct local links and the pinned simulator build passes. |
 | Accessibility and localization | **Still open.** The branch adds semantics and localized progress/error text to touched controls, but the board-wide accessible equivalent, motion preferences, target sizing, contrast, and ID-based localization of events/spin/power-ups/achievements remain release work. |
-| Physical-device 3D performance | **Not tested.** FPS, memory, thermal behavior, background/resume, and first-game → menu → second-game behavior remain release gates on minimum supported iOS and Android hardware. |
+| Physical-device 3D performance | **Remeasured; still not passing.** Godot-only render scale, 2x MSAA, smaller shadow maps, one shadow-casting light, primitive mesh reuse, tiny-detail shadow suppression, 24-segment cylinders, and a 60 FPS cap cut peak footprint from 1,355.9 to 870.4 MiB and Metal allocation from 698.8 to 440.1 MiB. The post-fix board held 60 FPS with zero skips, but GPU usage rose from 81.24% to 85.62% and one-core-equivalent CPU from 52.65% to 58.40%; minimum-device and long-session headroom remain blockers. |
 
 ### Feature-branch verification
 
-- `flutter test --reporter expanded`: **108/108 passed**.
+- `flutter test --reporter expanded`: **132/132 passed**.
 - Targeted analysis of all changed Dart source and tests: **no issues**. Repository-wide `flutter analyze` has **0 errors, 0 warnings**, and 238 remaining info diagnostics.
-- Android JVM tests: **8 debug + 8 release passed**.
+- Android bridge/session/runtime JVM tests: **debug and release passed**.
 - `flutter build apk --debug --no-pub`: **passed**.
 - `flutter build apk --release --no-pub`: **passed**; the local APK is deliberately unsigned until `android/key.properties` is supplied from protected credentials.
-- Godot bridge smoke tests: **passed** on official Godot 4.7.1 and 4.6.3, including grounding, occupancy, color, marker alignment, wrong/expired/replayed commands, cancellation during a hop, and completion only after landing.
-- Android and iOS Godot packs were regenerated and mounted successfully with their matching engine lines.
-- Architecture-pinned iOS Simulator `xcodebuild` (`arm64`, signing disabled): **passed**. The generic `flutter build ios --simulator` path remains blocked by the current Flutter/Xcode 27 beta `undefined_arch` toolchain behavior.
+- Godot bridge smoke tests: **passed** on official Godot 4.7.1 and 4.6.3, including grounding, occupancy, color, marker alignment, wrong/expired/replayed commands, cancellation during a hop, completion only after landing, the mobile render budget, and neutral pre-roll dice presentation.
+- Android and iOS Godot packs were regenerated and mounted successfully with their matching engine lines. SHA-256: Android `347d7132969f31f458540f0c6fa4779d3648c547ddaff8bf3717c21b6b09a619`; iOS `275d0811b6477c98ba3fbbe04da5530ffed9b9364009a6f1606f6e1c1be88ce3`.
+- Architecture-pinned iOS Simulator `xcodebuild` (`arm64`, signing disabled): **passed**. iOS host tests: **4/4 passed**, covering observed-ready replay, cached-state Retry, 2x → 1.5x and 3x → 2x Godot-only content scale, and the 60 FPS cap. The generic `flutter build ios --simulator` path remains blocked by the current Flutter/Xcode 27 beta `undefined_arch` toolchain behavior.
+- Signed physical-device `flutter build ios --profile --no-pub`: **passed** (`Runner.app`, 169.9 MB), with the expected iOS PCK hash embedded. It was installed and launched on the connected iPad Air. In the post-fix QA scenario, each AI player rolled exactly once, the Roll surface stayed locked during AI control, the camera did not cut between the board and dice, standard pawn motion remained grounded and road-centered, portrait and both landscape orientations retained all essential game controls, and the attached console showed no Flutter, native, or Godot error. Start Game feedback and two-finger orbit/pinch still require direct user-touch confirmation in the final app.
 - CocoaPods regeneration from `ios/`: **passed** after removing machine-specific tracked plugin symlinks.
 - No local Android emulator is configured, and the iOS bridge intentionally disables Godot in Simulator. The simulator build therefore validates host integration only, not the shipped 3D rendering path.
 - `git diff --check`: **passed**.
 
 ### Remaining release gates
 
-1. Run and record the shipped 3D board on physical iOS and Android devices. Include low/high camera views of road contact, corners, 1–4 pawn occupancy, a complete roll/landing, first-session → menu → second-session reattachment, background/resume, and native-failure recovery.
+1. Complete the remaining physical interaction matrix. On iOS, manually verify the menu-to-setup preparation overlay, one-finger pan, two-finger orbit/pinch, Reset View, low/high road contact, 1–4 pawn co-occupancy, a complete lap, special movement, first-session → menu → second-session reattachment, background/resume, and native-failure recovery. Repeat the full standard-roll/orientation/performance pass on Android.
 2. Measure frame time, memory, battery, and thermal behavior during a long game on the minimum supported devices; then set and enforce quality/FPS budgets.
-3. Validate the iOS vendor runtime labeled 4.6.4 against the 4.6.3-exported pack on a physical device, or pin exporter/runtime to one exact supported build.
+3. Pin exporter/runtime to one exact supported iOS build, or document and continuously test the currently observed 4.6.4-vendor-runtime/4.6.3-exporter compatibility. The physical iPad standard-roll pass worked, but the version skew should not remain implicit.
 4. Finish the accessibility, localization, permission-timing, visual-system, camera/input, and remaining 3D readability work documented below.
 5. Add CI for Flutter tests/analysis, both release compiles, Godot smoke/export freshness, artifact size, protected production signing, and device-lab smoke tests.
 6. Recheck the generic iOS build on a stable Xcode/Flutter pairing; do not treat the architecture-pinned workaround as the final CI configuration.
@@ -65,7 +189,7 @@ The Flutter app was run in debug mode on:
 
 Runtime flows exercised included splash, main menu, both setup steps, How to Play, Settings, a live two-player game, rolling and turn changes, the city guide, tile/player information, portfolio, Pause, Save, Quit, Buy Property, Lucky Spin, and Jail presentation. A live-game state corruption was reproduced, as were landscape overflows and Flutter runtime assertions.
 
-### Important 3D limitation
+### Baseline 3D limitation
 
 The shipped iOS bridge deliberately reports 3D as unavailable in Simulator (`ios/Runner/GodotBoardIOSPlugin.swift:45-54`). The simulator therefore displayed the 2D fallback; it could not render or record the embedded Godot board. No Android virtual device is installed in this workspace, and the documented local Godot executable is absent, so the GDScript smoke suite could not be run here. The 3D review consequently combines:
 
@@ -74,7 +198,7 @@ The shipped iOS bridge deliberately reports 3D as unavailable in Simulator (`ios
 - Godot scene, camera, picking, and performance review;
 - the Flutter HUD and failure/fallback behavior in Simulator.
 
-This is itself a release-process gap. A physical-device motion/performance pass is still required before release, and the project needs a simulator/emulator-capable 3D test harness so normal regression QA can see the shipped experience.
+This was itself a release-process gap in the baseline review. The feature-branch update above now supplies one physical iPad standard-roll/orientation/performance pass and dual-engine headless Godot smoke coverage. Android, minimum hardware, direct multi-touch, special movement, reattachment/backgrounding, recovery, and long-session coverage remain, and the project still needs a simulator/emulator-capable 3D harness so normal regression QA can see the shipped experience.
 
 ### Coverage labels used below
 
@@ -89,7 +213,7 @@ This is itself a release-process gap. A physical-device motion/performance pass 
 - **P2 — medium:** visible inconsistency or friction that should be addressed for a polished release.
 - **P3 — low:** cleanup or refinement after the release gates are satisfied.
 
-## 2. Executive release gates
+## 2. Main-baseline executive release gates
 
 | Gate | Status | Why it is not passing |
 |---|---|---|
@@ -355,7 +479,7 @@ When an existing board is reused, `_apply_scene_state()` rebuilds only when boar
 
 ### 3D-21 — P1 — likely excessive mobile rendering cost
 
-The project uses 4096 shadow atlases and 2× MSAA (`godot_3d/project.godot:34-41`); directional and omni lights cast shadows; many tiny procedural meshes also cast shadows; cylinders commonly use 48 segments; meshes/materials are recreated instead of cached/instanced. iOS renders at full `UIScreen.main.scale` and enables high refresh (`ios/Runner/GodotBoardIOSPlugin.swift:146-149`; `ios/Runner/Info.plist:5-6`).
+The reviewed `main` baseline uses 4096 shadow atlases and 4× MSAA (the project value `2` is the `MSAA_4X` enum); directional and omni lights cast shadows; many tiny procedural meshes also cast shadows; cylinders commonly use 48 segments; meshes/materials are recreated instead of cached/instanced. iOS renders at full `UIScreen.main.scale` and enables high refresh (`ios/Runner/GodotBoardIOSPlugin.swift`; `ios/Runner/Info.plist:5-6`). The feature-branch budget documented above remediates the largest attachment, shadow, tessellation, and refresh costs; caching/instancing, quality tiers, and minimum-device profiling remain follow-up work.
 
 **Required change:** profile on the minimum supported iPhone/Android. Cache meshes/materials, use `MultiMesh` or combined static meshes, disable shadows on small props/pips/labels, add LOD/visibility ranges, reduce shadow atlas/render scale, and ship quality/FPS tiers.
 
@@ -544,14 +668,14 @@ Small/ellipsized card copy, low-contrast subtitles, fixed dialogs, and truncated
 
 ## 11. Localization and content consistency
 
-All five ARB files have the same 482-key structure, which is a good base. Major enabled systems bypass those catalogs:
+All five ARB files have the same 516-message structure, which is a good base. The feature branch localizes the new player-status rail, camera hints/actions, Start preparation state, and 3D readiness/recovery UI. Major enabled systems still bypass those catalogs:
 
 - event category/title/body (`lib/widgets/dialogs/event_dialog.dart:119-232`; `lib/models/event_card.dart:37-247`);
 - spin prize copy and hardcoded `SPIN` (`lib/widgets/spin_wheel/spin_wheel_widget.dart:164-205`; `lib/models/spin_prize.dart:54-138`);
 - power-up name/description/rarity/`USE` (`lib/widgets/cards/power_up_card_widget.dart:148-229`; `lib/models/power_up_card.dart:25-225`);
 - achievements (`lib/models/player_stats.dart:198-267`; `lib/widgets/achievements/achievement_notification.dart:161-194`);
-- auction and much of the 3D HUD/actions/loading/gesture/city guide;
-- Godot tile prices and Flutter 3D cash use raw `$` (`main.gd:674-681`; `lib/screens/game_board_screen.dart:973-975`);
+- the city guide, card-deck prompt, and dice-selection SnackBar;
+- Godot tile prices/world labels and compact 2D player pills use raw `$`; the new 3D status rail uses `CurrencyUtils`;
 - Victory also uses raw currency.
 
 `eventLastsRounds` manually appends an English `s`, which is incorrect for Japanese/Chinese and other plural systems (`lib/widgets/dialogs/event_dialog.dart:228-232`). Use ICU plural/select messages and stable content IDs.
@@ -560,9 +684,9 @@ Saved games serialize presentation-heavy tile data; changing language before loa
 
 Also reconcile product metadata: README claims 17 languages while the runtime supports five, and product naming differs between UI/native labels.
 
-## 12. Build, test, and diagnostics status
+## 12. Main-baseline build, test, and diagnostics status (`7f498c7`)
 
-This section records the commands used in this review. Build/test status should be kept current as fixes land.
+This section preserves the commands and failures from the original `main` review. The current feature-branch results are in **Feature-branch verification** above.
 
 | Check | Result |
 |---|---|
@@ -597,7 +721,7 @@ Existing responsive tests mainly exercise initial screens and the 2D fallback (`
 - **P2:** README screenshots remain `Coming soon`, and its 17-language claim conflicts with the five supported locales (`README.md:18-21`; `lib/l10n/app_localizations.dart:99`).
 - **P2:** Gradle 8.12, AGP 8.9.1, and Kotlin 2.1.0 already produce upcoming Flutter-support warnings. Schedule a controlled toolchain upgrade after the release build is reproducible.
 
-## 13. Recommended implementation sequence
+## 13. Original recommended implementation sequence
 
 ### Phase 0 — restore correctness and build confidence
 
@@ -708,4 +832,4 @@ Add automated tests for:
 
 ## 16. Bottom line
 
-The fastest path to a credible release is not to add more scenery. Stabilize session ownership and builds first, then replace the pawn's grounding/offset/animation architecture, then make the native board recoverable and measurable. Once those foundations are reliable, the strong newer UI style can be extended across the legacy dialogs and the 3D experience can receive the device-level tuning it needs.
+The feature branch now implements the session/build, pawn-grounding, standard-route, readiness/recovery, AI authorization, camera, and multi-player HUD foundations. The remaining path to a credible release is device breadth and sustained performance first, followed by intentional special-movement animation, coherent authored/rigged token identity, a small-phone 3D HUD, board-wide accessibility and localization, visual-system consolidation, protected signing/CI, and repeatable physical-device regression coverage. More scenery should wait until those gates pass.
