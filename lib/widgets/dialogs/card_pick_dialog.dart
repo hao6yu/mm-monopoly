@@ -100,12 +100,15 @@ class _CardPickDialogState extends State<CardPickDialog>
 
     // Wait for move animation
     await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
 
     // Flip the card
     await _flipController.forward();
+    if (!mounted) return;
 
     // Small delay before allowing close
     await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
 
     setState(() {
       _canClose = true;
@@ -122,21 +125,25 @@ class _CardPickDialogState extends State<CardPickDialog>
   @override
   Widget build(BuildContext context) {
     final color = widget.isChance ? Colors.orange : Colors.blue.shade600;
+    final mediaQuery = MediaQuery.of(context);
+    final compactHeight = mediaQuery.size.height < 520;
+    final maxHeight = mediaQuery.size.height - mediaQuery.padding.vertical - 32;
 
     return GestureDetector(
       onTap: _canClose ? _onCloseDialog : null,
       behavior: HitTestBehavior.opaque,
       child: Dialog(
+        insetPadding: const EdgeInsets.all(16),
         backgroundColor: Colors.transparent,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 550),
+          constraints: BoxConstraints(maxWidth: 400, maxHeight: maxHeight),
           decoration: BoxDecoration(
             color: AppTheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.white24, width: 2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 blurRadius: 20,
                 spreadRadius: 5,
               ),
@@ -145,12 +152,40 @@ class _CardPickDialogState extends State<CardPickDialog>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildHeader(color),
-              const SizedBox(height: 16),
-              _buildCardArea(color),
-              const SizedBox(height: 16),
-              _buildInstructions(),
-              const SizedBox(height: 16),
+              _buildHeader(color, compact: compactHeight),
+              Flexible(
+                child: SingleChildScrollView(
+                  key: const Key('card-pick-content-scroll'),
+                  padding: EdgeInsets.symmetric(
+                    vertical: compactHeight ? 8 : 16,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildResponsiveCardArea(color, compact: compactHeight),
+                      SizedBox(height: compactHeight ? 8 : 16),
+                      _buildInstructions(),
+                      if (_canClose) ...[
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              key: const Key('card-pick-continue'),
+                              onPressed: _onCloseDialog,
+                              icon: const Icon(Icons.arrow_forward_rounded),
+                              label: Text(
+                                AppLocalizations.of(context)!.continueGame,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -158,10 +193,10 @@ class _CardPickDialogState extends State<CardPickDialog>
     );
   }
 
-  Widget _buildHeader(Color color) {
+  Widget _buildHeader(Color color, {required bool compact}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 8 : 16),
       decoration: BoxDecoration(
         color: color,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
@@ -171,14 +206,16 @@ class _CardPickDialogState extends State<CardPickDialog>
           Icon(
             widget.isChance ? Icons.help_outline : Icons.inventory_2,
             color: Colors.white,
-            size: 36,
+            size: compact ? 26 : 36,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 3 : 8),
           Text(
-            widget.isChance ? AppLocalizations.of(context)!.chanceExcl : AppLocalizations.of(context)!.communityChestExcl,
-            style: const TextStyle(
+            widget.isChance
+                ? AppLocalizations.of(context)!.chanceExcl
+                : AppLocalizations.of(context)!.communityChestExcl,
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 22,
+              fontSize: compact ? 18 : 22,
               fontWeight: FontWeight.bold,
               letterSpacing: 2,
             ),
@@ -210,7 +247,12 @@ class _CardPickDialogState extends State<CardPickDialog>
               }),
               // Selected card on top (always rendered last)
               if (_selectedIndex != null)
-                _buildSelectedCard(_selectedIndex!, color, totalCards, cardSpread),
+                _buildSelectedCard(
+                  _selectedIndex!,
+                  color,
+                  totalCards,
+                  cardSpread,
+                ),
             ],
           ),
         ),
@@ -218,7 +260,26 @@ class _CardPickDialogState extends State<CardPickDialog>
     );
   }
 
-  Widget _buildFannedCard(int index, Color color, int totalCards, double cardSpread) {
+  Widget _buildResponsiveCardArea(Color color, {required bool compact}) {
+    final cardArea = _buildCardArea(color);
+    if (!compact) return cardArea;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 180,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: SizedBox(width: 350, height: 280, child: cardArea),
+      ),
+    );
+  }
+
+  Widget _buildFannedCard(
+    int index,
+    Color color,
+    int totalCards,
+    double cardSpread,
+  ) {
     final middleIndex = (totalCards - 1) / 2;
     final offset = index - middleIndex;
     final angle = offset * 0.12; // Rotation angle
@@ -234,19 +295,29 @@ class _CardPickDialogState extends State<CardPickDialog>
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 300),
         opacity: opacity,
-        child: GestureDetector(
-          onTap: _selectedIndex == null ? () => _onCardTap(index) : null,
-          behavior: HitTestBehavior.opaque,
-          child: Transform.rotate(
-            angle: angle,
-            child: _buildCardBack(color, false),
+        child: Semantics(
+          button: true,
+          label:
+              '${widget.isChance ? AppLocalizations.of(context)!.chance : AppLocalizations.of(context)!.chestShort} ${index + 1}',
+          child: GestureDetector(
+            onTap: _selectedIndex == null ? () => _onCardTap(index) : null,
+            behavior: HitTestBehavior.opaque,
+            child: Transform.rotate(
+              angle: angle,
+              child: _buildCardBack(color, false),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSelectedCard(int index, Color color, int totalCards, double cardSpread) {
+  Widget _buildSelectedCard(
+    int index,
+    Color color,
+    int totalCards,
+    double cardSpread,
+  ) {
     final middleIndex = (totalCards - 1) / 2;
     final offset = index - middleIndex;
     final startAngle = offset * 0.12;
@@ -254,7 +325,11 @@ class _CardPickDialogState extends State<CardPickDialog>
     final startYOffset = (offset.abs() * 8).toDouble();
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_moveAnimation, _flipAnimation, _scaleAnimation]),
+      animation: Listenable.merge([
+        _moveAnimation,
+        _flipAnimation,
+        _scaleAnimation,
+      ]),
       builder: (context, child) {
         // Interpolate position from fan to center
         final currentXOffset = startXOffset * (1 - _moveAnimation.value);
@@ -296,21 +371,20 @@ class _CardPickDialogState extends State<CardPickDialog>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color,
-            color.withOpacity(0.8),
-          ],
+          colors: [color, color.withValues(alpha: 0.8)],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isSelected ? Colors.amber : Colors.white.withOpacity(0.5),
+          color: isSelected
+              ? Colors.amber
+              : Colors.white.withValues(alpha: 0.5),
           width: isSelected ? 3 : 2,
         ),
         boxShadow: [
           BoxShadow(
             color: isSelected
-                ? Colors.amber.withOpacity(0.5)
-                : Colors.black.withOpacity(0.3),
+                ? Colors.amber.withValues(alpha: 0.5)
+                : Colors.black.withValues(alpha: 0.3),
             blurRadius: isSelected ? 15 : 8,
             spreadRadius: isSelected ? 2 : 0,
           ),
@@ -332,7 +406,7 @@ class _CardPickDialogState extends State<CardPickDialog>
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -352,9 +426,9 @@ class _CardPickDialogState extends State<CardPickDialog>
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Colors.white.withOpacity(0.3),
+                      Colors.white.withValues(alpha: 0.3),
                       Colors.transparent,
-                      Colors.white.withOpacity(0.2),
+                      Colors.white.withValues(alpha: 0.2),
                     ],
                   ),
                 ),
@@ -381,7 +455,7 @@ class _CardPickDialogState extends State<CardPickDialog>
           border: Border.all(color: color, width: 3),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.5),
+              color: color.withValues(alpha: 0.5),
               blurRadius: 15,
               spreadRadius: 2,
             ),
@@ -395,10 +469,14 @@ class _CardPickDialogState extends State<CardPickDialog>
               padding: const EdgeInsets.symmetric(vertical: 4),
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(9),
+                ),
               ),
               child: Text(
-                widget.isChance ? AppLocalizations.of(context)!.chance : AppLocalizations.of(context)!.chestShort,
+                widget.isChance
+                    ? AppLocalizations.of(context)!.chance
+                    : AppLocalizations.of(context)!.chestShort,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
@@ -429,13 +507,16 @@ class _CardPickDialogState extends State<CardPickDialog>
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: card.effect.startsWith('+')
-                            ? Colors.green.withOpacity(0.2)
+                            ? Colors.green.withValues(alpha: 0.2)
                             : card.effect.startsWith('-')
-                                ? Colors.red.withOpacity(0.2)
-                                : Colors.blue.withOpacity(0.2),
+                            ? Colors.red.withValues(alpha: 0.2)
+                            : Colors.blue.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -444,8 +525,8 @@ class _CardPickDialogState extends State<CardPickDialog>
                           color: card.effect.startsWith('+')
                               ? Colors.green.shade700
                               : card.effect.startsWith('-')
-                                  ? Colors.red.shade700
-                                  : Colors.blue.shade700,
+                              ? Colors.red.shade700
+                              : Colors.blue.shade700,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
@@ -502,7 +583,7 @@ class _CardPickDialogState extends State<CardPickDialog>
         '👆 ${AppLocalizations.of(context)!.tapCardToPick}',
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.7),
+          color: Colors.white.withValues(alpha: 0.7),
           fontSize: 16,
         ),
       ),
@@ -519,7 +600,7 @@ class _CardBackPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
+      ..color = Colors.white.withValues(alpha: 0.1)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
@@ -535,7 +616,7 @@ class _CardBackPatternPainter extends CustomPainter {
 
     // Draw border decoration
     final borderPaint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
+      ..color = Colors.white.withValues(alpha: 0.2)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 

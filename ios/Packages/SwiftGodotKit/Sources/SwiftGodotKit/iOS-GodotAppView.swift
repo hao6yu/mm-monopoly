@@ -77,6 +77,9 @@ public class UIGodotAppView: UIView {
     public var scene: String?
     public var onReady: ((GodotAppViewHandle) -> Void)?
     public var onMessage: ((VariantDictionary) -> Void)?
+    /// Bounds embedded rendering on ProMotion hardware. The host may lower
+    /// this before startup, but the board never needs to render above 60 FPS.
+    public var maximumFramesPerSecond = 60
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -190,6 +193,7 @@ public class UIGodotAppView: UIView {
             }
             if displayLink == nil {
                 let displayLink = CADisplayLink(target: self, selector: #selector(iterate))
+                displayLink.preferredFramesPerSecond = max(1, maximumFramesPerSecond)
                 displayLink.add(to: .current, forMode: RunLoop.Mode.default)
                 self.displayLink = displayLink
             }

@@ -53,6 +53,9 @@ func _run() -> void:
 		logical_tiles.append(tile_payload)
 
 	var state := {
+		"sessionId": "bridge-smoke-session",
+		"stateGeneration": 1,
+		"boardId": "usa",
 		"currentPlayerIndex": 0,
 		"die1": 0,
 		"die2": 0,
@@ -62,12 +65,14 @@ func _run() -> void:
 			{
 				"id": "player-one",
 				"name": "Player 1",
+				"colorArgb": 0xff5b8def,
 				"visualPosition": 0,
 				"isActive": true,
 			},
 			{
 				"id": "player-two",
 				"name": "Player 2",
+				"colorArgb": 0xffef765b,
 				"visualPosition": 0,
 				"isActive": true,
 			},
@@ -77,13 +82,31 @@ func _run() -> void:
 		"action": "sync_state",
 		"json": JSON.stringify(state),
 	})
+	_test_state_applied_handshake(scene, state)
+	_test_mobile_render_budget(scene)
+	_test_unrolled_dice_state(scene)
+	_test_token_grounding_and_occupancy(scene)
+	await _test_avatar_identity_tint(scene, state)
+	_test_distance_scaled_token_motion(scene)
+	await _test_roll_cancellation_on_state_sync(scene, state)
+	await _test_special_movement_presentations(scene, state)
+	await _test_camera_follow(scene, state)
+	await _test_graphics_quality_tiers(scene)
+	await _test_dice_slot_separation(scene)
+	_test_native_one_finger_pan(scene)
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
 	_test_host_camera_pan(scene)
 	_test_mobile_camera_framing(scene)
 	_test_die_face_rotations(scene)
 	_test_boat_lanes(scene)
+	await _test_boat_waterline(scene)
+	await _test_label_presentation(scene)
+	_test_embedded_cloud_policy(scene)
 	await _test_city_catalog(scene, state)
+	# The development/picking fixtures below assert New York-specific model
+	# families. Restore that city after exercising the complete catalog.
+	state["boardId"] = "usa_new_york"
 	_test_special_tile_metadata(scene)
 	_test_property_development_metadata(scene)
 	await _test_nyc_development_families(scene, state)
@@ -91,6 +114,7 @@ func _run() -> void:
 	await _test_property_state_transition(scene, state)
 	_test_board_object_picking(scene)
 
+	var roll_camera_snapshot := _camera_snapshot(scene)
 	var command := {
 		"commandId": "bridge-smoke",
 		"playerId": "player-one",
@@ -110,20 +134,53 @@ func _run() -> void:
 		push_error("3D roll did not create the five-step route preview.")
 		quit(1)
 		return
-	if not scene.cinematic_camera_active:
-		push_error("3D roll did not start the camera cinematic.")
+	if not _camera_matches_snapshot(scene, roll_camera_snapshot):
+		push_error("Starting a dice roll moved the player-controlled camera.")
+		quit(1)
+		return
+	var expected_marker_position: Vector3 = (
+		scene._token_anchor_for_tile(1, 0) + Vector3.UP * 0.17
+	)
+	if not scene.movement_markers[0].position.is_equal_approx(
+		expected_marker_position
+	):
+		push_error("3D route marker is not aligned with the pawn's route anchor.")
 		quit(1)
 		return
 	print("ROLL_PRESENTATION_OK")
 
+	var step_events := 0
 	for _attempt in 160:
 		await create_timer(0.05).timeout
 		var message: Dictionary = scene.host_poll_message()
 		if message.is_empty():
 			continue
+		if message.get("method", "") == "movementStep":
+			step_events += 1
+			continue
 		if message.get("method", "") == "movementComplete":
+			# One footstep event per arrived waypoint, none after completion.
+			if step_events != 5:
+				push_error(
+					"Expected 5 movementStep events, got %d." % step_events
+				)
+				quit(1)
+				return
+			var token_visual := scene._token_visual(scene.player_tokens[0]) as Node3D
+			if (
+				scene.active_tween != null
+				or token_visual == null
+				or not is_zero_approx(token_visual.position.y)
+			):
+				push_error("movementComplete was emitted before the pawn landed.")
+				quit(1)
+				return
 			if not _dice_values_face_up(scene, [2, 3]):
 				push_error("3D dice did not settle on the Flutter roll values.")
+				quit(1)
+				return
+			if not _camera_matches_snapshot(scene, roll_camera_snapshot):
+				push_error("A completed roll did not preserve the chosen camera view.")
 				quit(1)
 				return
 			print("BRIDGE_SMOKE_OK ", message)
@@ -132,6 +189,698 @@ func _run() -> void:
 
 	push_error("Timed out waiting for movementComplete.")
 	quit(1)
+
+
+func _test_state_applied_handshake(scene: Node, state: Dictionary) -> void:
+	var message: Dictionary = scene.host_poll_message()
+	var arguments_value = JSON.parse_string(str(message.get("arguments", "{}")))
+	var arguments: Dictionary = (
+		arguments_value as Dictionary
+		if typeof(arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if (
+		str(message.get("method", "")) != "stateApplied"
+		or str(arguments.get("sessionId", "")) != str(state["sessionId"])
+		or int(arguments.get("stateGeneration", -1))
+		!= int(state["stateGeneration"])
+		or str(arguments.get("boardId", "")) != str(state["boardId"])
+	):
+		push_error("Godot acknowledged readiness before applying the requested state token.")
+		quit(1)
+		return
+	print("STATE_APPLIED_HANDSHAKE_OK ", arguments)
+
+
+func _sync_state_and_wait(scene: Node, state: Dictionary) -> void:
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	for _attempt in 40:
+		await create_timer(0.05).timeout
+		var message: Dictionary = scene.host_poll_message()
+		if str(message.get("method", "")) == "stateApplied":
+			return
+	push_error("Timed out waiting for stateApplied during special movement tests.")
+	quit(1)
+
+
+func _await_movement_complete(scene: Node) -> Dictionary:
+	for _attempt in 300:
+		await create_timer(0.05).timeout
+		var message: Dictionary = scene.host_poll_message()
+		if str(message.get("method", "")) == "movementComplete":
+			return message
+	push_error("Timed out waiting for a special movementComplete.")
+	quit(1)
+	return {}
+
+
+func _test_special_movement_presentations(scene: Node, state: Dictionary) -> void:
+	# Card "walk" presentation: a dice-less relocation along the visual route.
+	var walk_state: Dictionary = state.duplicate(true)
+	walk_state["stateGeneration"] = int(walk_state["stateGeneration"]) + 1
+	var walk_players: Array = (walk_state["players"] as Array).duplicate(true)
+	(walk_players[0] as Dictionary)["visualPosition"] = 8
+	walk_state["players"] = walk_players
+	await _sync_state_and_wait(scene, walk_state)
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-walk",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "walk",
+			"spaces": 2,
+			"toLogicalPosition": 7,
+			"toVisualPosition": 10,
+			"visualPath": [9, 10],
+		}),
+	})
+	await create_timer(0.3).timeout
+	if scene.movement_markers.size() != 2:
+		push_error("Walk presentation did not draw its two-step route preview.")
+		quit(1)
+		return
+	if scene.dice_value_label.text != "DICE\n—":
+		push_error("A dice-less walk mutated the settled dice presentation.")
+		quit(1)
+		return
+	if scene.turn_label.text != "Player 1 MOVES 2 SPACES…":
+		push_error(
+			"Walk presentation used the wrong label: %s" % scene.turn_label.text
+		)
+		quit(1)
+		return
+	var walk_completion := await _await_movement_complete(scene)
+	var walk_arguments_value = JSON.parse_string(
+		str(walk_completion.get("arguments", "{}"))
+	)
+	var walk_arguments: Dictionary = (
+		walk_arguments_value as Dictionary
+		if typeof(walk_arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if (
+		str(walk_arguments.get("commandId", "")) != "special-walk"
+		or int(walk_arguments.get("logicalPosition", -1)) != 7
+		or int(walk_arguments.get("visualPosition", -1)) != 10
+	):
+		push_error("Walk presentation completed with mismatched movement data.")
+		quit(1)
+		return
+	var walk_token := scene.player_tokens[0] as Node3D
+	if not walk_token.position.is_equal_approx(
+		scene._token_anchor_for_tile(10, 0)
+	):
+		push_error("Walk presentation did not anchor the pawn on its destination.")
+		quit(1)
+		return
+	print("SPECIAL_WALK_OK")
+
+	# Reverse presentation: backward card movement faces and labels the retreat.
+	var reverse_state: Dictionary = state.duplicate(true)
+	reverse_state["stateGeneration"] = int(reverse_state["stateGeneration"]) + 2
+	var reverse_players: Array = (
+		reverse_state["players"] as Array
+	).duplicate(true)
+	(reverse_players[0] as Dictionary)["visualPosition"] = 8
+	reverse_state["players"] = reverse_players
+	await _sync_state_and_wait(scene, reverse_state)
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-reverse",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "reverse",
+			"spaces": 3,
+			"toLogicalPosition": 3,
+			"toVisualPosition": 5,
+			"visualPath": [7, 6, 5],
+		}),
+	})
+	await create_timer(0.3).timeout
+	if scene.turn_label.text != "Player 1 MOVES BACK 3 SPACES…":
+		push_error(
+			"Reverse presentation used the wrong label: %s"
+			% scene.turn_label.text
+		)
+		quit(1)
+		return
+	if scene.movement_markers.size() != 3:
+		push_error("Reverse presentation did not draw its backward route.")
+		quit(1)
+		return
+	var reverse_completion := await _await_movement_complete(scene)
+	var reverse_arguments_value = JSON.parse_string(
+		str(reverse_completion.get("arguments", "{}"))
+	)
+	var reverse_arguments: Dictionary = (
+		reverse_arguments_value as Dictionary
+		if typeof(reverse_arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if int(reverse_arguments.get("visualPosition", -1)) != 5:
+		push_error("Reverse presentation did not land on its destination.")
+		quit(1)
+		return
+	print("SPECIAL_REVERSE_OK")
+
+	# Teleport presentation: a dice-less flight with a destination beacon, no
+	# route markers, and rejection of overlapping or replayed commands.
+	var teleport_state: Dictionary = state.duplicate(true)
+	teleport_state["stateGeneration"] = (
+		int(teleport_state["stateGeneration"]) + 3
+	)
+	await _sync_state_and_wait(scene, teleport_state)
+	var teleport_start: Vector3 = scene._token_anchor_for_tile(0, 0)
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-teleport",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "teleport",
+			"spaces": 0,
+			"toLogicalPosition": 20,
+			"toVisualPosition": 26,
+			"visualPath": [],
+		}),
+	})
+	await create_timer(0.85).timeout
+	if not scene.movement_markers.is_empty():
+		push_error("Teleport flight drew dice-roll route markers.")
+		quit(1)
+		return
+	if scene.destination_beacon == null:
+		push_error("Teleport flight had no destination beacon.")
+		quit(1)
+		return
+	if not scene.dice_tweens.is_empty():
+		push_error("Teleport flight animated the dice.")
+		quit(1)
+		return
+	var teleport_token := scene.player_tokens[0] as Node3D
+	if teleport_token.position.y <= teleport_start.y + 0.4:
+		push_error("Teleport flight never lifted the pawn off the board.")
+		quit(1)
+		return
+	if scene.active_roll_command_id != "special-teleport":
+		push_error("Teleport flight did not own the scoped presentation.")
+		quit(1)
+		return
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "overlap-teleport",
+			"playerId": "player-two",
+			"playerIndex": 1,
+			"presentation": "teleport",
+			"spaces": 0,
+			"toLogicalPosition": 5,
+			"toVisualPosition": 7,
+			"visualPath": [],
+		}),
+	})
+	if scene.active_roll_command_id != "special-teleport":
+		push_error("An overlapping special movement was not rejected.")
+		quit(1)
+		return
+	var teleport_completion := await _await_movement_complete(scene)
+	var teleport_arguments_value = JSON.parse_string(
+		str(teleport_completion.get("arguments", "{}"))
+	)
+	var teleport_arguments: Dictionary = (
+		teleport_arguments_value as Dictionary
+		if typeof(teleport_arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if (
+		str(teleport_arguments.get("commandId", "")) != "special-teleport"
+		or int(teleport_arguments.get("logicalPosition", -1)) != 20
+		or int(teleport_arguments.get("visualPosition", -1)) != 26
+	):
+		push_error("Teleport flight completed with mismatched movement data.")
+		quit(1)
+		return
+	if not teleport_token.position.is_equal_approx(
+		scene._token_anchor_for_tile(26, 0)
+	):
+		push_error("Teleport flight did not land the pawn on its target anchor.")
+		quit(1)
+		return
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-teleport",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "teleport",
+			"spaces": 0,
+			"toLogicalPosition": 20,
+			"toVisualPosition": 26,
+			"visualPath": [],
+		}),
+	})
+	if not scene.active_roll_command_id.is_empty():
+		push_error("A replayed special movement command restarted its animation.")
+		quit(1)
+		return
+	print("SPECIAL_TELEPORT_FLIGHT_OK")
+
+	# Jail presentation: the escort flight labels itself and lands in jail.
+	var jail_state: Dictionary = state.duplicate(true)
+	jail_state["stateGeneration"] = int(jail_state["stateGeneration"]) + 4
+	var jail_players: Array = (jail_state["players"] as Array).duplicate(true)
+	(jail_players[1] as Dictionary)["visualPosition"] = 39
+	jail_state["players"] = jail_players
+	await _sync_state_and_wait(scene, jail_state)
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-jail",
+			"playerId": "player-two",
+			"playerIndex": 1,
+			"presentation": "jail",
+			"spaces": 0,
+			"toLogicalPosition": 10,
+			"toVisualPosition": 13,
+			"visualPath": [],
+		}),
+	})
+	await create_timer(0.6).timeout
+	if scene.turn_label.text != "Player 2 IS TAKEN TO JAIL…":
+		push_error(
+			"Jail presentation used the wrong label: %s" % scene.turn_label.text
+		)
+		quit(1)
+		return
+	var jail_completion := await _await_movement_complete(scene)
+	var jail_arguments_value = JSON.parse_string(
+		str(jail_completion.get("arguments", "{}"))
+	)
+	var jail_arguments: Dictionary = (
+		jail_arguments_value as Dictionary
+		if typeof(jail_arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if (
+		str(jail_arguments.get("commandId", "")) != "special-jail"
+		or int(jail_arguments.get("logicalPosition", -1)) != 10
+		or int(jail_arguments.get("visualPosition", -1)) != 13
+	):
+		push_error("Jail flight completed with mismatched movement data.")
+		quit(1)
+		return
+	var jail_token := scene.player_tokens[1] as Node3D
+	if not jail_token.position.is_equal_approx(
+		scene._token_anchor_for_tile(13, 1)
+	):
+		push_error("Jail flight did not land the pawn on the jail tile.")
+		quit(1)
+		return
+	print("SPECIAL_JAIL_FLIGHT_OK")
+
+	# Restore the shared baseline state so the remaining suites start clean.
+	var restore_state: Dictionary = state.duplicate(true)
+	restore_state["stateGeneration"] = (
+		int(restore_state["stateGeneration"]) + 5
+	)
+	await _sync_state_and_wait(scene, restore_state)
+	print("SPECIAL_MOVEMENT_PRESENTATIONS_OK")
+
+
+func _camera_snapshot(scene: Node) -> Dictionary:
+	return {
+		"target": scene.camera_target,
+		"azimuth": scene.camera_azimuth,
+		"elevation": scene.camera_elevation,
+		"distance": scene.camera_distance,
+	}
+
+
+func _camera_matches_snapshot(scene: Node, snapshot: Dictionary) -> bool:
+	var expected_target: Vector3 = snapshot["target"]
+	return (
+		scene.camera_target.is_equal_approx(expected_target)
+		and is_equal_approx(scene.camera_azimuth, float(snapshot["azimuth"]))
+		and is_equal_approx(scene.camera_elevation, float(snapshot["elevation"]))
+		and is_equal_approx(scene.camera_distance, float(snapshot["distance"]))
+	)
+
+
+func _test_mobile_render_budget(scene: Node) -> void:
+	var msaa_3d := int(ProjectSettings.get_setting(
+		"rendering/anti_aliasing/quality/msaa_3d",
+		-1
+	))
+	var directional_shadow_size := int(ProjectSettings.get_setting(
+		"rendering/lights_and_shadows/directional_shadow/size",
+		-1
+	))
+	var positional_shadow_size := int(ProjectSettings.get_setting(
+		"rendering/lights_and_shadows/positional_shadow/atlas_size",
+		-1
+	))
+	var key_light := scene.get_node_or_null("KeyLight") as DirectionalLight3D
+	var fill_light := scene.get_node_or_null("WarmFill") as OmniLight3D
+	var probe_root := Node3D.new()
+	scene.add_child(probe_root)
+	var probe_material := StandardMaterial3D.new()
+	var first_pip: MeshInstance3D = scene._add_sphere(
+		probe_root,
+		0.072,
+		Vector3.ZERO,
+		probe_material,
+		10,
+		6
+	)
+	var second_pip: MeshInstance3D = scene._add_sphere(
+		probe_root,
+		0.072,
+		Vector3.RIGHT,
+		probe_material,
+		10,
+		6
+	)
+	var first_box: MeshInstance3D = scene._add_box(
+		probe_root,
+		Vector3.ONE,
+		Vector3.ZERO,
+		probe_material
+	)
+	var second_box: MeshInstance3D = scene._add_box(
+		probe_root,
+		Vector3.ONE,
+		Vector3.RIGHT,
+		probe_material
+	)
+	if (
+		msaa_3d != Viewport.MSAA_2X
+		or directional_shadow_size > 2048
+		or positional_shadow_size > 1024
+		or key_light == null
+		or not key_light.shadow_enabled
+		or fill_light == null
+		or fill_light.shadow_enabled
+		or scene.MOBILE_CYLINDER_RADIAL_SEGMENTS > 24
+		or first_pip.mesh != second_pip.mesh
+		or first_box.mesh != second_box.mesh
+		or first_pip.cast_shadow
+		!= GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	):
+		push_error("The embedded board exceeded its mobile GPU render budget.")
+		quit(1)
+		return
+	probe_root.queue_free()
+	print(
+		"MOBILE_RENDER_BUDGET_OK msaa=",
+		msaa_3d,
+		" directional_shadow=",
+		directional_shadow_size,
+		" positional_shadow=",
+		positional_shadow_size
+	)
+
+
+func _test_unrolled_dice_state(scene: Node) -> void:
+	if (
+		scene.dice_value_label.text != "DICE\n—"
+		or scene.dice_nodes.size() < 2
+		or scene.dice_nodes[1].visible
+	):
+		push_error("A new game presents an unset die as a settled roll value.")
+		quit(1)
+		return
+	print("UNROLLED_DICE_STATE_OK")
+
+
+func _test_token_grounding_and_occupancy(scene: Node) -> void:
+	var tile_anchor: Vector3 = scene._tile_ground_anchor(0)
+	var first_token := scene.player_tokens[0] as Node3D
+	var second_token := scene.player_tokens[1] as Node3D
+	if (
+		not is_equal_approx(first_token.position.y, tile_anchor.y)
+		or not is_equal_approx(second_token.position.y, tile_anchor.y)
+	):
+		push_error("Pawn roots are not anchored to the tile surface.")
+		quit(1)
+		return
+	var first_visual := scene._token_visual(first_token) as Node3D
+	if first_visual == null:
+		push_error("Pawn visual hierarchy does not preserve a ground contact origin.")
+		quit(1)
+		return
+	var first_idle := first_visual.get_node_or_null("TokenIdle") as Node3D
+	var first_model := (
+		first_idle.get_node_or_null("TokenModel") as Node3D
+		if first_idle != null
+		else null
+	)
+	if first_model == null or not is_equal_approx(first_model.position.y, -1.1):
+		push_error("Pawn visual hierarchy does not preserve a ground contact origin.")
+		quit(1)
+		return
+	var midpoint := first_token.position.lerp(second_token.position, 0.5)
+	if not midpoint.is_equal_approx(tile_anchor):
+		push_error("Shared-tile pawn slots are not centered around the road anchor.")
+		quit(1)
+		return
+	var effective_base_diameter := 1.1 * first_visual.scale.x
+	if first_token.position.distance_to(second_token.position) < effective_base_diameter:
+		push_error("Shared-tile pawn slots overlap after occupancy scaling.")
+		quit(1)
+		return
+	for occupant_count in range(1, 5):
+		var offsets: Array[Vector3] = []
+		var centroid := Vector3.ZERO
+		for slot_index in occupant_count:
+			var offset: Vector3 = scene._token_offset_for_occupancy(
+				0,
+				slot_index,
+				occupant_count
+			)
+			offsets.append(offset)
+			centroid += offset
+		centroid /= float(occupant_count)
+		if not centroid.is_zero_approx():
+			push_error("Occupancy slot pattern is not centered for %d pawns." % occupant_count)
+			quit(1)
+			return
+		var scaled_diameter: float = (
+			1.1 * scene._token_scale_for_occupancy(occupant_count).x
+		)
+		for first_index in offsets.size():
+			for second_index in range(first_index + 1, offsets.size()):
+				if offsets[first_index].distance_to(offsets[second_index]) < scaled_diameter:
+					push_error(
+						"Occupancy slot pattern overlaps for %d pawns." % occupant_count
+					)
+					quit(1)
+					return
+	var material_value = first_token.get_meta("player_color_material", null)
+	if not material_value is StandardMaterial3D:
+		push_error("Flutter player color was not applied to the 3D pawn.")
+		quit(1)
+		return
+	var player_material := material_value as StandardMaterial3D
+	if not player_material.albedo_color.is_equal_approx(Color("#5b8def")):
+		push_error("Flutter player color was not applied to the 3D pawn.")
+		quit(1)
+		return
+	print("TOKEN_GROUNDING_OCCUPANCY_COLOR_OK")
+
+
+func _test_avatar_identity_tint(scene: Node, state: Dictionary) -> void:
+	# The Flutter avatar identity (3D-05) must reach the pawn: the id is
+	# stored and the hair tint is derived from it deterministically.
+	var tinted_state: Dictionary = state.duplicate(true)
+	tinted_state["stateGeneration"] = int(tinted_state["stateGeneration"]) + 1
+	var tinted_players: Array = (tinted_state["players"] as Array).duplicate(true)
+	(tinted_players[0] as Dictionary)["avatarId"] = "avatar-fox"
+	tinted_state["players"] = tinted_players
+	var before_tint := _hair_albedo(scene, 0)
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(tinted_state),
+	})
+	for _attempt in 40:
+		await create_timer(0.05).timeout
+		var message: Dictionary = scene.host_poll_message()
+		if str(message.get("method", "")) == "stateApplied":
+			break
+	if str(scene.player_avatar_ids[0]) != "avatar-fox":
+		push_error("The avatar identity id was not stored on the pawn.")
+		quit(1)
+		return
+	var after_tint := _hair_albedo(scene, 0)
+	if before_tint.is_equal_approx(after_tint):
+		push_error("The avatar identity did not retint the pawn hair.")
+		quit(1)
+		return
+	var expected: Color = scene.PLAYER_AVATAR_HAIR_COLORS[
+		absi(hash("avatar-fox")) % scene.PLAYER_AVATAR_HAIR_COLORS.size()
+	]
+	if not after_tint.is_equal_approx(expected):
+		push_error("The pawn hair tint did not match the avatar derivation.")
+		quit(1)
+		return
+	print("AVATAR_IDENTITY_TINT_OK ", after_tint)
+
+
+func _hair_albedo(scene: Node, player_index: int) -> Color:
+	var material_value = (scene.player_tokens[player_index] as Node3D).get_meta(
+		"player_hair_material",
+		null
+	)
+	if material_value is StandardMaterial3D:
+		return (material_value as StandardMaterial3D).albedo_color
+	return Color()
+
+
+func _test_distance_scaled_token_motion(scene: Node) -> void:
+	var base_duration: float = scene.TOKEN_STEP_DURATION
+	var adjacent_duration: float = scene._token_step_duration(0, 1, base_duration)
+	var skipped_duration: float = scene._token_step_duration(0, 2, base_duration)
+	var adjacent_distance: float = scene.tile_positions[0].distance_to(
+		scene.tile_positions[1]
+	)
+	var skipped_distance: float = scene.tile_positions[0].distance_to(
+		scene.tile_positions[2]
+	)
+	var adjacent_speed := adjacent_distance / adjacent_duration
+	var skipped_speed := skipped_distance / skipped_duration
+	if skipped_duration <= adjacent_duration:
+		push_error("A longer visual segment must not animate faster than one step.")
+		quit(1)
+		return
+	if absf(adjacent_speed - skipped_speed) > adjacent_speed * 0.02:
+		push_error("Pawn movement speed changes across different route distances.")
+		quit(1)
+		return
+	print(
+		"DISTANCE_SCALED_TOKEN_MOTION_OK ",
+		adjacent_duration,
+		" -> ",
+		skipped_duration
+	)
+
+
+func _test_roll_cancellation_on_state_sync(
+	scene: Node,
+	state: Dictionary
+) -> void:
+	var expired_command := {
+		"commandId": "1_player-one",
+		"playerId": "player-one",
+		"playerIndex": 0,
+		"die1": 1,
+		"die2": 1,
+		"spaces": 2,
+		"toLogicalPosition": 2,
+		"visualPath": [1, 2],
+	}
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(expired_command),
+	})
+	if not scene.active_roll_command_id.is_empty():
+		push_error("Expired hosted roll was allowed to enter the movement queue.")
+		quit(1)
+		return
+	var wrong_session_command := expired_command.duplicate(true)
+	wrong_session_command["commandId"] = "wrong-session"
+	wrong_session_command["sessionId"] = "retired-session"
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(wrong_session_command),
+	})
+	if not scene.active_roll_command_id.is_empty():
+		push_error("A roll from a retired session entered the movement queue.")
+		quit(1)
+		return
+	var cancelled_command := {
+		"commandId": "cancel-on-sync",
+		"playerId": "player-one",
+		"playerIndex": 0,
+		"die1": 1,
+		"die2": 1,
+		"spaces": 2,
+		"toLogicalPosition": 2,
+		"visualPath": [1, 2],
+	}
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(cancelled_command),
+	})
+	if scene.active_roll_command_id != "cancel-on-sync":
+		push_error("Hosted roll did not enter its scoped presentation state.")
+		quit(1)
+		return
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	await create_timer(1.15).timeout
+	if (
+		not scene.active_roll_command_id.is_empty()
+		or scene.player_tiles[0] != 0
+		or not scene.movement_markers.is_empty()
+		or not scene.dice_tweens.is_empty()
+	):
+		push_error("State sync did not cancel the stale hosted roll presentation.")
+		quit(1)
+		return
+	# Simulate a delayed native retry after the new authoritative generation.
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(cancelled_command),
+	})
+	if not scene.active_roll_command_id.is_empty():
+		push_error("A cancelled roll retry escaped its original state generation.")
+		quit(1)
+		return
+	var mid_move_command := cancelled_command.duplicate(true)
+	mid_move_command["commandId"] = "cancel-mid-hop"
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify(mid_move_command),
+	})
+	await create_timer(1.12).timeout
+	if scene.active_tween == null or not scene.active_tween.is_running():
+		push_error("Hosted roll did not enter its authoritative movement tween.")
+		quit(1)
+		return
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	await create_timer(0.35).timeout
+	if (
+		not scene.active_roll_command_id.is_empty()
+		or scene.active_tween != null
+		or scene.player_tiles[0] != 0
+	):
+		push_error("State sync did not cancel an in-flight pawn hop cleanly.")
+		quit(1)
+		return
+	while true:
+		var message: Dictionary = scene.host_poll_message()
+		if message.is_empty():
+			break
+		if (
+			message.get("method", "") == "movementComplete"
+			and (
+				str(message.get("arguments", "")).contains("cancel-on-sync")
+				or str(message.get("arguments", "")).contains("cancel-mid-hop")
+			)
+		):
+			push_error("Cancelled roll emitted a stale movementComplete event.")
+			quit(1)
+			return
+	print("HOSTED_ROLL_CANCELLATION_OK")
 
 
 func _test_special_tile_metadata(scene: Node) -> void:
@@ -194,7 +943,10 @@ func _test_property_development_metadata(scene: Node) -> void:
 		quit(1)
 		return
 	var label := tile.get_node("TileLabel") as Label3D
-	if not label.text.contains("$120"):
+	# The semantic-zoom presentation may abbreviate the rendered text to the
+	# name at overview distance; the full localized name and price must always
+	# survive in the registered abbreviation source.
+	if not str(label.get_meta("full_text", label.text)).contains("$120"):
 		push_error("3D property price is missing from its location label.")
 		quit(1)
 		return
@@ -303,8 +1055,9 @@ func _test_property_state_transition(scene: Node, state: Dictionary) -> void:
 		or markers.get_node_or_null("NYCBrownstoneDevelopment") == null
 		or status == null
 		or status.text != "SOLD"
+		or status.visible
 	):
-		push_error("3D property state transition did not animate.")
+		push_error("Embedded property transition is missing or has a floating label.")
 		quit(1)
 		return
 	print("PROPERTY_STATE_TRANSITION_OK")
@@ -325,7 +1078,14 @@ func _test_board_object_picking(scene: Node) -> void:
 			"normalizedY": screen_position.y / viewport_size.y,
 		}),
 	})
-	var message: Dictionary = scene.host_poll_message()
+	var message: Dictionary = {}
+	for _attempt in 64:
+		var candidate: Dictionary = scene.host_poll_message()
+		if candidate.is_empty():
+			break
+		if candidate.get("method", "") == "boardObjectTapped":
+			message = candidate
+			break
 	if message.get("method", "") != "boardObjectTapped":
 		push_error("3D board tap did not emit a Flutter selection.")
 		quit(1)
@@ -344,6 +1104,7 @@ func _test_board_object_picking(scene: Node) -> void:
 
 func _test_pinch_zoom(scene: Node) -> void:
 	var initial_distance: float = scene.camera_distance
+	var initial_azimuth: float = scene.camera_azimuth
 	var first_touch := InputEventScreenTouch.new()
 	first_touch.index = 0
 	first_touch.position = Vector2(100.0, 100.0)
@@ -369,6 +1130,10 @@ func _test_pinch_zoom(scene: Node) -> void:
 		)
 		quit(1)
 		return
+	if is_equal_approx(scene.camera_azimuth, initial_azimuth):
+		push_error("Two-finger drag should rotate while pinch zoom remains active.")
+		quit(1)
+		return
 
 	var zoomed_distance: float = scene.camera_distance
 	var close_fingers := InputEventScreenDrag.new()
@@ -386,13 +1151,237 @@ func _test_pinch_zoom(scene: Node) -> void:
 		return
 
 	print(
-		"PINCH_ZOOM_OK ",
+		"TWO_FINGER_ORBIT_AND_PINCH_OK ",
 		initial_distance,
 		" -> ",
 		zoomed_distance,
 		" -> ",
 		scene.camera_distance
 	)
+	var release_first := InputEventScreenTouch.new()
+	release_first.index = 0
+	release_first.position = Vector2(100.0, 100.0)
+	release_first.pressed = false
+	scene._unhandled_input(release_first)
+	var release_second := InputEventScreenTouch.new()
+	release_second.index = 1
+	release_second.position = Vector2(150.0, 100.0)
+	release_second.pressed = false
+	scene._unhandled_input(release_second)
+	scene._reset_camera()
+
+
+func _test_camera_follow(scene: Node, state: Dictionary) -> void:
+	# Enable follow and verify the ground target damps toward the pawn.
+	scene.host_receive_message({
+		"action": "camera_follow",
+		"json": JSON.stringify({"enabled": true}),
+	})
+	if not scene.camera_follow_enabled:
+		push_error("Camera follow toggle did not reach the scene.")
+		quit(1)
+		return
+	var pawn := scene.player_tokens[0] as Node3D
+	var start_target: Vector3 = scene.camera_target
+	var pawn_flat := Vector3(pawn.position.x, start_target.y, pawn.position.z)
+	for _frame in 120:
+		await process_frame
+	var follow_target: Vector3 = scene.camera_target
+	if follow_target.distance_to(pawn_flat) >= start_target.distance_to(pawn_flat):
+		push_error("Camera follow did not damp the target toward the pawn.")
+		quit(1)
+		return
+	if not _camera_target_in_bounds(scene):
+		push_error("Camera follow pushed the target outside its bounds.")
+		quit(1)
+		return
+	# A manual pan takes control: follow stops moving the target.
+	scene._pan_camera(140.0, 0.0)
+	if not scene.camera_follow_suppressed:
+		push_error("Manual pan did not suppress camera follow.")
+		quit(1)
+		return
+	var suppressed_target: Vector3 = scene.camera_target
+	for _frame in 40:
+		await process_frame
+	if not scene.camera_target.is_equal_approx(suppressed_target):
+		push_error("Suppressed follow still moved the camera target.")
+		quit(1)
+		return
+	# A new movement command re-engages the chase for the move about to start.
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "follow-walk",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "walk",
+			"spaces": 1,
+			"toLogicalPosition": 2,
+			"toVisualPosition": 3,
+			"visualPath": [1, 2],
+		}),
+	})
+	if scene.camera_follow_suppressed:
+		push_error("A new movement command did not re-engage camera follow.")
+		quit(1)
+		return
+	await _await_movement_complete(scene)
+	# Disable and restore the overview so the camera suites start clean.
+	scene.host_receive_message({
+		"action": "camera_follow",
+		"json": JSON.stringify({"enabled": false}),
+	})
+	if scene.camera_follow_enabled:
+		push_error("Camera follow could not be disabled.")
+		quit(1)
+		return
+	scene.camera_target = Vector3(0.0, 1.4, -1.0)
+	scene._update_camera()
+	print("CAMERA_FOLLOW_OK")
+
+
+func _camera_target_in_bounds(scene: Node) -> bool:
+	var target: Vector3 = scene.camera_target
+	return (
+		target.x >= scene.CAMERA_TARGET_MIN_X
+		and target.x <= scene.CAMERA_TARGET_MAX_X
+		and target.z >= scene.CAMERA_TARGET_MIN_Z
+		and target.z <= scene.CAMERA_TARGET_MAX_Z
+	)
+
+
+func _test_graphics_quality_tiers(scene: Node) -> void:
+	var viewport := scene.get_viewport() as Viewport
+	if viewport == null:
+		push_error("No viewport to tier.")
+		quit(1)
+		return
+	var baseline_msaa := viewport.msaa_3d
+
+	scene.host_receive_message({
+		"action": "graphics_quality",
+		"json": JSON.stringify({"quality": "low"}),
+	})
+	if scene.graphics_quality != "low":
+		push_error("Low quality tier was not recorded.")
+		quit(1)
+		return
+	if not is_equal_approx(viewport.scaling_3d_scale, 0.65):
+		push_error("Low tier did not apply its render scale.")
+		quit(1)
+		return
+	if viewport.msaa_3d != Viewport.MSAA_DISABLED:
+		push_error("Low tier did not disable MSAA.")
+		quit(1)
+		return
+
+	scene.host_receive_message({
+		"action": "graphics_quality",
+		"json": JSON.stringify({"quality": "medium"}),
+	})
+	if not is_equal_approx(viewport.scaling_3d_scale, 0.8):
+		push_error("Medium tier did not apply its render scale.")
+		quit(1)
+		return
+
+	scene.host_receive_message({
+		"action": "graphics_quality",
+		"json": JSON.stringify({"quality": "high"}),
+	})
+	if not is_equal_approx(viewport.scaling_3d_scale, 1.0):
+		push_error("High tier did not restore the baseline render scale.")
+		quit(1)
+		return
+	if viewport.msaa_3d != baseline_msaa:
+		push_error("High tier did not restore the baseline MSAA.")
+		quit(1)
+		return
+	# Unknown tiers are ignored.
+	scene.host_receive_message({
+		"action": "graphics_quality",
+		"json": JSON.stringify({"quality": "ultra"}),
+	})
+	if scene.graphics_quality != "high":
+		push_error("An unknown quality tier was applied.")
+		quit(1)
+		return
+	print("GRAPHICS_QUALITY_TIERS_OK")
+
+
+func _test_dice_slot_separation(scene: Node) -> void:
+	# Regression: independent per-die slot swaps could stack both dice on one
+	# platform slot. Every roll must keep the two dice apart — checked every
+	# frame while the dice animate, because when both dice flew toward swapped
+	# slots they crossed mid-air at the shared hover height and briefly
+	# intersected, which a settle-only check never caught.
+	if scene.dice_nodes.size() < 2:
+		push_error("Dice separation check needs two dice.")
+		quit(1)
+		return
+	for _roll in 10:
+		scene._animate_3d_dice(1 + _roll % 6, 1 + (_roll * 3) % 6)
+		# The full hop timeline (launch delay + rise + fall + two bounces)
+		# runs about 1.7s; wait up to ~3s of frames for a full settle.
+		var midflight_failed := false
+		var worst_separation := 99.0
+		for _wait in 200:
+			if scene.dice_nodes.size() >= 2:
+				var live_first := (scene.dice_nodes[0] as Node3D).position
+				var live_second := (scene.dice_nodes[1] as Node3D).position
+				var live_separation := Vector2(
+					live_first.x,
+					live_first.z
+				).distance_to(Vector2(live_second.x, live_second.z))
+				worst_separation = minf(worst_separation, live_separation)
+				if live_separation < 1.53:
+					midflight_failed = true
+			if scene.dice_tweens.is_empty():
+				break
+			await process_frame
+		await process_frame
+		var first := (scene.dice_nodes[0] as Node3D).position
+		var second := (scene.dice_nodes[1] as Node3D).position
+		var separation := Vector2(first.x, first.z).distance_to(
+			Vector2(second.x, second.z)
+		)
+		# 1.53 is the reach of a fully corner-on cube face (1.08 * sqrt(2));
+		# the widened slot spacing must keep more clearance than that even at
+		# the worst settled jitter, so no rotation can make them intersect.
+		if separation < 1.53 or midflight_failed:
+			push_error(
+				"Settled dice overlapped: separation %.2f (worst mid-flight %.2f) on roll %d."
+				% [separation, worst_separation, _roll]
+			)
+			quit(1)
+			return
+	scene._animate_3d_dice(0, 0)
+	print("DICE_SLOT_SEPARATION_OK")
+
+
+func _test_native_one_finger_pan(scene: Node) -> void:
+	var initial_target: Vector3 = scene.camera_target
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = Vector2(100.0, 100.0)
+	touch.pressed = true
+	scene._unhandled_input(touch)
+
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = Vector2(180.0, 55.0)
+	drag.relative = Vector2(80.0, -45.0)
+	scene._unhandled_input(drag)
+	if scene.camera_target.is_equal_approx(initial_target):
+		push_error("One-finger drag should move the camera across the board.")
+		quit(1)
+		return
+
+	touch.position = drag.position
+	touch.pressed = false
+	scene._unhandled_input(touch)
+	print("ONE_FINGER_CAMERA_PAN_OK ", initial_target, " -> ", scene.camera_target)
+	scene._reset_camera()
 
 
 func _test_host_camera_gesture(scene: Node) -> void:
@@ -470,7 +1459,8 @@ func _test_mobile_camera_framing(scene: Node) -> void:
 		quit(1)
 		return
 	scene.camera_uses_portrait_framing = true
-	if not is_equal_approx(scene._default_camera_distance(), 28.0):
+	scene.camera_uses_tablet_landscape_framing = false
+	if not is_equal_approx(scene._default_camera_distance(), 20.5):
 		push_error("Portrait screens should start closer to the board.")
 		quit(1)
 		return
@@ -496,6 +1486,16 @@ func _test_mobile_camera_framing(scene: Node) -> void:
 		return
 	print("MOBILE_CAMERA_FRAMING_OK close zoom ", scene.camera_distance)
 	scene.camera_uses_portrait_framing = false
+	scene.camera_uses_tablet_landscape_framing = true
+	if not is_equal_approx(scene._default_camera_distance(), 23.0):
+		push_error("Tablet landscape should use the closer release framing.")
+		quit(1)
+		return
+	scene.camera_uses_tablet_landscape_framing = false
+	if not is_equal_approx(scene._default_camera_distance(), 27.5):
+		push_error("Wide landscape should retain the full-board framing.")
+		quit(1)
+		return
 	scene._reset_camera()
 
 
@@ -516,6 +1516,120 @@ func _test_die_face_rotations(scene: Node) -> void:
 			quit(1)
 			return
 	print("DICE_FACE_ROTATIONS_OK")
+
+
+func _test_boat_waterline(scene: Node) -> void:
+	if scene.boat_routes.is_empty():
+		push_error("No harbor traffic was created for the waterline check.")
+		quit(1)
+		return
+	for _frame in 30:
+		await process_frame
+	var surface := float(scene.CITY_WATER_SURFACE_Y)
+	for route in scene.boat_routes:
+		var boat := route.get("node") as Node3D
+		if not is_instance_valid(boat):
+			continue
+		var lane_y := float(route.get("lane_y", surface))
+		if absf(lane_y - surface) > 0.01:
+			push_error(
+				"A boat lane was authored %.2f above the water surface."
+				% (lane_y - surface)
+			)
+			quit(1)
+			return
+		if boat.position.y < surface - 0.15 or boat.position.y > surface + 0.08:
+			push_error("A boat is not riding at the water surface.")
+			quit(1)
+			return
+		if boat.position.y - scene.BOAT_HULL_DRAFT > surface:
+			push_error("A boat hull never submerges below the waterline.")
+			quit(1)
+			return
+	print("BOAT_WATERLINE_OK")
+
+
+func _test_label_presentation(scene: Node) -> void:
+	var tile_label: Label3D = null
+	var landmark_count := 0
+	for entry in scene.world_labels:
+		var kind := str(entry.get("kind", ""))
+		if kind == "landmark":
+			landmark_count += 1
+		elif kind == "tile" and tile_label == null:
+			var node_value: Variant = entry.get("node")
+			if not is_instance_valid(node_value) or not (node_value is Label3D):
+				continue
+			var candidate := node_value as Label3D
+			if str(candidate.get_meta("full_text", "")).contains("\n$"):
+				tile_label = candidate
+	if tile_label == null:
+		push_error("No priced tile label was registered for semantic zoom.")
+		quit(1)
+		return
+	if landmark_count == 0:
+		push_error("No landmark labels were registered for semantic zoom.")
+		quit(1)
+		return
+	var original_distance: float = scene.camera_distance
+	scene.camera_distance = 40.0
+	scene.applied_label_compensation = -1.0
+	await process_frame
+	await process_frame
+	if tile_label.scale.x < 1.2:
+		push_error("Overview framing did not enlarge tile labels.")
+		quit(1)
+		return
+	if str(tile_label.text).contains("\n$"):
+		push_error("Overview framing did not abbreviate tile price lines.")
+		quit(1)
+		return
+	scene.camera_distance = 16.0
+	scene.applied_label_compensation = -1.0
+	await process_frame
+	await process_frame
+	if not is_equal_approx(tile_label.scale.x, 1.0):
+		push_error("Close framing did not restore authored label size.")
+		quit(1)
+		return
+	if not str(tile_label.text).contains("\n$"):
+		push_error("Close framing did not restore the tile price line.")
+		quit(1)
+		return
+	scene.camera_distance = original_distance
+	scene.applied_label_compensation = -1.0
+	# A state refresh at overview framing must keep the abbreviation instead
+	# of reverting every tile label to its full two-line text.
+	scene.camera_distance = 40.0
+	scene.applied_label_compensation = -1.0
+	await process_frame
+	await process_frame
+	scene._refresh_visual_tiles(
+		scene.active_tile_names,
+		scene.latest_logical_tiles
+	)
+	await process_frame
+	if str(tile_label.text).contains("\n$"):
+		push_error("A state refresh reverted overview labels to full text.")
+		quit(1)
+		return
+	scene.camera_distance = original_distance
+	scene.applied_label_compensation = -1.0
+	print("LABEL_SEMANTIC_ZOOM_OK")
+
+
+func _test_embedded_cloud_policy(scene: Node) -> void:
+	scene._enable_embedded_mode()
+	if scene.cloud_nodes.is_empty():
+		push_error("The ambient cloud visibility check has no scene fixtures.")
+		quit(1)
+		return
+	for cloud in scene.cloud_nodes:
+		if is_instance_valid(cloud) and cloud.visible:
+			push_error("An embedded mobile cloud can still occlude the board.")
+			quit(1)
+			return
+	print("EMBEDDED_CLOUD_OCCLUSION_POLICY_OK")
 
 
 func _dice_values_face_up(scene: Node, values: Array) -> bool:
@@ -590,10 +1704,23 @@ func _test_city_catalog(scene: Node, base_state: Dictionary) -> void:
 			push_error("%s did not build 52 visual locations." % board_id)
 			quit(1)
 			return
-		if scene.player_tokens.size() != 2 or scene.dice_nodes.size() != 2:
-			push_error("%s did not rebuild its game pieces and dice." % board_id)
+		if scene.player_tokens.size() < 2 or scene.dice_nodes.size() != 2:
+			push_error(
+				"%s did not rebuild its game pieces and dice (players=%d, dice=%d)."
+				% [board_id, scene.player_tokens.size(), scene.dice_nodes.size()]
+			)
 			quit(1)
 			return
+		for token_index in range(2, scene.player_tokens.size()):
+			if scene.player_tokens[token_index].visible:
+				push_error("%s left a surplus bootstrap pawn visible." % board_id)
+				quit(1)
+				return
+		for cloud in scene.cloud_nodes:
+			if is_instance_valid(cloud) and cloud.visible:
+				push_error("%s rebuilt an occluding mobile cloud layer." % board_id)
+				quit(1)
+				return
 		if scene.active_tile_names[0] != "TILE 00":
 			push_error("%s did not apply Flutter tile names." % board_id)
 			quit(1)

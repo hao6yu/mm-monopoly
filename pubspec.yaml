@@ -63,7 +63,9 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-  flutter_native_splash: ^2.4.3
+  # 2.4.8 removes obsolete Android/iOS plugin registration. Keeping this as a
+  # dev-only generator no longer leaves release registrants with missing code.
+  flutter_native_splash: ^2.4.8
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

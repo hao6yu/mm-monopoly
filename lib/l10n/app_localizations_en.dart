@@ -104,6 +104,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startGame => 'Start Game';
 
   @override
+  String get preparingGame => 'Preparing game…';
+
+  @override
+  String get failedToStartGame =>
+      'We couldn\'t start the game. Please try again.';
+
+  @override
   String playerN(int number) {
     return 'Player $number';
   }
@@ -951,7 +958,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noProperties => 'No properties';
 
   @override
-  String get yourTurn => 'YOUR TURN';
+  String get humanPlayer => 'Human';
+
+  @override
+  String get showPlayerStatus => 'Show player status';
+
+  @override
+  String get hidePlayerStatus => 'Hide player status';
+
+  @override
+  String roundNumber(int number) {
+    return 'Round $number';
+  }
+
+  @override
+  String get activePlayer => 'Active';
+
+  @override
+  String get waitingPlayer => 'Waiting';
+
+  @override
+  String aiThinking(String name) {
+    return '$name is thinking…';
+  }
+
+  @override
+  String aiRolling(String name) {
+    return '$name is rolling…';
+  }
+
+  @override
+  String aiResolving(String name) {
+    return '$name is resolving…';
+  }
+
+  @override
+  String playerRolling(String name) {
+    return '$name is rolling…';
+  }
+
+  @override
+  String playerMoving(String name) {
+    return '$name is moving…';
+  }
+
+  @override
+  String passToPlayer(String name) {
+    return 'Pass to $name • Your turn';
+  }
+
+  @override
+  String resolvingPlayerTurn(String name) {
+    return 'Resolving $name\'s turn…';
+  }
 
   @override
   String tileN(int position) {
@@ -966,6 +1025,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rollDice => 'ROLL DICE';
+
+  @override
+  String rollForPlayer(String name) {
+    return 'Roll for $name';
+  }
+
+  @override
+  String get diceLabel => 'DICE';
+
+  @override
+  String get lastRollLabel => 'LAST ROLL';
+
+  @override
+  String get cameraGestureHint =>
+      '1 finger: move • 2 fingers: rotate • Pinch: zoom';
+
+  @override
+  String get resetView => 'Reset view';
+
+  @override
+  String get viewLabel => 'VIEW';
+
+  @override
+  String get playMusic => 'Play music';
+
+  @override
+  String get muteMusic => 'Mute music';
+
+  @override
+  String get moreActions => 'More actions';
+
+  @override
+  String get pleaseWait => 'Please wait…';
 
   @override
   String get tap => 'TAP';
@@ -1515,6 +1607,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get select => 'Select';
 
   @override
+  String get yourTurn => 'YOUR TURN';
+
+  @override
   String get countryUSA => 'United States';
 
   @override
@@ -1588,4 +1683,64 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cityCancun => 'Cancún';
+
+  @override
+  String get preparing3DBoard => 'Preparing the 3D board…';
+
+  @override
+  String get starting3DBoard => 'Starting the 3D board…';
+
+  @override
+  String get building3DBoard => 'Building the city and placing players…';
+
+  @override
+  String get failedToPrepare3DBoard =>
+      'The 3D board couldn\'t prepare this game.';
+
+  @override
+  String get godotConnectionUnavailable =>
+      'The 3D board connection is unavailable.';
+
+  @override
+  String get godotPreparationTimedOut =>
+      'The 3D board took too long to prepare this game.';
+
+  @override
+  String get retry3DBoard => 'Retry 3D';
+
+  @override
+  String get use2DBoard => 'Use 2D board';
+
+  @override
+  String get continuedOn2DBoard =>
+      'The 3D board stopped responding. Continuing on the 2D board.';
+
+  @override
+  String get cameraFollowOn => 'Follow the active pawn';
+
+  @override
+  String get cameraFollowOff => 'Free camera';
+
+  @override
+  String get muteSoundEffects => 'Mute sound effects';
+
+  @override
+  String get playSoundEffects => 'Play sound effects';
+
+  @override
+  String get graphicsQuality3D => '3D graphics quality';
+
+  @override
+  String get qualityHigh => 'High';
+
+  @override
+  String get qualityMedium => 'Medium';
+
+  @override
+  String get qualityLow => 'Low';
+
+  @override
+  String activeEventsOverflow(int count) {
+    return '$count more active events';
+  }
 }

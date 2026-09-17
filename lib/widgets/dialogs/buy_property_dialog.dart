@@ -5,21 +5,19 @@ import '../../l10n/app_localizations.dart';
 import 'animated_dialog.dart';
 import '../effects/confetti.dart';
 
+enum BuyPropertyDecision { buy, skip }
+
 /// Dialog for buying a property
 class BuyPropertyDialog extends StatelessWidget {
   final TileData tile;
   final int playerCash;
   final int? purchasePrice;
-  final VoidCallback onBuy;
-  final VoidCallback onSkip;
 
   const BuyPropertyDialog({
     super.key,
     required this.tile,
     required this.playerCash,
     this.purchasePrice,
-    required this.onBuy,
-    required this.onSkip,
   });
 
   int get _price {
@@ -48,17 +46,20 @@ class BuyPropertyDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final maxHeight = mediaQuery.size.height - mediaQuery.padding.vertical - 32;
     return Dialog(
+      insetPadding: const EdgeInsets.all(16),
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 350),
+        constraints: BoxConstraints(maxWidth: 350, maxHeight: maxHeight),
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white24, width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -66,7 +67,16 @@ class BuyPropertyDialog extends StatelessWidget {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [_buildHeader(), _buildContent(context), _buildActions(context)],
+          children: [
+            _buildHeader(),
+            Flexible(
+              child: SingleChildScrollView(
+                key: const Key('buy-property-content-scroll'),
+                child: _buildContent(context),
+              ),
+            ),
+            _buildActions(context),
+          ],
         ),
       ),
     );
@@ -115,10 +125,10 @@ class BuyPropertyDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.blue.withOpacity(0.3),
+                  color: Colors.blue.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -157,12 +167,14 @@ class BuyPropertyDialog extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  l10n.yourCash,
-                  style: const TextStyle(color: Colors.white70),
+                Expanded(
+                  child: Text(
+                    l10n.yourCash,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                 ),
+                const SizedBox(width: 12),
                 Text(
                   '\$$playerCash',
                   style: TextStyle(
@@ -191,18 +203,23 @@ class BuyPropertyDialog extends StatelessWidget {
 
   Widget _buildInfoRow(String label, String value, Color valueColor) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white70, fontSize: 16),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            color: valueColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
@@ -211,102 +228,86 @@ class BuyPropertyDialog extends StatelessWidget {
 
   Widget _buildActions(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final useStacked =
+        MediaQuery.sizeOf(context).height < 520 ||
+        MediaQuery.textScalerOf(context).scale(1) > 1.2;
+    final skipButton = OutlinedButton(
+      onPressed: () => Navigator.of(context).pop(BuyPropertyDecision.skip),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white70,
+        side: const BorderSide(color: Colors.white24),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Text(l10n.skip, style: const TextStyle(fontSize: 16)),
+    );
+    final buyButton = Builder(
+      builder: (buttonContext) => ElevatedButton(
+        onPressed: _canAfford
+            ? () {
+                final box = buttonContext.findRenderObject() as RenderBox?;
+                if (box != null) {
+                  final position = box.localToGlobal(
+                    Offset(box.size.width / 2, box.size.height / 2),
+                  );
+                  ConfettiManager.show(
+                    context,
+                    position: position,
+                    primaryColor: _color ?? AppTheme.cashGreen,
+                  );
+                }
+                Navigator.of(context).pop(BuyPropertyDecision.buy);
+              }
+            : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.cashGreen,
+          foregroundColor: Colors.black,
+          disabledBackgroundColor: Colors.grey,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          l10n.buyForAmount('$_price'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                onSkip();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white70,
-                side: const BorderSide(color: Colors.white24),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(l10n.skip, style: const TextStyle(fontSize: 16)),
+      child: useStacked
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [buyButton, const SizedBox(height: 8), skipButton],
+            )
+          : Row(
+              children: [
+                Expanded(child: skipButton),
+                const SizedBox(width: 12),
+                Expanded(child: buyButton),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Builder(
-              builder:
-                  (buttonContext) => ElevatedButton(
-                    onPressed:
-                        _canAfford
-                            ? () {
-                              // Get button position for confetti
-                              final RenderBox? box =
-                                  buttonContext.findRenderObject()
-                                      as RenderBox?;
-                              if (box != null) {
-                                final position = box.localToGlobal(
-                                  Offset(
-                                    box.size.width / 2,
-                                    box.size.height / 2,
-                                  ),
-                                );
-                                // Show confetti celebration!
-                                ConfettiManager.show(
-                                  context,
-                                  position: position,
-                                  primaryColor: _color ?? AppTheme.cashGreen,
-                                );
-                              }
-                              Navigator.of(context).pop();
-                              onBuy();
-                            }
-                            : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.cashGreen,
-                      foregroundColor: Colors.black,
-                      disabledBackgroundColor: Colors.grey,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      l10n.buyForAmount('$_price'),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
 
 /// Show the buy property dialog with animation
-Future<void> showBuyPropertyDialog({
+Future<BuyPropertyDecision?> showBuyPropertyDialog({
   required BuildContext context,
   required TileData tile,
   required int playerCash,
   int? purchasePrice,
-  required VoidCallback onBuy,
-  required VoidCallback onSkip,
 }) {
-  return showAnimatedDialog(
+  return showAnimatedDialog<BuyPropertyDecision>(
     context: context,
     barrierDismissible: false,
     animationType: DialogAnimationType.scale,
-    builder:
-        (context) => BuyPropertyDialog(
-          tile: tile,
-          playerCash: playerCash,
-          purchasePrice: purchasePrice,
-          onBuy: onBuy,
-          onSkip: onSkip,
-        ),
+    builder: (context) => BuyPropertyDialog(
+      tile: tile,
+      playerCash: playerCash,
+      purchasePrice: purchasePrice,
+    ),
   );
 }

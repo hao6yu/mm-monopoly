@@ -31,6 +31,8 @@
   "previous": "前へ",
   "next": "次へ",
   "startGame": "ゲーム開始",
+  "preparingGame": "ゲームを準備中…",
+  "failedToStartGame": "ゲームを開始できませんでした。もう一度お試しください。",
   "playerN": "プレイヤー{number}",
   "you": "あなた",
   "ai": "コンピューター",
@@ -250,12 +252,103 @@
   "colorDarkBlue": "紺色",
   "noneYet": "まだなし",
   "noProperties": "物件なし",
-  "yourTurn": "あなたのターン",
+  "humanPlayer": "人間",
+  "showPlayerStatus": "プレイヤー状況を表示",
+  "hidePlayerStatus": "プレイヤー状況を非表示",
+  "roundNumber": "ラウンド {number}",
+  "@roundNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "activePlayer": "手番",
+  "waitingPlayer": "待機中",
+  "aiThinking": "{name}が考えています…",
+  "@aiThinking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiRolling": "{name}がサイコロを振っています…",
+  "@aiRolling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiResolving": "{name}がターンを処理しています…",
+  "@aiResolving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playerRolling": "{name}がサイコロを振っています…",
+  "@playerRolling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playerMoving": "{name}が移動しています…",
+  "@playerMoving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "passToPlayer": "{name}に渡してください • あなたのターン",
+  "@passToPlayer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "resolvingPlayerTurn": "{name}のターンを処理中…",
+  "@resolvingPlayerTurn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "tileN": "マス {position}",
-  "@tileN": { "placeholders": { "position": { "type": "int" } } },
+  "@tileN": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
   "rolling": "振っています...",
   "moving": "移動中...",
   "rollDice": "サイコロを振る",
+  "rollForPlayer": "{name}のサイコロを振る",
+  "@rollForPlayer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "diceLabel": "サイコロ",
+  "lastRollLabel": "前回の出目",
+  "cameraGestureHint": "1本指：移動 • 2本指：回転 • ピンチ：ズーム",
+  "resetView": "視点をリセット",
+  "viewLabel": "視点",
+  "playMusic": "音楽を再生",
+  "muteMusic": "音楽をミュート",
+  "moreActions": "その他の操作",
+  "pleaseWait": "お待ちください…",
   "tap": "タップ",
   "spin": "回す",
   "trade": "取引",
@@ -390,40 +483,82 @@
   "speedChampion": "スピードチャンピオン",
   "luckiestRoller": "最もツイてる人",
   "inARow": "{count} 連続",
-  "@inARow": { "placeholders": { "count": { "type": "int" } } },
+  "@inARow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "turnsCount": "{count} ターン",
-  "@turnsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@turnsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "avgValue": "平均 {value}",
-  "@avgValue": { "placeholders": { "value": { "type": "String" } } },
-
+  "@avgValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "memoryMatchTitle": "神経衰弱",
   "pairs": "ペア",
   "timeLabel": "時間",
   "secondsShort": "{seconds}秒",
-  "@secondsShort": { "placeholders": { "seconds": { "type": "int" } } },
+  "@secondsShort": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "greatJob": "よくできました！",
   "timeUp": "時間切れ！",
   "pairsFound": "見つけたペア: {found} / {total}",
   "@pairsFound": {
     "placeholders": {
-      "found": { "type": "int" },
-      "total": { "type": "int" }
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "scoreAmount": "スコア: {score}",
-  "@scoreAmount": { "placeholders": { "score": { "type": "int" } } },
-
+  "@scoreAmount": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
   "quickTapAmazing": "すばらしい！",
   "quickTapGreat": "最高！",
   "quickTapGood": "いいね",
   "quickTapTryAgain": "もう一度",
   "quickTapInstruction": "コインをタップ！爆弾は避けよう！",
   "streakCount": "{count} 連続！",
-  "@streakCount": { "placeholders": { "count": { "type": "int" } } },
-
+  "@streakCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "itemSelected": "{name} を選択しました！",
-  "@itemSelected": { "placeholders": { "name": { "type": "String" } } },
-
+  "@itemSelected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "deletePhotoTitle": "写真を削除しますか？",
   "deletePhotoMessage": "この写真はアバター一覧から削除されます。",
   "delete": "削除",
@@ -439,7 +574,6 @@
   "avatarCategoryMyPhotos": "マイ写真",
   "select": "選択",
   "yourTurn": "あなたの番",
-
   "drawTopChestCard": "共同基金カードの山札の一番上を引く",
   "readToEveryone": "全員に聞こえるように読み上げる",
   "followInstructions": "カードの指示に従う",
@@ -479,18 +613,20 @@
   "aiBuiltOn": "{property}に{level}を建設しました！",
   "@aiBuiltOn": {
     "placeholders": {
-      "level": { "type": "String" },
-      "property": { "type": "String" }
+      "level": {
+        "type": "String"
+      },
+      "property": {
+        "type": "String"
+      }
     }
   },
-
   "countryUSA": "アメリカ合衆国",
   "countryUK": "イギリス",
   "countryFrance": "フランス",
   "countryJapan": "日本",
   "countryChina": "中国",
   "countryMexico": "メキシコ",
-
   "chooseCity": "都市を選ぶ",
   "cityAtlanticCity": "アトランティックシティ",
   "cityNewYork": "ニューヨーク",
@@ -509,5 +645,31 @@
   "cityHongKong": "香港",
   "cityMexicoCity": "メキシコシティ",
   "cityGuadalajara": "グアダラハラ",
-  "cityCancun": "カンクン"
+  "cityCancun": "カンクン",
+  "preparing3DBoard": "3Dボードを準備中…",
+  "starting3DBoard": "3Dボードを起動中…",
+  "building3DBoard": "街を構築してプレイヤーを配置中…",
+  "failedToPrepare3DBoard": "このゲーム用の3Dボードを準備できませんでした。",
+  "godotConnectionUnavailable": "3Dボードに接続できません。",
+  "godotPreparationTimedOut": "3Dボードの準備に時間がかかりすぎています。",
+  "retry3DBoard": "3Dを再試行",
+  "use2DBoard": "2Dボードを使用",
+  "continuedOn2DBoard": "3Dボードが応答しないため、2Dボードでゲームを続けます。",
+  "cameraFollowOn": "アクティブなコマを追従",
+  "cameraFollowOff": "自由カメラ",
+  "muteSoundEffects": "効果音をミュート",
+  "playSoundEffects": "効果音を再生",
+  "graphicsQuality3D": "3Dグラフィック品質",
+  "qualityHigh": "高",
+  "qualityMedium": "中",
+  "qualityLow": "低",
+  "activeEventsOverflow": "他 {count} 件のアクティブイベント",
+  "@activeEventsOverflow": {
+    "type": "text",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

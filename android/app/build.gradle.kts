@@ -1,8 +1,27 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val releaseSigningPropertiesFile = rootProject.file("key.properties")
+val releaseSigningProperties = Properties()
+if (releaseSigningPropertiesFile.isFile) {
+    releaseSigningPropertiesFile.inputStream().use(releaseSigningProperties::load)
+}
+
+val requiredSigningKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+val missingSigningKeys =
+    requiredSigningKeys.filter { releaseSigningProperties.getProperty(it).isNullOrBlank() }
+val hasReleaseSigning = releaseSigningPropertiesFile.isFile && missingSigningKeys.isEmpty()
+
+if (releaseSigningPropertiesFile.isFile && missingSigningKeys.isNotEmpty()) {
+    throw GradleException(
+        "android/key.properties is incomplete. Missing: ${missingSigningKeys.joinToString()}",
+    )
 }
 
 android {
@@ -37,11 +56,22 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigningProperties.getProperty("storeFile"))
+                storePassword = releaseSigningProperties.getProperty("storePassword")
+                keyAlias = releaseSigningProperties.getProperty("keyAlias")
+                keyPassword = releaseSigningProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Never publish with the debug key. Without key.properties Gradle
+            // deliberately produces an unsigned local artifact.
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }
@@ -54,4 +84,17 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("org.godotengine:godot:4.7.1.stable")
     implementation("androidx.fragment:fragment-ktx:1.8.9")
+    testImplementation("junit:junit:4.13.2")
+}
+
+if (!hasReleaseSigning) {
+    tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }.configureEach {
+        doFirst {
+            logger.warn(
+                "Release signing is not configured; this artifact is unsigned and cannot be " +
+                    "distributed. Copy android/key.properties.example to android/key.properties " +
+                    "and provide an upload key for distributable builds.",
+            )
+        }
+    }
 }

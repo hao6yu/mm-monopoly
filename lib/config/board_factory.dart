@@ -4,7 +4,6 @@ import '../models/country.dart';
 import '../models/city_board.dart';
 import '../models/board_theme.dart';
 import '../services/game_content_loader.dart';
-import 'city_board_registry.dart';
 import 'board_configs/classic_board.dart';
 import 'board_configs/uk_board.dart';
 import 'board_configs/japan_board.dart';

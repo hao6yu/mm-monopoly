@@ -1,0 +1,6 @@
+# Copy this file to android/key.properties. The real file and *.jks files are
+# ignored by Git. Paths are resolved from the android directory.
+storeFile=app/upload-keystore.jks
+storePassword=replace-with-store-password
+keyAlias=upload
+keyPassword=replace-with-key-password

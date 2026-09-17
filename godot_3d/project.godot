@@ -35,8 +35,12 @@ orbit={
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-anti_aliasing/quality/msaa_3d=2
+; 2x MSAA is the mobile quality/performance balance. The previous 4x setting
+; multiplied the native-resolution Metal color/depth attachments on iPad.
+anti_aliasing/quality/msaa_3d=1
 textures/default_filters/use_nearest_mipmap_filter=false
-lights_and_shadows/directional_shadow/size=4096
-lights_and_shadows/positional_shadow/atlas_size=4096
+; The board is a compact, stylized scene. 4K shadow maps consumed substantial
+; GPU memory without a visible benefit at the hosted board's overview scale.
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/positional_shadow/atlas_size=1024
 environment/defaults/default_clear_color=Color(0.18, 0.53, 0.75, 1)

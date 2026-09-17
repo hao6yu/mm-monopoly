@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:property_tycoon/l10n/app_localizations.dart';
@@ -149,4 +151,67 @@ void main() {
       },
     );
   }
+
+  testWidgets('Start Game is single-flight while the board loads', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final startCompleter = Completer<void>();
+    var startCount = 0;
+    var backCount = 0;
+
+    await tester.pumpWidget(
+      localizedApp(
+        GameSetupScreen(
+          onBack: () => backCount++,
+          onStartGame: (_, {diceCount = 2, required cityBoard}) {
+            startCount++;
+            return startCompleter.future;
+          },
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    await tester.tap(find.byKey(const Key('setup-primary-action')));
+    await tester.pump();
+    expect(find.text('Player Setup'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('setup-primary-action')));
+    await tester.pump();
+    final overlay = find.byKey(const Key('setup-starting-overlay'));
+
+    expect(overlay, findsOneWidget);
+    expect(
+      find.descendant(of: overlay, matching: find.text('Preparing game…')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('setup-starting-progress')), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const Key('setup-primary-action')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('setup-primary-action')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('setup-back-action')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+
+    expect(startCount, 1);
+    expect(backCount, 0);
+    expect(find.bySemanticsLabel(RegExp('Preparing game')), findsOneWidget);
+    semantics.dispose();
+
+    startCompleter.complete();
+    await tester.pump();
+    expect(overlay, findsNothing);
+    expect(find.text('Start Game'), findsOneWidget);
+  });
 }

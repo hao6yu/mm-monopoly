@@ -66,6 +66,12 @@ showcase build, and turns rotate automatically after movement finishes.
 The presentation is intentionally focused on the large table and board, without
 full-size human characters or chairs. After a roll, the active miniature turns
 toward its path and hops from space to space until it reaches its destination.
+Pawn roots are fixed to the physical tile surface while a dedicated visual child
+owns idle, hop, and landing motion. A single pawn is centered on the road;
+multiple pawns use centered, scaled occupancy slots so their bases do not overlap.
+Route markers and the landing beacon use those same anchors. Hosted movement is
+scoped to the latest Flutter state generation, expires before Flutter's timeout,
+and reports completion only after the landing animation has finished.
 Each hosted roll now previews the full route, pulses the destination, moves the
 camera from the dice to the relevant part of the board, and gives the active
 character a short landing reaction before restoring the player's prior view.
@@ -89,4 +95,5 @@ The smoke suite rebuilds every city and verifies its landmarks, 52-stop route,
 localized Flutter labels, special-space metadata, ownership/development
 markers and transitions, all Manhattan development families, development-model
 reuse, completed districts, object picking, players, dice, camera bridge,
-movement completion, and water-only boat lanes.
+grounded/non-overlapping pawn occupancy, bridged player colors, scoped movement
+cancellation, post-landing movement completion, and water-only boat lanes.

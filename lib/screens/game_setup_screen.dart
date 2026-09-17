@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/player.dart';
@@ -11,10 +13,16 @@ import '../widgets/avatar/avatar_widget.dart';
 import '../widgets/city_theme/city_theme.dart';
 
 /// Game setup screen for configuring players before starting
+typedef GameSetupStartCallback =
+    FutureOr<void> Function(
+      List<PlayerConfig> players, {
+      int diceCount,
+      required CityBoard cityBoard,
+    });
+
 class GameSetupScreen extends StatefulWidget {
   final VoidCallback onBack;
-  final Function(List<PlayerConfig>, {int diceCount, CityBoard cityBoard})
-  onStartGame;
+  final GameSetupStartCallback onStartGame;
 
   const GameSetupScreen({
     super.key,
@@ -40,6 +48,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   int _currentStep = 0;
   late AnimationController _floatController;
   bool _didInitConfigs = false;
+  bool _isStarting = false;
 
   static const List<Color> _availableColors = [
     Color(0xFFFF6B6B), // Coral Red
@@ -107,21 +116,37 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     });
   }
 
-  void _nextStep() {
+  Future<void> _nextStep() async {
+    if (_isStarting) return;
     if (_currentStep == 0) {
       setState(() => _currentStep = 1);
     } else {
       if (_validateConfigs()) {
-        widget.onStartGame(
-          _playerConfigs,
-          diceCount: _diceCount,
-          cityBoard: _selectedCityBoard,
-        );
+        setState(() => _isStarting = true);
+        try {
+          // Let Flutter paint the loading state before tile localization and
+          // native 3D-board setup begin. Without this frame, the first visible
+          // feedback can arrive only after the expensive work has completed.
+          await WidgetsBinding.instance.endOfFrame;
+          if (!mounted) return;
+          await widget.onStartGame(
+            List<PlayerConfig>.unmodifiable(_playerConfigs),
+            diceCount: _diceCount,
+            cityBoard: _selectedCityBoard,
+          );
+        } catch (_) {
+          if (mounted) {
+            _showError(AppLocalizations.of(context)!.failedToStartGame);
+          }
+        } finally {
+          if (mounted) setState(() => _isStarting = false);
+        }
       }
     }
   }
 
   void _previousStep() {
+    if (_isStarting) return;
     if (_currentStep > 0) {
       setState(() => _currentStep--);
     } else {
@@ -168,22 +193,108 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF071427),
-      body: CityThemeBackground(
-        animation: _floatController,
-        imageAsset: 'assets/images/home_city_dusk.jpg',
-        imageAlignment: const Alignment(0.08, 0),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildProgressIndicator(),
-              Expanded(
-                child:
-                    _currentStep == 0
-                        ? _buildPlayerCountStep()
-                        : _buildPlayerConfigStep(),
+      body: Stack(
+        children: [
+          ExcludeSemantics(
+            excluding: _isStarting,
+            child: CityThemeBackground(
+              animation: _floatController,
+              imageAsset: 'assets/images/home_city_dusk.jpg',
+              imageAlignment: const Alignment(0.08, 0),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    _buildProgressIndicator(),
+                    Expanded(
+                      child: _currentStep == 0
+                          ? _buildPlayerCountStep()
+                          : _buildPlayerConfigStep(),
+                    ),
+                    _buildNavigationButtons(),
+                  ],
+                ),
               ),
-              _buildNavigationButtons(),
+            ),
+          ),
+          if (_isStarting) _buildStartingOverlay(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStartingOverlay() {
+    final l10n = AppLocalizations.of(context)!;
+    return Positioned.fill(
+      key: const Key('setup-starting-overlay'),
+      child: BlockSemantics(
+        blocking: true,
+        child: Semantics(
+          container: true,
+          liveRegion: true,
+          label: l10n.preparingGame,
+          child: Stack(
+            children: [
+              const ModalBarrier(dismissible: false, color: Color(0xB8071427)),
+              SafeArea(
+                child: Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 340),
+                    margin: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 24,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF21A2944),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: const Color(0x806BE2D7)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x66000000),
+                          blurRadius: 28,
+                          offset: Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox.square(
+                          key: Key('setup-starting-progress'),
+                          dimension: 38,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3.2,
+                            color: Color(0xFFFFD86B),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          l10n.preparingGame,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          _selectedCityBoard.localizedDisplayName(l10n),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFF9AF1E8),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -197,10 +308,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
         screenSize.width > screenSize.height && screenSize.height < 500;
     final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding:
-          isCompactLandscape
-              ? const EdgeInsets.fromLTRB(12, 8, 12, 3)
-              : const EdgeInsets.fromLTRB(20, 18, 20, 5),
+      padding: isCompactLandscape
+          ? const EdgeInsets.fromLTRB(12, 8, 12, 3)
+          : const EdgeInsets.fromLTRB(20, 18, 20, 5),
       child: CityGlassPanel(
         padding: EdgeInsets.symmetric(
           horizontal: isCompactLandscape ? 7 : 12,
@@ -359,12 +469,11 @@ class _GameSetupScreenState extends State<GameSetupScreen>
       duration: const Duration(milliseconds: 220),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        gradient:
-            isSelected
-                ? const LinearGradient(
-                  colors: [Color(0xFF1C786F), Color(0xFF185A61)],
-                )
-                : null,
+        gradient: isSelected
+            ? const LinearGradient(
+                colors: [Color(0xFF1C786F), Color(0xFF185A61)],
+              )
+            : null,
         color: isSelected ? null : const Color(0x4DFFFFFF),
         borderRadius: BorderRadius.circular(13),
         border: Border.all(
@@ -378,19 +487,17 @@ class _GameSetupScreenState extends State<GameSetupScreen>
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color:
-                  isSelected || isComplete
-                      ? const Color(0xFF35D5C5)
-                      : Colors.white12,
+              color: isSelected || isComplete
+                  ? const Color(0xFF35D5C5)
+                  : Colors.white12,
               shape: BoxShape.circle,
             ),
             child: Icon(
               isComplete ? Icons.check_rounded : icon,
               size: 14,
-              color:
-                  isSelected || isComplete
-                      ? const Color(0xFF071427)
-                      : Colors.white54,
+              color: isSelected || isComplete
+                  ? const Color(0xFF071427)
+                  : Colors.white54,
             ),
           ),
           const SizedBox(width: 8),
@@ -646,11 +753,10 @@ class _GameSetupScreenState extends State<GameSetupScreen>
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap:
-            () => setState(() {
-              _selectedCountry = country;
-              _selectedCityBoard = CityBoardRegistry.defaultForCountry(country);
-            }),
+        onTap: () => setState(() {
+          _selectedCountry = country;
+          _selectedCityBoard = CityBoardRegistry.defaultForCountry(country);
+        }),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: EdgeInsets.symmetric(
@@ -658,28 +764,26 @@ class _GameSetupScreenState extends State<GameSetupScreen>
             horizontal: isCompact ? 8 : 10,
           ),
           decoration: BoxDecoration(
-            gradient:
-                isSelected
-                    ? const LinearGradient(
-                      colors: [Color(0xFF247C73), Color(0xFF185963)],
-                    )
-                    : null,
+            gradient: isSelected
+                ? const LinearGradient(
+                    colors: [Color(0xFF247C73), Color(0xFF185963)],
+                  )
+                : null,
             color: isSelected ? null : const Color(0x8F22314B),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected ? const Color(0xFF6BE2D7) : Colors.white12,
               width: isSelected ? 2 : 1,
             ),
-            boxShadow:
-                isSelected
-                    ? const [
-                      BoxShadow(
-                        color: Color(0x4535D5C5),
-                        blurRadius: 13,
-                        offset: Offset(0, 5),
-                      ),
-                    ]
-                    : null,
+            boxShadow: isSelected
+                ? const [
+                    BoxShadow(
+                      color: Color(0x4535D5C5),
+                      blurRadius: 13,
+                      offset: Offset(0, 5),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
@@ -735,11 +839,10 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               scrollDirection: Axis.horizontal,
               itemCount: cities.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder:
-                  (_, index) => SizedBox(
-                    width: 150,
-                    child: _buildCityCard(cities[index], isCompact),
-                  ),
+              itemBuilder: (_, index) => SizedBox(
+                width: 150,
+                child: _buildCityCard(cities[index], isCompact),
+              ),
             ),
           )
         else
@@ -769,28 +872,26 @@ class _GameSetupScreenState extends State<GameSetupScreen>
             vertical: isCompact ? 10 : 12,
           ),
           decoration: BoxDecoration(
-            gradient:
-                isSelected
-                    ? const LinearGradient(
-                      colors: [Color(0xFFF2C452), Color(0xFFD98B2D)],
-                    )
-                    : null,
+            gradient: isSelected
+                ? const LinearGradient(
+                    colors: [Color(0xFFF2C452), Color(0xFFD98B2D)],
+                  )
+                : null,
             color: isSelected ? null : const Color(0x8F22314B),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected ? const Color(0xFFFFE6A1) : Colors.white12,
               width: isSelected ? 2 : 1,
             ),
-            boxShadow:
-                isSelected
-                    ? const [
-                      BoxShadow(
-                        color: Color(0x55F1AD35),
-                        blurRadius: 13,
-                        offset: Offset(0, 5),
-                      ),
-                    ]
-                    : null,
+            boxShadow: isSelected
+                ? const [
+                    BoxShadow(
+                      color: Color(0x55F1AD35),
+                      blurRadius: 13,
+                      offset: Offset(0, 5),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
@@ -799,10 +900,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                 height: 30,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color:
-                      isSelected
-                          ? const Color(0x24FFFFFF)
-                          : Colors.white.withValues(alpha: 0.06),
+                  color: isSelected
+                      ? const Color(0x24FFFFFF)
+                      : Colors.white.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: Text(
@@ -867,34 +967,28 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                         horizontal: 5,
                       ),
                       decoration: BoxDecoration(
-                        gradient:
-                            isSelected
-                                ? const LinearGradient(
-                                  colors: [
-                                    Color(0xFFF2C452),
-                                    Color(0xFFD98B2D),
-                                  ],
-                                )
-                                : null,
+                        gradient: isSelected
+                            ? const LinearGradient(
+                                colors: [Color(0xFFF2C452), Color(0xFFD98B2D)],
+                              )
+                            : null,
                         color: isSelected ? null : const Color(0x8F22314B),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color:
-                              isSelected
-                                  ? const Color(0xFFFFE6A1)
-                                  : Colors.white12,
+                          color: isSelected
+                              ? const Color(0xFFFFE6A1)
+                              : Colors.white12,
                           width: isSelected ? 2 : 1,
                         ),
-                        boxShadow:
-                            isSelected
-                                ? const [
-                                  BoxShadow(
-                                    color: Color(0x55F1AD35),
-                                    blurRadius: 14,
-                                    offset: Offset(0, 6),
-                                  ),
-                                ]
-                                : null,
+                        boxShadow: isSelected
+                            ? const [
+                                BoxShadow(
+                                  color: Color(0x55F1AD35),
+                                  blurRadius: 14,
+                                  offset: Offset(0, 6),
+                                ),
+                              ]
+                            : null,
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -903,20 +997,18 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                             count == 2
                                 ? Icons.people_alt_rounded
                                 : Icons.groups_rounded,
-                            color:
-                                isSelected
-                                    ? const Color(0xFF15213A)
-                                    : Colors.white70,
+                            color: isSelected
+                                ? const Color(0xFF15213A)
+                                : Colors.white70,
                             size: isCompact ? 20 : 24,
                           ),
                           const SizedBox(height: 2),
                           Text(
                             '$count',
                             style: TextStyle(
-                              color:
-                                  isSelected
-                                      ? const Color(0xFF15213A)
-                                      : Colors.white,
+                              color: isSelected
+                                  ? const Color(0xFF15213A)
+                                  : Colors.white,
                               fontSize: isCompact ? 25 : 31,
                               height: 1,
                               fontWeight: FontWeight.w900,
@@ -928,10 +1020,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color:
-                                  isSelected
-                                      ? const Color(0xCC15213A)
-                                      : Colors.white54,
+                              color: isSelected
+                                  ? const Color(0xCC15213A)
+                                  : Colors.white54,
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
                             ),
@@ -995,8 +1086,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     Color color,
   ) {
     final isSelected = _diceCount == count;
-    final foreground =
-        isSelected ? const Color(0xFF15213A) : const Color(0xFFF3F7FB);
+    final foreground = isSelected
+        ? const Color(0xFF15213A)
+        : const Color(0xFFF3F7FB);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1007,29 +1099,26 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           decoration: BoxDecoration(
-            gradient:
-                isSelected
-                    ? LinearGradient(
-                      colors: [color, color.withValues(alpha: 0.76)],
-                    )
-                    : null,
+            gradient: isSelected
+                ? LinearGradient(colors: [color, color.withValues(alpha: 0.76)])
+                : null,
             color: isSelected ? null : const Color(0x8F22314B),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color:
-                  isSelected ? color.withValues(alpha: 0.95) : Colors.white12,
+              color: isSelected
+                  ? color.withValues(alpha: 0.95)
+                  : Colors.white12,
               width: isSelected ? 2 : 1,
             ),
-            boxShadow:
-                isSelected
-                    ? [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.3),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                    : null,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
@@ -1249,13 +1338,11 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                           scale: 0.7,
                           child: Switch(
                             value: config.isAI,
-                            onChanged:
-                                (value) => setState(
-                                  () =>
-                                      _playerConfigs[index] = config.copyWith(
-                                        isAI: value,
-                                      ),
-                                ),
+                            onChanged: (value) => setState(
+                              () => _playerConfigs[index] = config.copyWith(
+                                isAI: value,
+                              ),
+                            ),
                             activeThumbColor: const Color(0xFF4ECDC4),
                           ),
                         ),
@@ -1340,9 +1427,8 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               height: isCompactLandscape ? 34 : 44,
               child: TextField(
                 controller: _nameControllers[index],
-                onChanged:
-                    (value) =>
-                        _playerConfigs[index] = config.copyWith(name: value),
+                onChanged: (value) =>
+                    _playerConfigs[index] = config.copyWith(name: value),
                 onTap: () {
                   // Select all text when tapped so kids can easily replace the default name
                   _nameControllers[index].selection = TextSelection(
@@ -1391,68 +1477,57 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                         .clamp(18.0, 28.0);
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children:
-                      _availableColors.map((color) {
-                        final isSelected = config.color == color;
-                        final isUsed = _playerConfigs
-                            .where((c) => c != config)
-                            .any((c) => c.color == color);
-                        return GestureDetector(
-                          onTap:
-                              isUsed
-                                  ? null
-                                  : () => setState(
-                                    () =>
-                                        _playerConfigs[index] = config.copyWith(
-                                          color: color,
-                                        ),
-                                  ),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: dotSize,
-                            height: dotSize,
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [color, color.withValues(alpha: 0.7)],
+                  children: _availableColors.map((color) {
+                    final isSelected = config.color == color;
+                    final isUsed = _playerConfigs
+                        .where((c) => c != config)
+                        .any((c) => c.color == color);
+                    return GestureDetector(
+                      onTap: isUsed
+                          ? null
+                          : () => setState(
+                              () => _playerConfigs[index] = config.copyWith(
+                                color: color,
                               ),
-                              shape: BoxShape.circle,
-                              border:
-                                  isSelected
-                                      ? Border.all(
-                                        color: Colors.white,
-                                        width: 2,
-                                      )
-                                      : null,
-                              boxShadow:
-                                  isSelected
-                                      ? [
-                                        BoxShadow(
-                                          color: color.withValues(alpha: 0.6),
-                                          blurRadius: 8,
-                                        ),
-                                      ]
-                                      : null,
                             ),
-                            child:
-                                isUsed && !isSelected
-                                    ? Icon(
-                                      Icons.close,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                      size: dotSize * 0.5,
-                                    )
-                                    : isSelected
-                                    ? Icon(
-                                      Icons.check,
-                                      color: Colors.white,
-                                      size: dotSize * 0.58,
-                                    )
-                                    : null,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: dotSize,
+                        height: dotSize,
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [color, color.withValues(alpha: 0.7)],
                           ),
-                        );
-                      }).toList(),
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(color: Colors.white, width: 2)
+                              : null,
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.6),
+                                    blurRadius: 8,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: isUsed && !isSelected
+                            ? Icon(
+                                Icons.close,
+                                color: Colors.white.withValues(alpha: 0.5),
+                                size: dotSize * 0.5,
+                              )
+                            : isSelected
+                            ? Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: dotSize * 0.58,
+                              )
+                            : null,
+                      ),
+                    );
+                  }).toList(),
                 );
               },
             ),
@@ -1471,80 +1546,74 @@ class _GameSetupScreenState extends State<GameSetupScreen>
       // Use dialog for landscape mode - better use of horizontal space
       showDialog(
         context: context,
-        builder:
-            (context) => Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 40,
-                vertical: 24,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 40,
+            vertical: 24,
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: screenSize.width * 0.8,
+              maxHeight: screenSize.height * 0.85,
+            ),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF1B3150), Color(0xFF081426)],
               ),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: screenSize.width * 0.8,
-                  maxHeight: screenSize.height * 0.85,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF1B3150), Color(0xFF081426)],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: ShaderMask(
-                              shaderCallback:
-                                  (bounds) => const LinearGradient(
-                                    colors: [Colors.white, Color(0xFFFFE66D)],
-                                  ).createShader(bounds),
-                              child: Text(
-                                AppLocalizations.of(context)!.chooseYourAvatar,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Colors.white, Color(0xFFFFE66D)],
+                          ).createShader(bounds),
+                          child: Text(
+                            AppLocalizations.of(context)!.chooseYourAvatar,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(
-                              Icons.close,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Flexible(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: AvatarSelector(
-                          selectedAvatar: config.avatar,
-                          onAvatarSelected: (avatar) {
-                            setState(
-                              () =>
-                                  _playerConfigs[playerIndex] = config.copyWith(
-                                    avatar: avatar,
-                                  ),
-                            );
-                            Navigator.pop(context);
-                          },
                         ),
                       ),
-                    ),
-                  ],
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Colors.white70),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: AvatarSelector(
+                      selectedAvatar: config.avatar,
+                      onAvatarSelected: (avatar) {
+                        setState(
+                          () => _playerConfigs[playerIndex] = config.copyWith(
+                            avatar: avatar,
+                          ),
+                        );
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
       );
     } else {
       // Use bottom sheet for portrait mode
@@ -1552,68 +1621,63 @@ class _GameSetupScreenState extends State<GameSetupScreen>
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
-        builder:
-            (context) => DraggableScrollableSheet(
-              initialChildSize: 0.7,
-              minChildSize: 0.5,
-              maxChildSize: 0.9,
-              builder:
-                  (context, scrollController) => Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFF1B3150), Color(0xFF081426)],
+        builder: (context) => DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) => Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF1B3150), Color(0xFF081426)],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Colors.white, Color(0xFFFFE66D)],
+                    ).createShader(bounds),
+                    child: Text(
+                      AppLocalizations.of(context)!.chooseYourAvatar,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(top: 12),
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: ShaderMask(
-                            shaderCallback:
-                                (bounds) => const LinearGradient(
-                                  colors: [Colors.white, Color(0xFFFFE66D)],
-                                ).createShader(bounds),
-                            child: Text(
-                              AppLocalizations.of(context)!.chooseYourAvatar,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: AvatarSelector(
-                            selectedAvatar: config.avatar,
-                            onAvatarSelected: (avatar) {
-                              setState(
-                                () =>
-                                    _playerConfigs[playerIndex] = config
-                                        .copyWith(avatar: avatar),
-                              );
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ),
-                      ],
                     ),
                   ),
+                ),
+                Expanded(
+                  child: AvatarSelector(
+                    selectedAvatar: config.avatar,
+                    onAvatarSelected: (avatar) {
+                      setState(
+                        () => _playerConfigs[playerIndex] = config.copyWith(
+                          avatar: avatar,
+                        ),
+                      );
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
       );
     }
   }
@@ -1625,10 +1689,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     final isWide = screenSize.width >= 720;
     final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding:
-          isCompactLandscape
-              ? const EdgeInsets.fromLTRB(12, 3, 12, 8)
-              : const EdgeInsets.fromLTRB(20, 8, 20, 18),
+      padding: isCompactLandscape
+          ? const EdgeInsets.fromLTRB(12, 3, 12, 8)
+          : const EdgeInsets.fromLTRB(20, 8, 20, 18),
       child: Container(
         key: const Key('setup-summary'),
         padding: EdgeInsets.all(isCompactLandscape ? 6 : 9),
@@ -1650,18 +1713,20 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               SizedBox(
                 width: 138,
                 child: _buildNavigationAction(
+                  key: const Key('setup-back-action'),
                   icon: Icons.arrow_back_rounded,
                   label: _currentStep == 0 ? l10n.back : l10n.previous,
-                  onTap: _previousStep,
+                  onTap: _isStarting ? null : _previousStep,
                   compact: isCompactLandscape,
                 ),
               )
             else
               Expanded(
                 child: _buildNavigationAction(
+                  key: const Key('setup-back-action'),
                   icon: Icons.arrow_back_rounded,
                   label: _currentStep == 0 ? l10n.back : l10n.previous,
-                  onTap: _previousStep,
+                  onTap: _isStarting ? null : _previousStep,
                   compact: isCompactLandscape,
                 ),
               ),
@@ -1675,27 +1740,37 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               ConstrainedBox(
                 constraints: BoxConstraints(minWidth: 230, maxWidth: 280),
                 child: _buildNavigationAction(
-                  icon:
-                      _currentStep == 0
-                          ? Icons.arrow_forward_rounded
-                          : Icons.rocket_launch_rounded,
-                  label: _currentStep == 0 ? l10n.next : l10n.startGame,
-                  onTap: _nextStep,
+                  key: const Key('setup-primary-action'),
+                  icon: _currentStep == 0
+                      ? Icons.arrow_forward_rounded
+                      : Icons.rocket_launch_rounded,
+                  label: _currentStep == 0
+                      ? l10n.next
+                      : _isStarting
+                      ? l10n.preparingGame
+                      : l10n.startGame,
+                  onTap: _isStarting ? null : _nextStep,
                   primary: true,
                   compact: isCompactLandscape,
+                  showProgress: _isStarting,
                 ),
               )
             else
               Expanded(
                 child: _buildNavigationAction(
-                  icon:
-                      _currentStep == 0
-                          ? Icons.arrow_forward_rounded
-                          : Icons.rocket_launch_rounded,
-                  label: _currentStep == 0 ? l10n.next : l10n.startGame,
-                  onTap: _nextStep,
+                  key: const Key('setup-primary-action'),
+                  icon: _currentStep == 0
+                      ? Icons.arrow_forward_rounded
+                      : Icons.rocket_launch_rounded,
+                  label: _currentStep == 0
+                      ? l10n.next
+                      : _isStarting
+                      ? l10n.preparingGame
+                      : l10n.startGame,
+                  onTap: _isStarting ? null : _nextStep,
                   primary: true,
                   compact: isCompactLandscape,
+                  showProgress: _isStarting,
                 ),
               ),
           ],
@@ -1744,62 +1819,79 @@ class _GameSetupScreenState extends State<GameSetupScreen>
   }
 
   Widget _buildNavigationAction({
+    Key? key,
     required IconData icon,
     required String label,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     bool primary = false,
     bool compact = false,
+    bool showProgress = false,
   }) {
     final foreground = primary ? const Color(0xFF122039) : Colors.white;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 11 : 16,
-            vertical: compact ? 9 : 13,
-          ),
-          decoration: BoxDecoration(
-            gradient:
-                primary
-                    ? const LinearGradient(
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: label,
+      child: Material(
+        key: key,
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 11 : 16,
+              vertical: compact ? 9 : 13,
+            ),
+            decoration: BoxDecoration(
+              gradient: primary
+                  ? const LinearGradient(
                       colors: [Color(0xFFFFD86B), Color(0xFFF1AD35)],
                     )
-                    : const LinearGradient(
+                  : const LinearGradient(
                       colors: [Color(0xFF243657), Color(0xFF162541)],
                     ),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color:
-                  primary ? const Color(0xFFFFE6A1) : const Color(0x555F91B5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: primary
+                    ? const Color(0xFFFFE6A1)
+                    : const Color(0x555F91B5),
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (!primary) ...[
-                Icon(icon, color: foreground, size: 19),
-                const SizedBox(width: 7),
-              ],
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: foreground,
-                    fontSize: compact ? 13 : 15,
-                    fontWeight: FontWeight.w900,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (showProgress) ...[
+                  SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: foreground,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ] else if (!primary) ...[
+                  Icon(icon, color: foreground, size: 19),
+                  const SizedBox(width: 7),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: foreground,
+                      fontSize: compact ? 13 : 15,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-              ),
-              if (primary) ...[
-                const SizedBox(width: 8),
-                Icon(icon, color: foreground, size: 19),
+                if (primary && !showProgress) ...[
+                  const SizedBox(width: 8),
+                  Icon(icon, color: foreground, size: 19),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
