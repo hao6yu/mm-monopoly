@@ -304,6 +304,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   bool _isPaused = false; // Track if game menu is open
   bool _isMusicPlaying = true; // Track music state
   bool _cameraFollowEnabled = false; // Opt-in token-follow camera (3D-09)
+  late bool _sfxEnabled = AudioService.instance.sfxEnabled;
   bool _sentGraphicsQualityForBoard = false; // 3D-21 tier delivery
   bool _isProcessingTurn = false; // Prevent dice rolls while processing
   int _turnOperationId = 0;
@@ -906,6 +907,15 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
+  /// In-game mute for dice rolls, footsteps, and other effects. Music keeps
+  /// its own toggle; both persist through [AudioService].
+  void _toggleSfx() {
+    setState(() {
+      _sfxEnabled = !_sfxEnabled;
+    });
+    AudioService.instance.setSfxEnabled(_sfxEnabled);
+  }
+
   void _showGameMenu() {
     if (!_canOpenGameMenu) return;
     final canPersistTurn = _canUseStableInteractions;
@@ -1463,6 +1473,15 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           tooltip: _isMusicPlaying ? l10n.muteMusic : l10n.playMusic,
           onTap: _toggleMusic,
           color: _isMusicPlaying
+              ? const Color(0xE61D765F)
+              : const Color(0xE6111A33),
+        ),
+        const SizedBox(width: 7),
+        _build3DOverlayButton(
+          icon: _sfxEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+          tooltip: _sfxEnabled ? l10n.muteSoundEffects : l10n.playSoundEffects,
+          onTap: _toggleSfx,
+          color: _sfxEnabled
               ? const Color(0xE61D765F)
               : const Color(0xE6111A33),
         ),

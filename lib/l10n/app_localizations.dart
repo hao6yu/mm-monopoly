@@ -3212,6 +3212,18 @@ abstract class AppLocalizations {
   /// **'Free camera'**
   String get cameraFollowOff;
 
+  /// No description provided for @muteSoundEffects.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute sound effects'**
+  String get muteSoundEffects;
+
+  /// No description provided for @playSoundEffects.
+  ///
+  /// In en, this message translates to:
+  /// **'Play sound effects'**
+  String get playSoundEffects;
+
   /// No description provided for @graphicsQuality3D.
   ///
   /// In en, this message translates to:

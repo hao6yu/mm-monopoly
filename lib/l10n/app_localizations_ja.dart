@@ -1686,6 +1686,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraFollowOff => '自由カメラ';
 
   @override
+  String get muteSoundEffects => '効果音をミュート';
+
+  @override
+  String get playSoundEffects => '効果音を再生';
+
+  @override
   String get graphicsQuality3D => '3Dグラフィック品質';
 
   @override

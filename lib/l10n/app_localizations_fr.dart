@@ -1753,6 +1753,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cameraFollowOff => 'Caméra libre';
 
   @override
+  String get muteSoundEffects => 'Couper les effets sonores';
+
+  @override
+  String get playSoundEffects => 'Jouer les effets sonores';
+
+  @override
   String get graphicsQuality3D => 'Qualité graphique 3D';
 
   @override

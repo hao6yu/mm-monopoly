@@ -1685,6 +1685,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraFollowOff => '自由视角';
 
   @override
+  String get muteSoundEffects => '静音音效';
+
+  @override
+  String get playSoundEffects => '播放音效';
+
+  @override
   String get graphicsQuality3D => '3D 画质';
 
   @override

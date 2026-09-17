@@ -92,6 +92,7 @@ func _run() -> void:
 	await _test_special_movement_presentations(scene, state)
 	await _test_camera_follow(scene, state)
 	await _test_graphics_quality_tiers(scene)
+	await _test_dice_slot_separation(scene)
 	_test_native_one_finger_pan(scene)
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
@@ -1308,6 +1309,36 @@ func _test_graphics_quality_tiers(scene: Node) -> void:
 	print("GRAPHICS_QUALITY_TIERS_OK")
 
 
+func _test_dice_slot_separation(scene: Node) -> void:
+	# Regression: independent per-die slot swaps could stack both dice on one
+	# platform slot. Every roll must settle the two dice apart.
+	if scene.dice_nodes.size() < 2:
+		push_error("Dice separation check needs two dice.")
+		quit(1)
+		return
+	for _roll in 10:
+		scene._animate_3d_dice(1 + _roll % 6, 1 + (_roll * 3) % 6)
+		for _wait in 90:
+			if scene.dice_tweens.is_empty():
+				break
+			await process_frame
+		await process_frame
+		var first := (scene.dice_nodes[0] as Node3D).position
+		var second := (scene.dice_nodes[1] as Node3D).position
+		var separation := Vector2(first.x, first.z).distance_to(
+			Vector2(second.x, second.z)
+		)
+		if separation < 1.0:
+			push_error(
+				"Settled dice overlapped: separation %.2f on roll %d."
+				% [separation, _roll]
+			)
+			quit(1)
+			return
+	scene._animate_3d_dice(0, 0)
+	print("DICE_SLOT_SEPARATION_OK")
+
+
 func _test_native_one_finger_pan(scene: Node) -> void:
 	var initial_target: Vector3 = scene.camera_target
 	var touch := InputEventScreenTouch.new()
@@ -1409,7 +1440,7 @@ func _test_mobile_camera_framing(scene: Node) -> void:
 		return
 	scene.camera_uses_portrait_framing = true
 	scene.camera_uses_tablet_landscape_framing = false
-	if not is_equal_approx(scene._default_camera_distance(), 28.0):
+	if not is_equal_approx(scene._default_camera_distance(), 24.0):
 		push_error("Portrait screens should start closer to the board.")
 		quit(1)
 		return
@@ -1436,12 +1467,12 @@ func _test_mobile_camera_framing(scene: Node) -> void:
 	print("MOBILE_CAMERA_FRAMING_OK close zoom ", scene.camera_distance)
 	scene.camera_uses_portrait_framing = false
 	scene.camera_uses_tablet_landscape_framing = true
-	if not is_equal_approx(scene._default_camera_distance(), 31.5):
+	if not is_equal_approx(scene._default_camera_distance(), 26.0):
 		push_error("Tablet landscape should use the closer release framing.")
 		quit(1)
 		return
 	scene.camera_uses_tablet_landscape_framing = false
-	if not is_equal_approx(scene._default_camera_distance(), 36.0):
+	if not is_equal_approx(scene._default_camera_distance(), 30.0):
 		push_error("Wide landscape should retain the full-board framing.")
 		quit(1)
 		return

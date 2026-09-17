@@ -657,6 +657,8 @@
   "continuedOn2DBoard": "3D 棋盘已停止响应，游戏将切换到 2D 棋盘继续。",
   "cameraFollowOn": "跟随当前棋子",
   "cameraFollowOff": "自由视角",
+  "muteSoundEffects": "静音音效",
+  "playSoundEffects": "播放音效",
   "graphicsQuality3D": "3D 画质",
   "qualityHigh": "高",
   "qualityMedium": "中",

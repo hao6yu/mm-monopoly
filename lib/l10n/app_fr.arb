@@ -657,6 +657,8 @@
   "continuedOn2DBoard": "Le plateau 3D ne répond plus. La partie continue sur le plateau 2D.",
   "cameraFollowOn": "Suivre le pion actif",
   "cameraFollowOff": "Caméra libre",
+  "muteSoundEffects": "Couper les effets sonores",
+  "playSoundEffects": "Jouer les effets sonores",
   "graphicsQuality3D": "Qualité graphique 3D",
   "qualityHigh": "Élevée",
   "qualityMedium": "Moyenne",

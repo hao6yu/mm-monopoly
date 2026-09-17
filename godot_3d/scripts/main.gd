@@ -61,9 +61,9 @@ const CAMERA_MAX_DISTANCE := 68.0
 const CAMERA_WHEEL_STEP := 2.4
 const PINCH_ZOOM_SENSITIVITY := 0.035
 const CAMERA_HORIZONTAL_FOV := 69.0
-const CAMERA_DEFAULT_DISTANCE := 36.0
-const CAMERA_TABLET_LANDSCAPE_DISTANCE := 31.5
-const CAMERA_PORTRAIT_DISTANCE := 28.0
+const CAMERA_DEFAULT_DISTANCE := 30.0
+const CAMERA_TABLET_LANDSCAPE_DISTANCE := 26.0
+const CAMERA_PORTRAIT_DISTANCE := 24.0
 const CAMERA_PAN_DISTANCE_CAP := 12.0
 const CAMERA_PAN_SENSITIVITY := 0.0035
 const CAMERA_ORBIT_HORIZONTAL_SENSITIVITY := 0.007
@@ -2715,6 +2715,7 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 	_cancel_dice_tweens()
 	var values := [die_one, die_two]
 	var platform_center := _dice_platform_center()
+	var dice_trade_slots := die_one > 0 and die_two > 0 and randi() % 2 == 0
 	for index in dice_nodes.size():
 		var die := dice_nodes[index]
 		var die_value := int(values[index])
@@ -2729,11 +2730,11 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 			TAU * float(3 - index + randi() % 3),
 			TAU * float(2 + randi() % 2)
 		)
-		# The two settled dice may swap platform slots, and each roll lands
+		# The two settled dice may trade platform slots, and each roll lands
 		# with a small random offset so repeated rolls never look identical.
-		var slot := index
-		if die_two > 0 and die_one > 0 and randi() % 2 == 0:
-			slot = 1 - index
+		# The trade is one shared coin flip per roll: deciding per die could
+		# send both dice to the same slot and stack them.
+		var slot := (1 - index) if dice_trade_slots else index
 		var target_position := Vector3(
 			platform_center.x - 0.78 + slot * 1.53
 				+ randf_range(-0.12, 0.12),

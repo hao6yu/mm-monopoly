@@ -1722,6 +1722,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cameraFollowOff => 'Free camera';
 
   @override
+  String get muteSoundEffects => 'Mute sound effects';
+
+  @override
+  String get playSoundEffects => 'Play sound effects';
+
+  @override
   String get graphicsQuality3D => '3D graphics quality';
 
   @override
