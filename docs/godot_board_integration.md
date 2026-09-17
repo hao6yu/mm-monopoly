@@ -102,11 +102,16 @@ playable route.
 
 World-space text uses distance-adaptive semantic zoom: tile name labels and
 floating landmark labels compensate for camera distance so overview framing
-stays legible, and at overview distances tile labels collapse to the name
-alone — prices remain on the tap detail sheet and return when the player
-zooms in. Harbor craft, piers, and buoys sit at the measured water surface
-height; hulls carry a real draft below the waterline and ride a gentle bob,
-so boats never hover above the water.
+stays legible. The shipped default framings sit inside the full-text range, so
+tile labels show their complete localized name (and price line) out of the
+box; zooming out past the overview threshold collapses them to the name alone
+— prices remain on the tap detail sheet and return when the player zooms in.
+City boards keep the water margin as a tight shore band around the island, and
+the default camera distances frame the island rather than the surrounding
+ocean so location spots and their labels fill the viewport. Harbor craft,
+piers, and buoys sit at the measured water surface height; hulls carry a real
+draft below the waterline and ride a gentle bob, so boats never hover above
+the water.
 
 Changing orientation recenters the board target and refits the overview, so a
 camera panned for the previous aspect ratio cannot strand the board off-screen.

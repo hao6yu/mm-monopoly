@@ -9,8 +9,8 @@ const BOARD_TOP := 1.34
 const BOARD_WORLD_SCALE := 1.0
 const TILE_ROUTE_GAP_RATIO := 0.88
 const TABLE_PLAYER_SCALE := 3.0
-const TABLE_WIDTH := 37.0
-const TABLE_DEPTH := 40.0
+const TABLE_WIDTH := 33.0
+const TABLE_DEPTH := 41.0
 const BOARD_SPOT_COUNT := 52
 const TILE_SURFACE_OFFSET := 0.1
 # The plinth, not its glowing selection ring, is the physical contact surface.
@@ -40,7 +40,10 @@ const BOAT_BOB_AMPLITUDE := 0.022
 const LABEL_REFERENCE_DISTANCE := 20.0
 const LABEL_MAX_COMPENSATION := 1.45
 const LABEL_LANDMARK_MAX_COMPENSATION := 1.9
-const LABEL_OVERVIEW_DISTANCE := 26.0
+# Below this distance tile labels show their full localized name (and price
+# line); at or above it they collapse to the name alone. The default city
+# framings sit below it so the shipped overview keeps full labels readable.
+const LABEL_OVERVIEW_DISTANCE := 24.0
 # Damping rate for the token-follow camera: higher closes the gap faster.
 const CAMERA_FOLLOW_DAMPING := 3.2
 # Quality tier budgets (3D-21). The scale multiplies the platform render
@@ -61,9 +64,13 @@ const CAMERA_MAX_DISTANCE := 68.0
 const CAMERA_WHEEL_STEP := 2.4
 const PINCH_ZOOM_SENSITIVITY := 0.035
 const CAMERA_HORIZONTAL_FOV := 69.0
-const CAMERA_DEFAULT_DISTANCE := 30.0
-const CAMERA_TABLET_LANDSCAPE_DISTANCE := 26.0
-const CAMERA_PORTRAIT_DISTANCE := 24.0
+# Default framings keep the island (not the water margin) as the dominant
+# element. The water ring was tightened to a 0.45-unit shore band, so these
+# distances fill the viewport with the playable board while a full zoom-out
+# to CAMERA_MAX_DISTANCE still shows the whole diorama.
+const CAMERA_DEFAULT_DISTANCE := 27.5
+const CAMERA_TABLET_LANDSCAPE_DISTANCE := 23.0
+const CAMERA_PORTRAIT_DISTANCE := 20.5
 const CAMERA_PAN_DISTANCE_CAP := 12.0
 const CAMERA_PAN_SENSITIVITY := 0.0035
 const CAMERA_ORBIT_HORIZONTAL_SENSITIVITY := 0.007
@@ -71,6 +78,10 @@ const CAMERA_ORBIT_VERTICAL_SENSITIVITY := 0.005
 const CAMERA_MIN_ELEVATION := deg_to_rad(27.0)
 const CAMERA_MAX_ELEVATION := deg_to_rad(72.0)
 const CAMERA_DEFAULT_TARGET := Vector3(0.0, 1.4, -1.0)
+# City islands are vertically symmetric around z=0, while the shared default
+# target biases the view north for Manhattan's harbor. City boards recentre so
+# the tightened framing does not clip the southern tile row.
+const CAMERA_DEFAULT_CITY_TARGET := Vector3(0.0, 1.4, -0.2)
 const CAMERA_TARGET_MIN_X := -11.0
 const CAMERA_TARGET_MAX_X := 11.0
 const CAMERA_TARGET_MIN_Z := -20.0
@@ -528,7 +539,7 @@ func _create_table() -> void:
 	)
 	_add_box(
 		self,
-		Vector3(46.0, 0.35, 48.0),
+		Vector3(41.0, 0.35, 46.0),
 		Vector3(0.0, -1.35, 0.0),
 		_material(Color("#080b15"), 0.05, 0.82)
 	)
@@ -1031,22 +1042,22 @@ func _create_city_theme_board() -> void:
 	var water_color := _theme_color("water", "#168fab")
 	var brass_base := _add_cylinder(
 		board_root,
-		13.8,
-		13.8,
+		12.35,
+		12.35,
 		0.7,
 		Vector3(0.0, 0.32, -1.1),
 		_material(accent, 0.62, 0.22)
 	)
-	brass_base.scale.z = 1.38
+	brass_base.scale.z = 1.42
 	var water := _add_cylinder(
 		board_root,
-		13.35,
-		13.35,
+		11.9,
+		11.9,
 		0.48,
 		Vector3(0.0, 0.74, -1.1),
 		_water_material(water_color)
 	)
-	water.scale.z = 1.36
+	water.scale.z = 1.42
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 	var shape := str(city_theme.get("shape", "basin_city"))
@@ -1168,10 +1179,10 @@ func _create_city_theme_world() -> void:
 
 	var accent := _theme_color("accent", "#f0c75b")
 	for marker_position in [
-		Vector3(-10.8, 1.15, -11.0),
-		Vector3(-11.2, 1.15, 4.5),
-		Vector3(11.0, 1.15, -9.0),
-		Vector3(11.4, 1.15, 10.0),
+		Vector3(-9.6, 1.15, -10.6),
+		Vector3(-10.0, 1.15, 4.5),
+		Vector3(10.0, 1.15, -8.6),
+		Vector3(10.3, 1.15, 9.4),
 	]:
 		_add_sphere(
 			world,
@@ -1376,12 +1387,15 @@ func _create_city_coast_traffic(parent: Node3D) -> void:
 	# It is intentionally separated from the property route and dice platform,
 	# and its height is the water surface so hulls draw with a real draft.
 	var lane_y := CITY_WATER_SURFACE_Y
+	# Pulled inward with the tightened water margin: every point stays on the
+	# water ellipse (x radius 11.9) with clear water beyond the hull and a
+	# shore gap to the island trim on the far west edge.
 	var ocean_lane := [
-		Vector3(-10.4, lane_y, -13.6),
-		Vector3(-11.25, lane_y, -8.0),
-		Vector3(-11.45, lane_y, -1.5),
-		Vector3(-11.3, lane_y, 5.5),
-		Vector3(-10.2, lane_y, 12.8),
+		Vector3(-9.5, lane_y, -13.0),
+		Vector3(-10.1, lane_y, -7.8),
+		Vector3(-10.3, lane_y, -1.5),
+		Vector3(-10.15, lane_y, 5.5),
+		Vector3(-9.3, lane_y, 12.2),
 	]
 	var specs := [
 		["ferry", _theme_color("accent", "#f0c75b"), 0, 0.12, 0.82, 1],
@@ -2608,7 +2622,7 @@ func _create_dice() -> void:
 	var platform_center := _dice_platform_center()
 	_add_box(
 		board_root,
-		Vector3(3.6, 0.16, 2.05),
+		Vector3(3.95, 0.16, 2.2),
 		platform_center,
 		_material(Color("#172642"), 0.22, 0.3)
 	)
@@ -2616,9 +2630,9 @@ func _create_dice() -> void:
 		var die := _make_die()
 		die.name = "Die%d" % (index + 1)
 		die.position = Vector3(
-			platform_center.x - 0.75 + index * 1.5,
+			platform_center.x - 0.92 + index * 1.84,
 			1.9,
-			platform_center.z
+			platform_center.z - 0.15 + index * 0.3
 		)
 		die.rotation_degrees = Vector3(-8.0, -16.0 + index * 31.0, 5.0)
 		# Until the first settled roll there is no second value to communicate.
@@ -2631,7 +2645,9 @@ func _create_dice() -> void:
 func _dice_platform_center() -> Vector3:
 	if current_board_id == "usa_new_york":
 		return Vector3(9.0, 1.22, 4.8)
-	return Vector3(10.2, 1.22, 0.5)
+	# Kept inside the city water ellipse (radius 11.9) after the water margin
+	# was tightened; the platform reads as a dock off the island's east shore.
+	return Vector3(9.7, 1.22, 0.5)
 
 
 func _make_die() -> Node3D:
@@ -2715,7 +2731,6 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 	_cancel_dice_tweens()
 	var values := [die_one, die_two]
 	var platform_center := _dice_platform_center()
-	var dice_trade_slots := die_one > 0 and die_two > 0 and randi() % 2 == 0
 	for index in dice_nodes.size():
 		var die := dice_nodes[index]
 		var die_value := int(values[index])
@@ -2730,17 +2745,19 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 			TAU * float(3 - index + randi() % 3),
 			TAU * float(2 + randi() % 2)
 		)
-		# The two settled dice may trade platform slots, and each roll lands
-		# with a small random offset so repeated rolls never look identical.
-		# The trade is one shared coin flip per roll: deciding per die could
-		# send both dice to the same slot and stack them.
-		var slot := (1 - index) if dice_trade_slots else index
+		# Each roll lands with a small random offset so repeated rolls never
+		# look identical. Dice keep their own platform lane: when both dice
+		# flew toward swapped slots they crossed mid-air at the shared hover
+		# height and briefly intersected (caught on the physical iPad QA
+		# pass), so the cosmetic slot trade was removed. Lane spacing also
+		# stays wider than a cube's rotated diagonal (1.08 * sqrt(2) = 1.53)
+		# so even mid-roll corner orientations cannot intersect the other die.
 		var target_position := Vector3(
-			platform_center.x - 0.78 + slot * 1.53
-				+ randf_range(-0.12, 0.12),
+			platform_center.x - 0.92 + index * 1.84
+				+ randf_range(-0.05, 0.05),
 			1.9,
-			platform_center.z - 0.16 + slot * 0.3
-				+ randf_range(-0.1, 0.1)
+			platform_center.z - 0.15 + index * 0.3
+				+ randf_range(-0.05, 0.05)
 		)
 		var tween := create_tween()
 		dice_tweens.append(tween)
@@ -2748,13 +2765,22 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 			_forget_dice_tween.bind(tween),
 			CONNECT_ONE_SHOT
 		)
+		# A small per-die launch delay desynchronizes the hops so the dice
+		# never occupy the same air space while tumbling to their slots.
+		var launch_delay := index * 0.09
 		tween.set_parallel(true)
 		tween.set_trans(Tween.TRANS_QUAD)
 		tween.set_ease(Tween.EASE_OUT)
-		tween.tween_property(die, "rotation", target_rotation, 0.92)
-		tween.tween_property(die, "position:x", target_position.x, 0.92)
-		tween.tween_property(die, "position:z", target_position.z, 0.92)
-		tween.tween_property(die, "position:y", 3.65, 0.3)
+		tween.tween_property(die, "rotation", target_rotation, 0.92).set_delay(
+			launch_delay
+		)
+		tween.tween_property(die, "position:x", target_position.x, 0.92).set_delay(
+			launch_delay
+		)
+		tween.tween_property(die, "position:z", target_position.z, 0.92).set_delay(
+			launch_delay
+		)
+		tween.tween_property(die, "position:y", 3.65, 0.3).set_delay(launch_delay)
 		tween.chain().tween_property(die, "position:y", 1.9, 0.42)
 		tween.chain().tween_property(die, "position:y", 2.22, 0.12)
 		tween.chain().tween_property(die, "position:y", 1.9, 0.14)
@@ -2784,6 +2810,7 @@ func _create_camera() -> void:
 	camera.current = true
 	camera_uses_portrait_framing = _is_portrait_viewport()
 	camera_uses_tablet_landscape_framing = _is_tablet_landscape_viewport()
+	camera_target = _default_camera_target()
 	camera_distance = _default_camera_distance()
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	_update_camera()
@@ -2992,6 +3019,10 @@ func _rebuild_city_board(
 	_create_theme_park_world()
 	_create_tokens()
 	_create_dice()
+	# A new city restarts from its own centered framing; the orbit angle and
+	# zoom the player chose are intentionally kept.
+	camera_target = _default_camera_target()
+	_update_camera()
 	if embedded_mode:
 		_apply_embedded_ambient_policy()
 	_update_city_brand()
@@ -5989,7 +6020,7 @@ func _reset_rpg_view() -> void:
 
 
 func _reset_camera() -> void:
-	camera_target = CAMERA_DEFAULT_TARGET
+	camera_target = _default_camera_target()
 	camera_azimuth = deg_to_rad(43.0)
 	camera_elevation = deg_to_rad(58.0)
 	camera_uses_portrait_framing = _is_portrait_viewport()
@@ -6016,7 +6047,7 @@ func _on_viewport_size_changed() -> void:
 	# A target panned for the old aspect ratio can leave the board mostly
 	# off-screen after rotation. Recenter the target while retaining the chosen
 	# orbit angle, then fit the new responsive overview distance.
-	camera_target = CAMERA_DEFAULT_TARGET
+	camera_target = _default_camera_target()
 	camera_distance = _default_camera_distance()
 	_update_camera()
 
@@ -6039,6 +6070,12 @@ func _default_camera_distance() -> float:
 	if camera_uses_tablet_landscape_framing:
 		return CAMERA_TABLET_LANDSCAPE_DISTANCE
 	return CAMERA_DEFAULT_DISTANCE
+
+
+func _default_camera_target() -> Vector3:
+	if current_board_id == "usa_new_york":
+		return CAMERA_DEFAULT_TARGET
+	return CAMERA_DEFAULT_CITY_TARGET
 
 
 func _minimum_camera_distance() -> float:

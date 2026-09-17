@@ -1311,14 +1311,31 @@ func _test_graphics_quality_tiers(scene: Node) -> void:
 
 func _test_dice_slot_separation(scene: Node) -> void:
 	# Regression: independent per-die slot swaps could stack both dice on one
-	# platform slot. Every roll must settle the two dice apart.
+	# platform slot. Every roll must keep the two dice apart — checked every
+	# frame while the dice animate, because when both dice flew toward swapped
+	# slots they crossed mid-air at the shared hover height and briefly
+	# intersected, which a settle-only check never caught.
 	if scene.dice_nodes.size() < 2:
 		push_error("Dice separation check needs two dice.")
 		quit(1)
 		return
 	for _roll in 10:
 		scene._animate_3d_dice(1 + _roll % 6, 1 + (_roll * 3) % 6)
-		for _wait in 90:
+		# The full hop timeline (launch delay + rise + fall + two bounces)
+		# runs about 1.7s; wait up to ~3s of frames for a full settle.
+		var midflight_failed := false
+		var worst_separation := 99.0
+		for _wait in 200:
+			if scene.dice_nodes.size() >= 2:
+				var live_first := (scene.dice_nodes[0] as Node3D).position
+				var live_second := (scene.dice_nodes[1] as Node3D).position
+				var live_separation := Vector2(
+					live_first.x,
+					live_first.z
+				).distance_to(Vector2(live_second.x, live_second.z))
+				worst_separation = minf(worst_separation, live_separation)
+				if live_separation < 1.53:
+					midflight_failed = true
 			if scene.dice_tweens.is_empty():
 				break
 			await process_frame
@@ -1328,10 +1345,13 @@ func _test_dice_slot_separation(scene: Node) -> void:
 		var separation := Vector2(first.x, first.z).distance_to(
 			Vector2(second.x, second.z)
 		)
-		if separation < 1.0:
+		# 1.53 is the reach of a fully corner-on cube face (1.08 * sqrt(2));
+		# the widened slot spacing must keep more clearance than that even at
+		# the worst settled jitter, so no rotation can make them intersect.
+		if separation < 1.53 or midflight_failed:
 			push_error(
-				"Settled dice overlapped: separation %.2f on roll %d."
-				% [separation, _roll]
+				"Settled dice overlapped: separation %.2f (worst mid-flight %.2f) on roll %d."
+				% [separation, worst_separation, _roll]
 			)
 			quit(1)
 			return
@@ -1440,7 +1460,7 @@ func _test_mobile_camera_framing(scene: Node) -> void:
 		return
 	scene.camera_uses_portrait_framing = true
 	scene.camera_uses_tablet_landscape_framing = false
-	if not is_equal_approx(scene._default_camera_distance(), 24.0):
+	if not is_equal_approx(scene._default_camera_distance(), 20.5):
 		push_error("Portrait screens should start closer to the board.")
 		quit(1)
 		return
@@ -1467,12 +1487,12 @@ func _test_mobile_camera_framing(scene: Node) -> void:
 	print("MOBILE_CAMERA_FRAMING_OK close zoom ", scene.camera_distance)
 	scene.camera_uses_portrait_framing = false
 	scene.camera_uses_tablet_landscape_framing = true
-	if not is_equal_approx(scene._default_camera_distance(), 26.0):
+	if not is_equal_approx(scene._default_camera_distance(), 23.0):
 		push_error("Tablet landscape should use the closer release framing.")
 		quit(1)
 		return
 	scene.camera_uses_tablet_landscape_framing = false
-	if not is_equal_approx(scene._default_camera_distance(), 30.0):
+	if not is_equal_approx(scene._default_camera_distance(), 27.5):
 		push_error("Wide landscape should retain the full-board framing.")
 		quit(1)
 		return
