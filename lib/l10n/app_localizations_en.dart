@@ -1714,4 +1714,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get continuedOn2DBoard =>
       'The 3D board stopped responding. Continuing on the 2D board.';
+
+  @override
+  String activeEventsOverflow(int count) {
+    return '$count more active events';
+  }
 }

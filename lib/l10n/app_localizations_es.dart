@@ -1735,4 +1735,9 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get continuedOn2DBoard =>
       'El tablero 3D dejó de responder. La partida continúa en el tablero 2D.';
+
+  @override
+  String activeEventsOverflow(int count) {
+    return '$count eventos activos más';
+  }
 }

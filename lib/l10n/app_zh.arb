@@ -1,18 +1,15 @@
 {
   "@@locale": "zh",
-
   "appTitle": "M&M 地产大亨",
   "propertyTycoon": "地产大亨",
   "familyEdition": "家庭版",
   "worldCityEdition": "世界城市版",
   "chooseNextMove": "选择你的下一步",
-
   "newGame": "新游戏",
   "continueGame": "继续",
   "howToPlay": "游戏规则",
   "settings": "设置",
   "shop": "商店",
-
   "howManyPlayers": "几位玩家？",
   "gameSetupTitle": "创建你的游戏",
   "gameSetupSubtitle": "选择城市、玩家人数和移动方式。",
@@ -44,7 +41,6 @@
   "uniqueNameError": "每位玩家必须有不同的名字",
   "allPlayersNeedName": "所有玩家都必须有名字",
   "uniqueColorError": "每位玩家必须选择不同的颜色",
-
   "tutorialRollMove": "掷骰前进",
   "tutorialRollMoveDesc": "点击骰子来掷骰！\n在棋盘上移动。",
   "tutorialBuyProperties": "购买地产",
@@ -57,7 +53,6 @@
   "tutorialWinGameDesc": "最后有钱的玩家获胜！\n让你的朋友们破产吧！",
   "letsPlay": "开始游戏！",
   "gotIt": "知道了！",
-
   "startingCash": "初始资金",
   "gameOptions": "游戏选项",
   "soundAndLanguage": "声音与语言",
@@ -77,7 +72,6 @@
   "reset": "重置",
   "backToMenu": "返回菜单",
   "settingsReset": "设置已重置",
-
   "propertyAvailable": "这块地产可以购买！",
   "price": "价格",
   "baseRent": "基础租金",
@@ -87,7 +81,6 @@
   "notEnoughCash": "现金不足！",
   "skip": "跳过",
   "buyForAmount": "购买 ${amount}",
-
   "bankruptcy": "破产！",
   "payRent": "支付租金",
   "landedOnProperty": "你停在了 {propertyName}",
@@ -100,10 +93,8 @@
   "bankruptMessage": "你的现金不够了！你破产了。",
   "acceptBankruptcy": "接受破产",
   "payAmount": "支付 ${amount}",
-
   "payTaxToBank": "你必须向银行缴税",
   "taxAmount": "税额",
-
   "gameMenu": "游戏菜单",
   "backToGame": "返回游戏",
   "saveGame": "保存游戏",
@@ -115,7 +106,6 @@
   "quitToMenu": "退出到菜单",
   "quitGame": "退出游戏？",
   "confirm": "确认",
-
   "inJail": "在监狱中",
   "youAreInJail": "你被关进了监狱！",
   "bailAmount": "保释金",
@@ -123,7 +113,6 @@
   "mustPayFine": "你必须缴纳罚款才能出狱！",
   "stayInJail": "待在监狱",
   "payBail": "缴纳 ${amount}",
-
   "buildHotel": "建造酒店！",
   "buildHouse": "建造房屋！",
   "upgradeCost": "升级费用",
@@ -131,13 +120,11 @@
   "newRent": "新租金",
   "increase": "涨幅",
   "buildForAmount": "建造 ${amount}",
-
   "eventGoodNews": "好消息！",
   "eventBadNews": "坏消息！",
   "eventNewsFlash": "最新快讯！",
   "eventWildCard": "百搭卡！",
   "eventLastsRounds": "持续 {duration} 回合{suffix}",
-
   "auction": "拍卖",
   "propertyValue": "价值：${amount}",
   "currentBid": "当前出价：",
@@ -152,7 +139,6 @@
   "playerWinsAuction": "{name} 赢得了拍卖！",
   "noWinnerAuction": "无人中标——地产归还银行",
   "finalBid": "最终出价：${amount}",
-
   "proposeTrade": "发起交易",
   "tradeWith": "交易对象：",
   "youOffer": "你的报价（{name}）",
@@ -170,7 +156,6 @@
   "nothing": "无",
   "reject": "拒绝",
   "accept": "接受",
-
   "propertyManagement": "地产管理",
   "mortgage": "抵押",
   "unmortgage": "赎回",
@@ -182,7 +167,6 @@
   "costAmount": "费用：${amount}",
   "pay": "支付",
   "close": "关闭",
-
   "propertyLocation": "地产位置",
   "startingPoint": "起点",
   "justVisiting": "路过探望 / 在监狱中",
@@ -212,7 +196,6 @@
   "jailRules": "监狱规则",
   "goToJailRules": "入狱规则",
   "taxRules": "税收规则",
-
   "chance": "机会",
   "communityChest": "公益金",
   "chanceExcl": "机会！",
@@ -222,7 +205,6 @@
   "tapToContinue": "点击任意位置继续",
   "chestShort": "公益金",
   "ok": "好的",
-
   "freeHouseTitle": "免费房屋！",
   "choosePropertyToBuild": "选择一块地产来建造",
   "noUpgradeableProperties": "没有可以升级的地产！",
@@ -232,7 +214,6 @@
   "nextUpgrade": "下一级：{text}",
   "saveForLater": "留着以后用",
   "build": "建造！",
-
   "teleportTitle": "传送！",
   "chooseTileToTeleport": "选择任意格子进行传送",
   "all": "全部",
@@ -241,7 +222,6 @@
   "special": "特殊",
   "noTilesMatch": "没有匹配的格子",
   "teleportBtn": "传送！",
-
   "gameOver": "游戏结束！",
   "winner": "赢家",
   "finalStandings": "最终排名",
@@ -252,7 +232,6 @@
   "turns": "回合",
   "mainMenu": "主菜单",
   "playAgain": "再玩一局",
-
   "playerPortfolio": "{name} 的资产",
   "netWorth": "净资产：${amount}",
   "position": "位置",
@@ -271,38 +250,96 @@
   "colorYellow": "黄色",
   "colorGreen": "绿色",
   "colorDarkBlue": "深蓝色",
-
   "noneYet": "暂无",
   "noProperties": "没有地产",
   "humanPlayer": "真人",
   "showPlayerStatus": "显示玩家状态",
   "hidePlayerStatus": "隐藏玩家状态",
   "roundNumber": "第 {number} 回合",
-  "@roundNumber": { "placeholders": { "number": { "type": "int" } } },
+  "@roundNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "activePlayer": "当前",
   "waitingPlayer": "等待中",
   "aiThinking": "{name} 正在思考……",
-  "@aiThinking": { "placeholders": { "name": { "type": "String" } } },
+  "@aiThinking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "aiRolling": "{name} 正在掷骰子……",
-  "@aiRolling": { "placeholders": { "name": { "type": "String" } } },
+  "@aiRolling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "aiResolving": "{name} 正在处理回合……",
-  "@aiResolving": { "placeholders": { "name": { "type": "String" } } },
+  "@aiResolving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "playerRolling": "{name} 正在掷骰子……",
-  "@playerRolling": { "placeholders": { "name": { "type": "String" } } },
+  "@playerRolling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "playerMoving": "{name} 正在移动……",
-  "@playerMoving": { "placeholders": { "name": { "type": "String" } } },
+  "@playerMoving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "passToPlayer": "请交给 {name} • 轮到你了",
-  "@passToPlayer": { "placeholders": { "name": { "type": "String" } } },
+  "@passToPlayer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "resolvingPlayerTurn": "正在处理 {name} 的回合……",
-  "@resolvingPlayerTurn": { "placeholders": { "name": { "type": "String" } } },
+  "@resolvingPlayerTurn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "tileN": "格子 {position}",
-  "@tileN": { "placeholders": { "position": { "type": "int" } } },
-
+  "@tileN": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
   "rolling": "掷骰中……",
   "moving": "移动中……",
   "rollDice": "掷骰子",
   "rollForPlayer": "为{name}掷骰子",
-  "@rollForPlayer": { "placeholders": { "name": { "type": "String" } } },
+  "@rollForPlayer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "diceLabel": "骰子",
   "lastRollLabel": "上次点数",
   "cameraGestureHint": "单指：移动 • 双指：旋转 • 捏合：缩放",
@@ -314,12 +351,9 @@
   "pleaseWait": "请稍候…",
   "tap": "点击",
   "spin": "转动",
-
   "trade": "交易",
   "bank": "银行",
-
   "use": "使用",
-
   "gameSaved": "游戏保存成功！",
   "failedToSave": "保存游戏失败",
   "gameLoaded": "游戏已读取！第 {round} 回合",
@@ -332,13 +366,12 @@
   "paidTax": "缴纳了 ${amount} {taxName}",
   "goingToJail": "要去监狱了！",
   "goToJailTitle": "进入监狱！",
-  "goToJailMessage": "你停在了\u201c进入监狱\u201d格！\n直接进入监狱，不经过\u201c起点\u201d。",
+  "goToJailMessage": "你停在了“进入监狱”格！\n直接进入监狱，不经过“起点”。",
   "wonPrize": "转动了转盘，赢得了 {prize}！",
   "tradeAccepted": "交易已接受！",
   "tradeRejected": "交易被拒绝了。",
   "tradeCompleted": "交易完成！",
   "tradeRejectedShort": "交易被拒绝。",
-
   "spinPrizeCash50": "50美元",
   "spinPrizeCash50Desc": "赢得 $50！",
   "spinPrizeCash100": "100美元",
@@ -355,7 +388,6 @@
   "spinPrizeTeleportDesc": "移动到你选择的任意格子！",
   "spinPrizeJackpot": "大奖！",
   "spinPrizeJackpotDesc": "赢得 $500 大奖！",
-
   "luckySpinTitle": "幸运转盘！",
   "playerTurnToSpin": "轮到 {name} 转动转盘！",
   "spinInstructions": "点击中心来转动转盘！",
@@ -364,13 +396,12 @@
   "collectPrize": "领取奖品！",
   "orTapToSpin": "或者点击这里转动",
   "goodLuck": "祝你好运！",
-
   "eventMarketBoom": "市场繁荣！",
   "eventMarketBoomDesc": "所有地产价值上涨20%，持续3回合！",
   "eventTaxHoliday": "免税假期！",
   "eventTaxHolidayDesc": "本回合免收所有税费！",
   "eventGoldRush": "淘金热！",
-  "eventGoldRushDesc": "经过\u201c起点\u201d时可领取 $300 而不是 $200，持续3回合！",
+  "eventGoldRushDesc": "经过“起点”时可领取 $300 而不是 $200，持续3回合！",
   "eventPropertySale": "地产大甩卖！",
   "eventPropertySaleDesc": "所有无主地产打75折，持续2回合！",
   "eventLuckyDay": "幸运日！",
@@ -391,7 +422,6 @@
   "eventBankErrorDesc": "随机一位玩家获得 $200！",
   "eventMarketCrash": "股市崩盘！",
   "eventMarketCrashDesc": "地产价值剧烈波动！所有人都会受到随机影响！",
-
   "powerUpRentReducer": "租金减免",
   "powerUpRentReducerDesc": "本回合只需支付50%的租金",
   "powerUpSpeedBoost": "加速冲刺",
@@ -409,17 +439,15 @@
   "powerUpDoubleDice": "双倍骰子",
   "powerUpDoubleDiceDesc": "掷4颗骰子，选最好的2颗",
   "powerUpMoneyMagnet": "金钱磁铁",
-  "powerUpMoneyMagnetDesc": "经过\u201c起点\u201d时额外获得 $100（持续3回合）",
+  "powerUpMoneyMagnetDesc": "经过“起点”时额外获得 $100（持续3回合）",
   "powerUpMonopolyMaster": "垄断大师",
   "powerUpMonopolyMasterDesc": "在所有已拥有的地产上免费建造房屋！",
   "powerUpRarityCommon": "普通",
   "powerUpRarityUncommon": "稀有",
   "powerUpRarityRare": "珍贵",
   "powerUpRarityLegendary": "传说",
-
   "winnerTitle": "赢家！",
   "gameStats": "游戏统计",
-
   "shopTitle": "商店",
   "shopSubtitle": "解锁主题、棋子和更多！",
   "unlocked": "已解锁",
@@ -437,7 +465,6 @@
   "purchaseToUnlock": "付费解锁",
   "useThis": "使用此项",
   "owned": "已拥有",
-
   "familyLeaderboard": "家庭排行榜",
   "rankings": "排名",
   "records": "记录",
@@ -455,42 +482,83 @@
   "longestWinStreak": "最长连胜",
   "speedChampion": "速度冠军",
   "luckiestRoller": "最幸运掷骰",
-
   "inARow": "连续 {count} 次",
-  "@inARow": { "placeholders": { "count": { "type": "int" } } },
+  "@inARow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "turnsCount": "{count} 回合",
-  "@turnsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@turnsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "avgValue": "平均 {value}",
-  "@avgValue": { "placeholders": { "value": { "type": "String" } } },
-
+  "@avgValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "memoryMatchTitle": "记忆配对",
   "pairs": "配对数",
   "timeLabel": "时间",
   "secondsShort": "{seconds}秒",
-  "@secondsShort": { "placeholders": { "seconds": { "type": "int" } } },
+  "@secondsShort": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "greatJob": "做得好！",
   "timeUp": "时间到！",
   "pairsFound": "已找到配对：{found} / {total}",
   "@pairsFound": {
     "placeholders": {
-      "found": { "type": "int" },
-      "total": { "type": "int" }
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "scoreAmount": "得分：{score}",
-  "@scoreAmount": { "placeholders": { "score": { "type": "int" } } },
-
+  "@scoreAmount": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
   "quickTapAmazing": "太棒了！",
   "quickTapGreat": "很棒！",
   "quickTapGood": "不错",
   "quickTapTryAgain": "再试一次",
   "quickTapInstruction": "点击金币！避开炸弹！",
   "streakCount": "连击 {count} 次！",
-  "@streakCount": { "placeholders": { "count": { "type": "int" } } },
-
+  "@streakCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "itemSelected": "已选择 {name}！",
-  "@itemSelected": { "placeholders": { "name": { "type": "String" } } },
-
+  "@itemSelected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "deletePhotoTitle": "删除照片？",
   "deletePhotoMessage": "这张照片将从你的头像中移除。",
   "delete": "删除",
@@ -506,7 +574,6 @@
   "avatarCategoryMyPhotos": "我的照片",
   "select": "选择",
   "yourTurn": "轮到你了",
-
   "drawTopChestCard": "从宝箱牌堆顶部抽一张牌",
   "readToEveryone": "大声读给所有人听",
   "followInstructions": "按照卡牌上的说明执行",
@@ -546,18 +613,20 @@
   "aiBuiltOn": "在 {property} 上建造了{level}！",
   "@aiBuiltOn": {
     "placeholders": {
-      "level": { "type": "String" },
-      "property": { "type": "String" }
+      "level": {
+        "type": "String"
+      },
+      "property": {
+        "type": "String"
+      }
     }
   },
-
   "countryUSA": "美国",
   "countryUK": "英国",
   "countryFrance": "法国",
   "countryJapan": "日本",
   "countryChina": "中国",
   "countryMexico": "墨西哥",
-
   "chooseCity": "选择城市",
   "cityAtlanticCity": "大西洋城",
   "cityNewYork": "纽约",
@@ -585,5 +654,14 @@
   "godotPreparationTimedOut": "3D 棋盘准备时间过长。",
   "retry3DBoard": "重试 3D",
   "use2DBoard": "使用 2D 棋盘",
-  "continuedOn2DBoard": "3D 棋盘已停止响应，游戏将切换到 2D 棋盘继续。"
+  "continuedOn2DBoard": "3D 棋盘已停止响应，游戏将切换到 2D 棋盘继续。",
+  "activeEventsOverflow": "还有 {count} 个进行中的事件",
+  "@activeEventsOverflow": {
+    "type": "text",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

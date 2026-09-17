@@ -3199,6 +3199,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The 3D board stopped responding. Continuing on the 2D board.'**
   String get continuedOn2DBoard;
+
+  /// No description provided for @activeEventsOverflow.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more active events'**
+  String activeEventsOverflow(int count);
 }
 
 class _AppLocalizationsDelegate

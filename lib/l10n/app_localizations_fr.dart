@@ -1745,4 +1745,9 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get continuedOn2DBoard =>
       'Le plateau 3D ne répond plus. La partie continue sur le plateau 2D.';
+
+  @override
+  String activeEventsOverflow(int count) {
+    return '$count événements actifs de plus';
+  }
 }

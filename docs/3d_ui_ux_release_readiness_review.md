@@ -678,6 +678,8 @@ Do not treat landscape as a rotated portrait. The board, player rail, roll/actio
 
 Active event, achievement, card prompt, current-player pill, route state, and roll controller currently use independent fixed positions (`lib/screens/game_board_screen.dart:727-855`; `lib/widgets/achievements/achievement_notification.dart:338`). Define named safe slots per responsive mode and serialize high-priority overlays. Nothing should cover the active pawn, dice, destination, or primary action.
 
+**Remediation (board overlay slots, in code):** `BoardOverlaySlots` is now the single source of truth for board chrome placement — the left edge serializes one column (gesture hint at the base, active-event indicators above it capped at two inline with a localized overflow chip, action-critical card-deck prompt above those), the right edge stays reserved for the roll control, and compact landscape tightens margins instead of overflowing. Covered by dedicated slot-math and rendering tests. Modal serialization inside dialogs (the modal-queue half of this finding) and achievement-notification routing remain open.
+
 ### UI-04 — P2 — scope immersive mode to gameplay
 
 Immersive sticky is app-wide (`lib/main.dart:15`). Menu/setup/settings should use predictable system chrome/safe-area behavior; enter immersive only for the board and reliably restore it on every exit/error/background transition.

@@ -20,6 +20,7 @@ import '../services/game_content_loader.dart';
 import '../integration/godot_board_contract.dart';
 import '../integration/godot_board_controller.dart';
 import '../widgets/achievements/achievement_notification.dart';
+import '../widgets/board/board_overlay_slots.dart';
 import '../widgets/board/game_board.dart';
 import '../widgets/board/godot_board_host.dart';
 import '../widgets/player/game_status_rail.dart';
@@ -1120,37 +1121,73 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                     onTap: _canUseStableInteractions ? _showPowerUpHand : null,
                   ),
                 ),
-              // Phase 3: Active event indicators. The 3D experience keeps the
-              // bottom-left slot reserved for the gesture hint, so badges
-              // stack above it instead of colliding (UI-03 scoped fix).
+              // UI-03: active-event indicators render in the serialized
+              // bottom-left column — above the gesture hint in 3D, capped at
+              // two inline indicators with an overflow chip for the rest.
               if (gameState.activeEvents.isNotEmpty)
-                Positioned(
-                  bottom: _isShowing3DExperience ? 64 : 8,
-                  left: 8,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: gameState.activeEvents
-                        .where((e) => !e.isExpired)
-                        .map(
-                          (event) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: ActiveEventIndicator(activeEvent: event),
+                Builder(
+                  builder: (context) {
+                    final mediaSize = MediaQuery.sizeOf(context);
+                    final activeEvents = gameState.activeEvents
+                        .where((event) => !event.isExpired)
+                        .toList();
+                    final slots = BoardOverlaySlots.fromConstraints(
+                      size: mediaSize,
+                      showsGestureHint:
+                          _show3DBoard &&
+                          mediaSize.width >=
+                              BoardOverlaySlots.compact3DBreakpoint,
+                      visibleEventCount: activeEvents.length,
+                      hasCardPrompt: false,
+                    );
+                    final inlineEvents = slots.serializeEvents(activeEvents);
+                    final hiddenCount =
+                        activeEvents.length - inlineEvents.length;
+                    return Positioned(
+                      bottom: slots.eventStackBottom,
+                      left: 8,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (hiddenCount > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: _buildEventOverflowChip(hiddenCount),
+                            ),
+                          ...inlineEvents.map(
+                            (event) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: ActiveEventIndicator(activeEvent: event),
+                            ),
                           ),
-                        )
-                        .toList(),
-                  ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               if (!_show3DBoard && _waitingForCardPick)
-                Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: MediaQuery.sizeOf(context).width < 700 ? 76 : 14,
-                  child: Center(
-                    child: KeyedSubtree(
-                      key: const Key('card-pick-prompt'),
-                      child: _build3DCardDeckPrompt(),
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final slots = BoardOverlaySlots.fromConstraints(
+                      size: MediaQuery.sizeOf(context),
+                      showsGestureHint: false,
+                      visibleEventCount: gameState.activeEvents
+                          .where((event) => !event.isExpired)
+                          .length,
+                      hasCardPrompt: true,
+                    );
+                    return Positioned(
+                      left: 12,
+                      right: 12,
+                      bottom: slots.cardPromptBottom,
+                      child: Center(
+                        child: KeyedSubtree(
+                          key: const Key('card-pick-prompt'),
+                          child: _build3DCardDeckPrompt(),
+                        ),
+                      ),
+                    );
+                  },
                 ),
             ],
           ),
@@ -1242,6 +1279,15 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   Widget _build3DBoardLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final slots = BoardOverlaySlots.fromConstraints(
+          size: constraints.biggest,
+          showsGestureHint: constraints.maxWidth >=
+              BoardOverlaySlots.compact3DBreakpoint,
+          visibleEventCount: gameState.activeEvents
+              .where((event) => !event.isExpired)
+              .length,
+          hasCardPrompt: _waitingForCardPick,
+        );
         return Stack(
           children: [
             Positioned.fill(
@@ -1266,12 +1312,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                 ),
               ),
             Positioned(
-              top: 12,
+              top: slots.actionBarTop,
               left: 12,
               child: _build3DActionBar(compact: constraints.maxWidth < 700),
             ),
             Positioned(
-              top: 64,
+              top: slots.statusRailTop,
               left: 8,
               right: 8,
               child: Center(
@@ -1283,19 +1329,23 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                 ),
               ),
             ),
-            if (constraints.maxWidth >= 700)
-              Positioned(left: 14, bottom: 16, child: _build3DGestureHint()),
+            if (slots.showsGestureHint)
+              Positioned(
+                left: 14,
+                bottom: slots.gestureHintBottom,
+                child: _build3DGestureHint(),
+              ),
             if (_waitingForCardPick)
               Positioned(
                 left: 12,
                 right: 12,
-                bottom: 106,
+                bottom: slots.cardPromptBottom,
                 child: Center(child: _build3DCardDeckPrompt()),
               ),
             Positioned(
               left: 12,
               right: 12,
-              bottom: 14,
+              bottom: slots.rollControlBottom,
               child: Align(
                 alignment: Alignment.bottomRight,
                 child: _build3DRollControl(),
@@ -1705,6 +1755,26 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           ),
         );
       },
+    );
+  }
+
+  /// Compact summary chip for serialized-out active events (UI-03): keeps the
+  /// bottom-left column bounded instead of growing into other slots.
+  Widget _buildEventOverflowChip(int hiddenCount) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        AppLocalizations.of(context)!.activeEventsOverflow(hiddenCount),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 

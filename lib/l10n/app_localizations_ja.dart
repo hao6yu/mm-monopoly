@@ -1678,4 +1678,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get continuedOn2DBoard => '3Dボードが応答しないため、2Dボードでゲームを続けます。';
+
+  @override
+  String activeEventsOverflow(int count) {
+    return '他 $count 件のアクティブイベント';
+  }
 }

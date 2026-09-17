@@ -1677,4 +1677,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get continuedOn2DBoard => '3D 棋盘已停止响应，游戏将切换到 2D 棋盘继续。';
+
+  @override
+  String activeEventsOverflow(int count) {
+    return '还有 $count 个进行中的事件';
+  }
 }

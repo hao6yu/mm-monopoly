@@ -1,18 +1,15 @@
 {
   "@@locale": "es",
-
   "appTitle": "M&M Magnate Inmobiliario",
   "propertyTycoon": "MAGNATE INMOBILIARIO",
   "familyEdition": "EDICIÓN FAMILIAR",
   "worldCityEdition": "EDICIÓN CIUDADES DEL MUNDO",
   "chooseNextMove": "Elige tu próximo movimiento",
-
   "newGame": "Nueva Partida",
   "continueGame": "Continuar",
   "howToPlay": "Cómo Jugar",
   "settings": "Ajustes",
   "shop": "Tienda",
-
   "howManyPlayers": "¿Cuántos Jugadores?",
   "gameSetupTitle": "Crea tu partida",
   "gameSetupSubtitle": "Elige una ciudad, el número de jugadores y el estilo de movimiento.",
@@ -44,7 +41,6 @@
   "uniqueNameError": "Cada jugador debe tener un nombre único",
   "allPlayersNeedName": "Todos los jugadores deben tener un nombre",
   "uniqueColorError": "Cada jugador debe tener un color único",
-
   "tutorialRollMove": "Lanza y Mueve",
   "tutorialRollMoveDesc": "¡Toca los dados para lanzar!\nMuévete por el tablero.",
   "tutorialBuyProperties": "Compra Propiedades",
@@ -57,7 +53,6 @@
   "tutorialWinGameDesc": "¡El último con dinero gana!\n¡Deja en bancarrota a tus amigos!",
   "letsPlay": "¡A Jugar!",
   "gotIt": "¡Entendido!",
-
   "startingCash": "Dinero Inicial",
   "gameOptions": "Opciones de Juego",
   "soundAndLanguage": "Sonido e Idioma",
@@ -77,7 +72,6 @@
   "reset": "Restablecer",
   "backToMenu": "Volver al Menú",
   "settingsReset": "Ajustes restablecidos",
-
   "propertyAvailable": "¡Esta propiedad está disponible!",
   "price": "Precio",
   "baseRent": "Alquiler Base",
@@ -87,7 +81,6 @@
   "notEnoughCash": "¡No tienes suficiente dinero!",
   "skip": "Pasar",
   "buyForAmount": "Comprar ${amount}",
-
   "bankruptcy": "¡BANCARROTA!",
   "payRent": "Pagar Alquiler",
   "landedOnProperty": "Caíste en {propertyName}",
@@ -100,10 +93,8 @@
   "bankruptMessage": "¡No tienes suficiente dinero! Estás en bancarrota.",
   "acceptBankruptcy": "Aceptar Bancarrota",
   "payAmount": "Pagar ${amount}",
-
   "payTaxToBank": "Debes pagar impuestos al banco",
   "taxAmount": "Monto del Impuesto",
-
   "gameMenu": "Menú del Juego",
   "backToGame": "Volver al Juego",
   "saveGame": "Guardar Partida",
@@ -115,7 +106,6 @@
   "quitToMenu": "Salir al Menú",
   "quitGame": "¿Salir del Juego?",
   "confirm": "Confirmar",
-
   "inJail": "EN LA CÁRCEL",
   "youAreInJail": "¡Estás en la cárcel!",
   "bailAmount": "Monto de la Fianza",
@@ -123,7 +113,6 @@
   "mustPayFine": "¡Debes pagar la multa para salir!",
   "stayInJail": "Quedarse en la Cárcel",
   "payBail": "Pagar ${amount}",
-
   "buildHotel": "¡Construye un Hotel!",
   "buildHouse": "¡Construye una Casa!",
   "upgradeCost": "Costo de Mejora",
@@ -131,13 +120,11 @@
   "newRent": "Nuevo Alquiler",
   "increase": "Aumento",
   "buildForAmount": "Construir ${amount}",
-
   "eventGoodNews": "¡Buenas Noticias!",
   "eventBadNews": "¡Malas Noticias!",
   "eventNewsFlash": "¡Noticia de Última Hora!",
   "eventWildCard": "¡Comodín!",
   "eventLastsRounds": "Dura {duration} ronda{suffix}",
-
   "auction": "SUBASTA",
   "propertyValue": "Valor: ${amount}",
   "currentBid": "Oferta Actual:",
@@ -152,7 +139,6 @@
   "playerWinsAuction": "¡{name} gana la subasta!",
   "noWinnerAuction": "Sin ganador - la propiedad vuelve al banco",
   "finalBid": "Oferta final: ${amount}",
-
   "proposeTrade": "Proponer un Intercambio",
   "tradeWith": "Intercambiar con:",
   "youOffer": "Tú Ofreces ({name})",
@@ -170,7 +156,6 @@
   "nothing": "Nada",
   "reject": "Rechazar",
   "accept": "Aceptar",
-
   "propertyManagement": "Gestión de Propiedades",
   "mortgage": "Hipotecar",
   "unmortgage": "Deshipotecar",
@@ -182,7 +167,6 @@
   "costAmount": "Costo: ${amount}",
   "pay": "Pagar",
   "close": "Cerrar",
-
   "propertyLocation": "Ubicación de la Propiedad",
   "startingPoint": "Punto de Partida",
   "justVisiting": "De Visita / En la Cárcel",
@@ -212,7 +196,6 @@
   "jailRules": "Reglas de la Cárcel",
   "goToJailRules": "Reglas de Ir a la Cárcel",
   "taxRules": "Reglas de Impuestos",
-
   "chance": "SUERTE",
   "communityChest": "ARCA COMUNAL",
   "chanceExcl": "¡SUERTE!",
@@ -222,7 +205,6 @@
   "tapToContinue": "Toca en cualquier lugar para continuar",
   "chestShort": "ARCA",
   "ok": "Aceptar",
-
   "freeHouseTitle": "¡CASA GRATIS!",
   "choosePropertyToBuild": "Elige una propiedad para construir",
   "noUpgradeableProperties": "¡No hay propiedades disponibles para mejorar!",
@@ -232,7 +214,6 @@
   "nextUpgrade": "Siguiente: {text}",
   "saveForLater": "Guardar para Después",
   "build": "¡Construir!",
-
   "teleportTitle": "¡TELETRANSPORTE!",
   "chooseTileToTeleport": "Elige cualquier casilla para teletransportarte",
   "all": "Todas",
@@ -241,7 +222,6 @@
   "special": "Especiales",
   "noTilesMatch": "Ninguna casilla coincide con este filtro",
   "teleportBtn": "¡Teletransportar!",
-
   "gameOver": "¡FIN DEL JUEGO!",
   "winner": "Ganador",
   "finalStandings": "Clasificación Final",
@@ -252,7 +232,6 @@
   "turns": "Turnos",
   "mainMenu": "Menú Principal",
   "playAgain": "Jugar de Nuevo",
-
   "playerPortfolio": "Portafolio de {name}",
   "netWorth": "Patrimonio: ${amount}",
   "position": "Posición",
@@ -271,38 +250,96 @@
   "colorYellow": "Amarillo",
   "colorGreen": "Verde",
   "colorDarkBlue": "Azul Oscuro",
-
   "noneYet": "Ninguno aún",
   "noProperties": "Sin propiedades",
   "humanPlayer": "Persona",
   "showPlayerStatus": "Mostrar estado de los jugadores",
   "hidePlayerStatus": "Ocultar estado de los jugadores",
   "roundNumber": "Ronda {number}",
-  "@roundNumber": { "placeholders": { "number": { "type": "int" } } },
+  "@roundNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "activePlayer": "En turno",
   "waitingPlayer": "En espera",
   "aiThinking": "{name} está pensando…",
-  "@aiThinking": { "placeholders": { "name": { "type": "String" } } },
+  "@aiThinking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "aiRolling": "{name} está lanzando los dados…",
-  "@aiRolling": { "placeholders": { "name": { "type": "String" } } },
+  "@aiRolling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "aiResolving": "{name} está resolviendo…",
-  "@aiResolving": { "placeholders": { "name": { "type": "String" } } },
+  "@aiResolving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "playerRolling": "{name} está lanzando los dados…",
-  "@playerRolling": { "placeholders": { "name": { "type": "String" } } },
+  "@playerRolling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "playerMoving": "{name} se está moviendo…",
-  "@playerMoving": { "placeholders": { "name": { "type": "String" } } },
+  "@playerMoving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "passToPlayer": "Pásale el dispositivo a {name} • Tu turno",
-  "@passToPlayer": { "placeholders": { "name": { "type": "String" } } },
+  "@passToPlayer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "resolvingPlayerTurn": "Resolviendo el turno de {name}…",
-  "@resolvingPlayerTurn": { "placeholders": { "name": { "type": "String" } } },
+  "@resolvingPlayerTurn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "tileN": "Casilla {position}",
-  "@tileN": { "placeholders": { "position": { "type": "int" } } },
-
+  "@tileN": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
   "rolling": "LANZANDO...",
   "moving": "MOVIENDO...",
   "rollDice": "LANZAR DADOS",
   "rollForPlayer": "Tirar por {name}",
-  "@rollForPlayer": { "placeholders": { "name": { "type": "String" } } },
+  "@rollForPlayer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "diceLabel": "DADOS",
   "lastRollLabel": "ÚLTIMA TIRADA",
   "cameraGestureHint": "1 dedo: mover • 2 dedos: girar • Pellizca: zoom",
@@ -314,12 +351,9 @@
   "pleaseWait": "Espera…",
   "tap": "TOCA",
   "spin": "GIRA",
-
   "trade": "Intercambio",
   "bank": "Banco",
-
   "use": "USAR",
-
   "gameSaved": "¡Partida guardada con éxito!",
   "failedToSave": "Error al guardar la partida",
   "gameLoaded": "¡Partida cargada! Ronda {round}",
@@ -338,7 +372,6 @@
   "tradeRejected": "Intercambio rechazado.",
   "tradeCompleted": "¡Intercambio completado!",
   "tradeRejectedShort": "Intercambio rechazado.",
-
   "spinPrizeCash50": "$50 efectivo",
   "spinPrizeCash50Desc": "¡Gana $50!",
   "spinPrizeCash100": "$100 efectivo",
@@ -355,7 +388,6 @@
   "spinPrizeTeleportDesc": "¡Muévete a cualquier casilla que elijas!",
   "spinPrizeJackpot": "¡PREMIO MAYOR!",
   "spinPrizeJackpotDesc": "¡Gana el premio mayor de $500!",
-
   "luckySpinTitle": "¡GIRO DE LA SUERTE!",
   "playerTurnToSpin": "¡Turno de {name} para girar!",
   "spinInstructions": "¡Toca el centro para girar la ruleta!",
@@ -364,7 +396,6 @@
   "collectPrize": "¡Recoger Premio!",
   "orTapToSpin": "O toca aquí para girar",
   "goodLuck": "¡Buena suerte!",
-
   "eventMarketBoom": "¡Auge del Mercado!",
   "eventMarketBoomDesc": "¡Todas las propiedades valen 20% más por 3 rondas!",
   "eventTaxHoliday": "¡Vacaciones Fiscales!",
@@ -391,7 +422,6 @@
   "eventBankErrorDesc": "¡Un jugador al azar recibe $200!",
   "eventMarketCrash": "¡Caída del Mercado!",
   "eventMarketCrashDesc": "¡Los valores de las propiedades fluctúan como locos! ¡Efectos al azar para todos!",
-
   "powerUpRentReducer": "Reductor de Alquiler",
   "powerUpRentReducerDesc": "Paga solo el 50% del alquiler este turno",
   "powerUpSpeedBoost": "Turbo de Velocidad",
@@ -416,10 +446,8 @@
   "powerUpRarityUncommon": "Poco Común",
   "powerUpRarityRare": "Rara",
   "powerUpRarityLegendary": "Legendaria",
-
   "winnerTitle": "¡GANADOR!",
   "gameStats": "Estadísticas del Juego",
-
   "shopTitle": "Tienda",
   "shopSubtitle": "¡Desbloquea temas, fichas y más!",
   "unlocked": "Desbloqueado",
@@ -437,7 +465,6 @@
   "purchaseToUnlock": "Compra para desbloquear",
   "useThis": "Usar Este",
   "owned": "Adquirido",
-
   "familyLeaderboard": "Tabla de Clasificación Familiar",
   "rankings": "Clasificaciones",
   "records": "Récords",
@@ -455,42 +482,83 @@
   "longestWinStreak": "Mejor Racha de Victorias",
   "speedChampion": "Campeón de Velocidad",
   "luckiestRoller": "El Más Suertudo",
-
   "inARow": "{count} seguidos",
-  "@inARow": { "placeholders": { "count": { "type": "int" } } },
+  "@inARow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "turnsCount": "{count} turnos",
-  "@turnsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@turnsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "avgValue": "{value} de prom.",
-  "@avgValue": { "placeholders": { "value": { "type": "String" } } },
-
+  "@avgValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "memoryMatchTitle": "Juego de memoria",
   "pairs": "Parejas",
   "timeLabel": "Tiempo",
   "secondsShort": "{seconds} seg",
-  "@secondsShort": { "placeholders": { "seconds": { "type": "int" } } },
+  "@secondsShort": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "greatJob": "¡Gran trabajo!",
   "timeUp": "¡Se acabó el tiempo!",
   "pairsFound": "Parejas encontradas: {found} / {total}",
   "@pairsFound": {
     "placeholders": {
-      "found": { "type": "int" },
-      "total": { "type": "int" }
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "scoreAmount": "Puntuación: {score}",
-  "@scoreAmount": { "placeholders": { "score": { "type": "int" } } },
-
+  "@scoreAmount": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
   "quickTapAmazing": "¡INCREÍBLE!",
   "quickTapGreat": "¡Genial!",
   "quickTapGood": "Bien",
   "quickTapTryAgain": "Inténtalo de nuevo",
   "quickTapInstruction": "¡Toca las monedas! ¡Evita las bombas!",
   "streakCount": "¡Racha de {count}!",
-  "@streakCount": { "placeholders": { "count": { "type": "int" } } },
-
+  "@streakCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "itemSelected": "¡{name} seleccionado!",
-  "@itemSelected": { "placeholders": { "name": { "type": "String" } } },
-
+  "@itemSelected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "deletePhotoTitle": "¿Eliminar foto?",
   "deletePhotoMessage": "Esta foto se eliminará de tus avatares.",
   "delete": "Eliminar",
@@ -506,7 +574,6 @@
   "avatarCategoryMyPhotos": "Mis fotos",
   "select": "Seleccionar",
   "yourTurn": "TU TURNO",
-
   "drawTopChestCard": "Toma la carta superior del cofre",
   "readToEveryone": "Léela en voz alta para todos",
   "followInstructions": "Sigue las instrucciones de la carta",
@@ -546,18 +613,20 @@
   "aiBuiltOn": "¡Construyó un {level} en {property}!",
   "@aiBuiltOn": {
     "placeholders": {
-      "level": { "type": "String" },
-      "property": { "type": "String" }
+      "level": {
+        "type": "String"
+      },
+      "property": {
+        "type": "String"
+      }
     }
   },
-
   "countryUSA": "Estados Unidos",
   "countryUK": "Reino Unido",
   "countryFrance": "Francia",
   "countryJapan": "Japón",
   "countryChina": "República Popular China",
   "countryMexico": "México",
-
   "chooseCity": "Elige Ciudad",
   "cityAtlanticCity": "Atlantic City",
   "cityNewYork": "Nueva York",
@@ -585,5 +654,14 @@
   "godotPreparationTimedOut": "El tablero 3D tardó demasiado en preparar esta partida.",
   "retry3DBoard": "Reintentar en 3D",
   "use2DBoard": "Usar tablero 2D",
-  "continuedOn2DBoard": "El tablero 3D dejó de responder. La partida continúa en el tablero 2D."
+  "continuedOn2DBoard": "El tablero 3D dejó de responder. La partida continúa en el tablero 2D.",
+  "activeEventsOverflow": "{count} eventos activos más",
+  "@activeEventsOverflow": {
+    "type": "text",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

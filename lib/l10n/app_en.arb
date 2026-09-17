@@ -1,18 +1,15 @@
 {
   "@@locale": "en",
-
   "appTitle": "M&M Property Tycoon",
   "propertyTycoon": "PROPERTY TYCOON",
   "familyEdition": "FAMILY EDITION",
   "worldCityEdition": "WORLD CITY EDITION",
   "chooseNextMove": "Choose your next move",
-
   "newGame": "New Game",
   "continueGame": "Continue",
   "howToPlay": "How to Play",
   "settings": "Settings",
   "shop": "Shop",
-
   "howManyPlayers": "How Many Players?",
   "gameSetupTitle": "Create Your Game",
   "gameSetupSubtitle": "Choose a city, game size, and movement style.",
@@ -37,7 +34,13 @@
   "preparingGame": "Preparing game…",
   "failedToStartGame": "We couldn't start the game. Please try again.",
   "playerN": "Player {number}",
-  "@playerN": { "placeholders": { "number": { "type": "int" } } },
+  "@playerN": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "you": "You",
   "ai": "AI",
   "name": "Name",
@@ -45,7 +48,6 @@
   "uniqueNameError": "Each player must have a unique name",
   "allPlayersNeedName": "All players must have a name",
   "uniqueColorError": "Each player must have a unique color",
-
   "tutorialRollMove": "Roll & Move",
   "tutorialRollMoveDesc": "Tap the dice to roll!\nMove around the board.",
   "tutorialBuyProperties": "Buy Properties",
@@ -58,7 +60,6 @@
   "tutorialWinGameDesc": "Last player with money wins!\nBankrupt your friends!",
   "letsPlay": "Let's Play!",
   "gotIt": "Got it!",
-
   "startingCash": "Starting Cash",
   "gameOptions": "Game Options",
   "soundAndLanguage": "Sound & Language",
@@ -78,7 +79,6 @@
   "reset": "Reset",
   "backToMenu": "Back to Menu",
   "settingsReset": "Settings reset",
-
   "propertyAvailable": "This property is available!",
   "price": "Price",
   "baseRent": "Base Rent",
@@ -88,28 +88,64 @@
   "notEnoughCash": "Not enough cash!",
   "skip": "Skip",
   "buyForAmount": "Buy ${amount}",
-  "@buyForAmount": { "placeholders": { "amount": { "type": "String" } } },
-
+  "@buyForAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "bankruptcy": "BANKRUPTCY!",
   "payRent": "Pay Rent",
   "landedOnProperty": "You landed on {propertyName}",
-  "@landedOnProperty": { "placeholders": { "propertyName": { "type": "String" } } },
+  "@landedOnProperty": {
+    "placeholders": {
+      "propertyName": {
+        "type": "String"
+      }
+    }
+  },
   "ownsThisProperty": "owns this property",
   "rentDue": "Rent Due",
   "diceRentCalc": "Dice: {diceRoll} × {multiplier} = ${amount}",
-  "@diceRentCalc": { "placeholders": { "diceRoll": { "type": "int" }, "multiplier": { "type": "int" }, "amount": { "type": "int" } } },
+  "@diceRentCalc": {
+    "placeholders": {
+      "diceRoll": {
+        "type": "int"
+      },
+      "multiplier": {
+        "type": "int"
+      },
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "ownerHasBothUtilities": "(Owner has both utilities)",
   "ownerHasOneUtility": "(Owner has 1 utility)",
   "ownerHasRailroads": "Owner has {count} railroad{suffix}",
-  "@ownerHasRailroads": { "placeholders": { "count": { "type": "int" }, "suffix": { "type": "String" } } },
+  "@ownerHasRailroads": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "suffix": {
+        "type": "String"
+      }
+    }
+  },
   "bankruptMessage": "You don't have enough cash! You are bankrupt.",
   "acceptBankruptcy": "Accept Bankruptcy",
   "payAmount": "Pay ${amount}",
-  "@payAmount": { "placeholders": { "amount": { "type": "int" } } },
-
+  "@payAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "payTaxToBank": "You must pay tax to the bank",
   "taxAmount": "Tax Amount",
-
   "gameMenu": "Game Menu",
   "backToGame": "Back to Game",
   "saveGame": "Save Game",
@@ -121,17 +157,30 @@
   "quitToMenu": "Quit to Menu",
   "quitGame": "Quit Game?",
   "confirm": "Confirm",
-
   "inJail": "IN JAIL",
   "youAreInJail": "You are in jail!",
   "bailAmount": "Bail Amount",
   "stayInJailTurns": "Or stay in jail for {turns} more turn{suffix}.",
-  "@stayInJailTurns": { "placeholders": { "turns": { "type": "int" }, "suffix": { "type": "String" } } },
+  "@stayInJailTurns": {
+    "placeholders": {
+      "turns": {
+        "type": "int"
+      },
+      "suffix": {
+        "type": "String"
+      }
+    }
+  },
   "mustPayFine": "You must pay the fine to get out!",
   "stayInJail": "Stay in Jail",
   "payBail": "Pay ${amount}",
-  "@payBail": { "placeholders": { "amount": { "type": "int" } } },
-
+  "@payBail": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "buildHotel": "Build a Hotel!",
   "buildHouse": "Build a House!",
   "upgradeCost": "Upgrade Cost",
@@ -139,72 +188,154 @@
   "newRent": "New Rent",
   "increase": "Increase",
   "buildForAmount": "Build ${amount}",
-  "@buildForAmount": { "placeholders": { "amount": { "type": "int" } } },
-
+  "@buildForAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "eventGoodNews": "Good News!",
   "eventBadNews": "Bad News!",
   "eventNewsFlash": "News Flash!",
   "eventWildCard": "Wild Card!",
   "eventLastsRounds": "Lasts {duration} round{suffix}",
-  "@eventLastsRounds": { "placeholders": { "duration": { "type": "int" }, "suffix": { "type": "String" } } },
-
+  "@eventLastsRounds": {
+    "placeholders": {
+      "duration": {
+        "type": "int"
+      },
+      "suffix": {
+        "type": "String"
+      }
+    }
+  },
   "auction": "AUCTION",
   "propertyValue": "Value: ${amount}",
-  "@propertyValue": { "placeholders": { "amount": { "type": "int" } } },
+  "@propertyValue": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "currentBid": "Current Bid:",
   "noBidsYet": "No bids yet",
   "leadingBidder": "Leading Bidder:",
   "bidders": "Bidders:",
   "playerTurn": "{name}'s Turn",
-  "@playerTurn": { "placeholders": { "name": { "type": "String" } } },
+  "@playerTurn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "notEnoughCashToBid": "Not enough cash to bid",
   "pass": "Pass",
   "bidAmount": "Bid ${amount}",
-  "@bidAmount": { "placeholders": { "amount": { "type": "int" } } },
+  "@bidAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "notEnoughCashShort": "Not enough cash",
   "playerWinsAuction": "{name} wins the auction!",
-  "@playerWinsAuction": { "placeholders": { "name": { "type": "String" } } },
+  "@playerWinsAuction": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "noWinnerAuction": "No winner - property returns to bank",
   "finalBid": "Final bid: ${amount}",
-  "@finalBid": { "placeholders": { "amount": { "type": "int" } } },
-
+  "@finalBid": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "proposeTrade": "Propose a Trade",
   "tradeWith": "Trade with:",
   "youOffer": "You Offer ({name})",
-  "@youOffer": { "placeholders": { "name": { "type": "String" } } },
+  "@youOffer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "cash": "Cash",
   "cashLabel": "Cash:",
   "properties": "Properties",
   "propertiesLabel": "Properties:",
   "noPropertiesToOffer": "No properties to offer",
   "youRequest": "You Request (from {name})",
-  "@youRequest": { "placeholders": { "name": { "type": "String" } } },
+  "@youRequest": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "noPropertiesAvailable": "No properties available",
   "proposeTradeBtn": "Propose Trade",
   "wantsToTrade": "{name} wants to trade!",
-  "@wantsToTrade": { "placeholders": { "name": { "type": "String" } } },
+  "@wantsToTrade": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "youReceive": "You Receive:",
   "youGive": "You Give:",
   "nothing": "Nothing",
   "reject": "Reject",
   "accept": "Accept",
-
   "propertyManagement": "Property Management",
   "mortgage": "Mortgage",
   "unmortgage": "Unmortgage",
   "mortgageCount": "Mortgage ({count})",
-  "@mortgageCount": { "placeholders": { "count": { "type": "int" } } },
+  "@mortgageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "unmortgageCount": "Unmortgage ({count})",
-  "@unmortgageCount": { "placeholders": { "count": { "type": "int" } } },
+  "@unmortgageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "noMortgageableProperties": "No properties available to mortgage.\nProperties with houses must sell houses first.",
   "noMortgagedProperties": "No mortgaged properties.",
   "receiveAmount": "Receive: ${amount}",
-  "@receiveAmount": { "placeholders": { "amount": { "type": "int" } } },
+  "@receiveAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "costAmount": "Cost: ${amount}",
-  "@costAmount": { "placeholders": { "amount": { "type": "int" } } },
+  "@costAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "pay": "Pay",
   "close": "Close",
-
   "propertyLocation": "Property Location",
   "startingPoint": "Starting Point",
   "justVisiting": "Just Visiting / In Jail",
@@ -218,7 +349,13 @@
   "ownAllPropertiesTip": "Own all properties in a color group to charge double rent!",
   "buildHousesEvenlyTip": "Build houses evenly across your properties for maximum profit.",
   "hotelsMaxRentTip": "Hotels generate the highest rent - up to ${amount}!",
-  "@hotelsMaxRentTip": { "placeholders": { "amount": { "type": "int" } } },
+  "@hotelsMaxRentTip": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "railroad1Tip": "Own 1 railroad: $25 rent",
   "railroad2Tip": "Own 2 railroads: $50 rent",
   "railroad3Tip": "Own 3 railroads: $100 rent",
@@ -274,11 +411,14 @@
   "aiBuiltOn": "Built a {level} on {property}!",
   "@aiBuiltOn": {
     "placeholders": {
-      "level": { "type": "String" },
-      "property": { "type": "String" }
+      "level": {
+        "type": "String"
+      },
+      "property": {
+        "type": "String"
+      }
     }
   },
-
   "chance": "CHANCE",
   "communityChest": "COMM CHEST",
   "chanceExcl": "CHANCE!",
@@ -288,19 +428,29 @@
   "tapToContinue": "Tap anywhere to continue",
   "chestShort": "COMM CHEST",
   "ok": "OK",
-
   "freeHouseTitle": "FREE HOUSE!",
   "choosePropertyToBuild": "Choose a property to build on",
   "noUpgradeableProperties": "No properties available to upgrade!",
   "buyPropertiesComeBack": "Buy properties and come back later.",
   "houseN": "House {level}",
-  "@houseN": { "placeholders": { "level": { "type": "int" } } },
+  "@houseN": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
   "hotel": "Hotel",
   "nextUpgrade": "Next: {text}",
-  "@nextUpgrade": { "placeholders": { "text": { "type": "String" } } },
+  "@nextUpgrade": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
   "saveForLater": "Save for Later",
   "build": "Build!",
-
   "teleportTitle": "TELEPORT!",
   "chooseTileToTeleport": "Choose any tile to teleport to",
   "all": "All",
@@ -309,28 +459,50 @@
   "special": "Special",
   "noTilesMatch": "No tiles match this filter",
   "teleportBtn": "Teleport!",
-
   "gameOver": "GAME OVER!",
   "winner": "Winner",
   "finalStandings": "Final Standings",
   "rankN": "#{rank}",
-  "@rankN": { "placeholders": { "rank": { "type": "int" } } },
+  "@rankN": {
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
   "bankrupt": "BANKRUPT",
   "rounds": "Rounds",
   "finalCash": "Final Cash",
   "turns": "Turns",
   "mainMenu": "Main Menu",
   "playAgain": "Play Again",
-
   "playerPortfolio": "{name}'s Portfolio",
-  "@playerPortfolio": { "placeholders": { "name": { "type": "String" } } },
+  "@playerPortfolio": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "netWorth": "Net Worth: ${amount}",
-  "@netWorth": { "placeholders": { "amount": { "type": "int" } } },
+  "@netWorth": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "position": "Position",
   "noPropertiesYet": "No Properties Yet",
   "startBuyingProperties": "Start buying properties to build your empire!",
   "rentAmount": "Rent: ${amount}",
-  "@rentAmount": { "placeholders": { "amount": { "type": "int" } } },
+  "@rentAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "mortgaged": "MORTGAGED",
   "mortgagedLabel": "Mortgaged",
   "railroad": "Railroad",
@@ -343,38 +515,96 @@
   "colorYellow": "Yellow",
   "colorGreen": "Green",
   "colorDarkBlue": "Dark Blue",
-
   "noneYet": "None yet",
   "noProperties": "No properties",
   "humanPlayer": "Human",
   "showPlayerStatus": "Show player status",
   "hidePlayerStatus": "Hide player status",
   "roundNumber": "Round {number}",
-  "@roundNumber": { "placeholders": { "number": { "type": "int" } } },
+  "@roundNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "activePlayer": "Active",
   "waitingPlayer": "Waiting",
   "aiThinking": "{name} is thinking…",
-  "@aiThinking": { "placeholders": { "name": { "type": "String" } } },
+  "@aiThinking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "aiRolling": "{name} is rolling…",
-  "@aiRolling": { "placeholders": { "name": { "type": "String" } } },
+  "@aiRolling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "aiResolving": "{name} is resolving…",
-  "@aiResolving": { "placeholders": { "name": { "type": "String" } } },
+  "@aiResolving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "playerRolling": "{name} is rolling…",
-  "@playerRolling": { "placeholders": { "name": { "type": "String" } } },
+  "@playerRolling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "playerMoving": "{name} is moving…",
-  "@playerMoving": { "placeholders": { "name": { "type": "String" } } },
+  "@playerMoving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "passToPlayer": "Pass to {name} • Your turn",
-  "@passToPlayer": { "placeholders": { "name": { "type": "String" } } },
+  "@passToPlayer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "resolvingPlayerTurn": "Resolving {name}'s turn…",
-  "@resolvingPlayerTurn": { "placeholders": { "name": { "type": "String" } } },
+  "@resolvingPlayerTurn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "tileN": "Tile {position}",
-  "@tileN": { "placeholders": { "position": { "type": "int" } } },
-
+  "@tileN": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
   "rolling": "ROLLING...",
   "moving": "MOVING...",
   "rollDice": "ROLL DICE",
   "rollForPlayer": "Roll for {name}",
-  "@rollForPlayer": { "placeholders": { "name": { "type": "String" } } },
+  "@rollForPlayer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "diceLabel": "DICE",
   "lastRollLabel": "LAST ROLL",
   "cameraGestureHint": "1 finger: move • 2 fingers: rotate • Pinch: zoom",
@@ -386,36 +616,71 @@
   "pleaseWait": "Please wait…",
   "tap": "TAP",
   "spin": "SPIN",
-
   "trade": "Trade",
   "bank": "Bank",
-
   "use": "USE",
-
   "gameSaved": "Game saved successfully!",
   "failedToSave": "Failed to save game",
   "gameLoaded": "Game loaded! Round {round}",
-  "@gameLoaded": { "placeholders": { "round": { "type": "int" } } },
+  "@gameLoaded": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
   "failedToLoad": "Failed to load game",
   "noPowerUpCards": "No power-up cards! Win mini-games to collect them.",
   "yourPowerUpCards": "Your Power-Up Cards",
   "noOtherPlayers": "No other players to trade with!",
   "boughtProperty": "Bought {name} for ${price}!",
-  "@boughtProperty": { "placeholders": { "name": { "type": "String" }, "price": { "type": "int" } } },
+  "@boughtProperty": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "price": {
+        "type": "int"
+      }
+    }
+  },
   "paidRentTo": "Paid ${amount} rent to {name}",
-  "@paidRentTo": { "placeholders": { "amount": { "type": "int" }, "name": { "type": "String" } } },
+  "@paidRentTo": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "paidTax": "Paid ${amount} {taxName}",
-  "@paidTax": { "placeholders": { "amount": { "type": "int" }, "taxName": { "type": "String" } } },
+  "@paidTax": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      },
+      "taxName": {
+        "type": "String"
+      }
+    }
+  },
   "goingToJail": "Going to jail!",
   "goToJailTitle": "Go to Jail!",
   "goToJailMessage": "You landed on Go to Jail!\nGo directly to jail, do not pass GO.",
   "wonPrize": "Spun the wheel and won {prize}!",
-  "@wonPrize": { "placeholders": { "prize": { "type": "String" } } },
+  "@wonPrize": {
+    "placeholders": {
+      "prize": {
+        "type": "String"
+      }
+    }
+  },
   "tradeAccepted": "Accepted the trade!",
   "tradeRejected": "Rejected the trade.",
   "tradeCompleted": "Trade completed!",
   "tradeRejectedShort": "Trade rejected.",
-
   "spinPrizeCash50": "$50",
   "spinPrizeCash50Desc": "Win $50!",
   "spinPrizeCash100": "$100",
@@ -432,18 +697,28 @@
   "spinPrizeTeleportDesc": "Move to any tile of your choice!",
   "spinPrizeJackpot": "JACKPOT!",
   "spinPrizeJackpotDesc": "Win $500 jackpot!",
-
   "luckySpinTitle": "LUCKY SPIN!",
   "playerTurnToSpin": "{name}'s turn to spin!",
-  "@playerTurnToSpin": { "placeholders": { "name": { "type": "String" } } },
+  "@playerTurnToSpin": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "spinInstructions": "Tap the center to spin the wheel!",
   "spinning": "Spinning...",
   "youWonPrize": "You won {name}!",
-  "@youWonPrize": { "placeholders": { "name": { "type": "String" } } },
+  "@youWonPrize": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "collectPrize": "Collect Prize!",
   "orTapToSpin": "Or tap here to spin",
   "goodLuck": "Good luck!",
-
   "eventMarketBoom": "Market Boom!",
   "eventMarketBoomDesc": "All properties are worth 20% more for 3 rounds!",
   "eventTaxHoliday": "Tax Holiday!",
@@ -470,7 +745,6 @@
   "eventBankErrorDesc": "A random player receives $200!",
   "eventMarketCrash": "Market Crash!",
   "eventMarketCrashDesc": "Property values fluctuate wildly! Random effects for everyone!",
-
   "powerUpRentReducer": "Rent Reducer",
   "powerUpRentReducerDesc": "Pay only 50% rent this turn",
   "powerUpSpeedBoost": "Speed Boost",
@@ -495,34 +769,70 @@
   "powerUpRarityUncommon": "Uncommon",
   "powerUpRarityRare": "Rare",
   "powerUpRarityLegendary": "Legendary",
-
   "winnerTitle": "WINNER!",
   "gameStats": "Game Stats",
-
   "shopTitle": "Shop",
   "shopSubtitle": "Unlock themes, tokens & more!",
   "unlocked": "Unlocked",
   "free": "Free",
   "loadingAd": "Loading ad...",
   "adsProgress": "Progress: {watched}/{required} ads watched!",
-  "@adsProgress": { "placeholders": { "watched": { "type": "int" }, "required": { "type": "int" } } },
+  "@adsProgress": {
+    "placeholders": {
+      "watched": {
+        "type": "int"
+      },
+      "required": {
+        "type": "int"
+      }
+    }
+  },
   "purchaseItem": "Purchase {name}?",
-  "@purchaseItem": { "placeholders": { "name": { "type": "String" } } },
+  "@purchaseItem": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "unlockFor": "Unlock for {price}",
-  "@unlockFor": { "placeholders": { "price": { "type": "String" } } },
+  "@unlockFor": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "buyPrice": "Buy {price}",
-  "@buyPrice": { "placeholders": { "price": { "type": "String" } } },
+  "@buyPrice": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "unlockedExcl": "UNLOCKED!",
   "awesome": "Awesome!",
   "watchAdsToUnlock": "Watch ads to unlock",
   "watchAdsOrPay": "Watch {count} ads or pay to unlock instantly",
-  "@watchAdsOrPay": { "placeholders": { "count": { "type": "int" } } },
+  "@watchAdsOrPay": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "watchAdsCount": "Watch {count} ads to unlock",
-  "@watchAdsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@watchAdsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "purchaseToUnlock": "Purchase to unlock",
   "useThis": "Use This",
   "owned": "Owned",
-
   "familyLeaderboard": "Family Leaderboard",
   "rankings": "Rankings",
   "records": "Records",
@@ -541,39 +851,82 @@
   "speedChampion": "Speed Champion",
   "luckiestRoller": "Luckiest Roller",
   "inARow": "{count} in a row",
-  "@inARow": { "placeholders": { "count": { "type": "int" } } },
+  "@inARow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "turnsCount": "{count} turns",
-  "@turnsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@turnsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "avgValue": "{value} avg",
-  "@avgValue": { "placeholders": { "value": { "type": "String" } } },
-
+  "@avgValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "memoryMatchTitle": "Memory Match",
   "pairs": "Pairs",
   "timeLabel": "Time",
   "secondsShort": "{seconds} s",
-  "@secondsShort": { "placeholders": { "seconds": { "type": "int" } } },
+  "@secondsShort": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "greatJob": "Great Job!",
   "timeUp": "Time's Up!",
   "pairsFound": "Pairs Found: {found} / {total}",
   "@pairsFound": {
     "placeholders": {
-      "found": { "type": "int" },
-      "total": { "type": "int" }
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "scoreAmount": "Score: {score}",
-  "@scoreAmount": { "placeholders": { "score": { "type": "int" } } },
-
+  "@scoreAmount": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
   "quickTapAmazing": "AMAZING!",
   "quickTapGreat": "Great!",
   "quickTapGood": "Good",
   "quickTapTryAgain": "Try Again",
   "quickTapInstruction": "Tap the coins! Avoid bombs!",
   "streakCount": "{count} Streak!",
-  "@streakCount": { "placeholders": { "count": { "type": "int" } } },
-
+  "@streakCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "itemSelected": "{name} selected!",
-  "@itemSelected": { "placeholders": { "name": { "type": "String" } } },
+  "@itemSelected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "deletePhotoTitle": "Delete Photo?",
   "deletePhotoMessage": "This photo will be removed from your avatars.",
   "delete": "Delete",
@@ -589,14 +942,12 @@
   "avatarCategoryMyPhotos": "My Photos",
   "select": "Select",
   "yourTurn": "YOUR TURN",
-
   "countryUSA": "United States",
   "countryUK": "United Kingdom",
   "countryFrance": "France",
   "countryJapan": "Japan",
   "countryChina": "China",
   "countryMexico": "Mexico",
-
   "chooseCity": "Choose City",
   "cityAtlanticCity": "Atlantic City",
   "cityNewYork": "New York City",
@@ -624,5 +975,14 @@
   "godotPreparationTimedOut": "The 3D board took too long to prepare this game.",
   "retry3DBoard": "Retry 3D",
   "use2DBoard": "Use 2D board",
-  "continuedOn2DBoard": "The 3D board stopped responding. Continuing on the 2D board."
+  "continuedOn2DBoard": "The 3D board stopped responding. Continuing on the 2D board.",
+  "activeEventsOverflow": "{count} more active events",
+  "@activeEventsOverflow": {
+    "type": "text",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
