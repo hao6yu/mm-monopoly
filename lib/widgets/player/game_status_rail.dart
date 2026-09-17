@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -388,19 +390,7 @@ class _PlayerStatusCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: player.color.withValues(alpha: 0.18),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        player.icon.iconData,
-                        size: 15,
-                        color: player.color,
-                      ),
-                    ),
+                    _RailPlayerIdentity(player: player),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Column(
@@ -563,4 +553,53 @@ class _TurnPresentation {
 
   final String label;
   final IconData icon;
+}
+
+/// The custom photo path when the player's effective avatar is a photo,
+/// otherwise null. The rail renders the photo instead of an emoji glyph;
+/// exposed for tests because pixel rendering belongs to the framework.
+String? railAvatarPhotoPath(Player player) {
+  final avatar = player.effectiveAvatar;
+  if (!avatar.isCustom) return null;
+  return avatar.customImagePath;
+}
+
+/// The player's effective identity in the 24px rail slot (3D-05): a custom
+/// photo when the player chose one, otherwise the avatar emoji. Matches the
+/// identity surfaces used by the portfolio, cards, and victory screens.
+class _RailPlayerIdentity extends StatelessWidget {
+  const _RailPlayerIdentity({required this.player});
+
+  final Player player;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = player.effectiveAvatar;
+    final photoPath = railAvatarPhotoPath(player);
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: player.color.withValues(alpha: 0.18),
+        shape: BoxShape.circle,
+      ),
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      child: photoPath != null
+          ? Image.file(
+              File(photoPath),
+              width: 24,
+              height: 24,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Text(
+                avatar.emoji,
+                style: const TextStyle(fontSize: 13),
+              ),
+            )
+          : Text(
+              avatar.emoji,
+              style: const TextStyle(fontSize: 13),
+            ),
+    );
+  }
 }

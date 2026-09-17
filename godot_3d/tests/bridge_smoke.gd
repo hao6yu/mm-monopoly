@@ -86,6 +86,7 @@ func _run() -> void:
 	_test_mobile_render_budget(scene)
 	_test_unrolled_dice_state(scene)
 	_test_token_grounding_and_occupancy(scene)
+	await _test_avatar_identity_tint(scene, state)
 	_test_distance_scaled_token_motion(scene)
 	await _test_roll_cancellation_on_state_sync(scene, state)
 	await _test_special_movement_presentations(scene, state)
@@ -687,6 +688,53 @@ func _test_token_grounding_and_occupancy(scene: Node) -> void:
 		quit(1)
 		return
 	print("TOKEN_GROUNDING_OCCUPANCY_COLOR_OK")
+
+
+func _test_avatar_identity_tint(scene: Node, state: Dictionary) -> void:
+	# The Flutter avatar identity (3D-05) must reach the pawn: the id is
+	# stored and the hair tint is derived from it deterministically.
+	var tinted_state: Dictionary = state.duplicate(true)
+	tinted_state["stateGeneration"] = int(tinted_state["stateGeneration"]) + 1
+	var tinted_players: Array = (tinted_state["players"] as Array).duplicate(true)
+	(tinted_players[0] as Dictionary)["avatarId"] = "avatar-fox"
+	tinted_state["players"] = tinted_players
+	var before_tint := _hair_albedo(scene, 0)
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(tinted_state),
+	})
+	for _attempt in 40:
+		await create_timer(0.05).timeout
+		var message: Dictionary = scene.host_poll_message()
+		if str(message.get("method", "")) == "stateApplied":
+			break
+	if str(scene.player_avatar_ids[0]) != "avatar-fox":
+		push_error("The avatar identity id was not stored on the pawn.")
+		quit(1)
+		return
+	var after_tint := _hair_albedo(scene, 0)
+	if before_tint.is_equal_approx(after_tint):
+		push_error("The avatar identity did not retint the pawn hair.")
+		quit(1)
+		return
+	var expected: Color = scene.PLAYER_AVATAR_HAIR_COLORS[
+		absi(hash("avatar-fox")) % scene.PLAYER_AVATAR_HAIR_COLORS.size()
+	]
+	if not after_tint.is_equal_approx(expected):
+		push_error("The pawn hair tint did not match the avatar derivation.")
+		quit(1)
+		return
+	print("AVATAR_IDENTITY_TINT_OK ", after_tint)
+
+
+func _hair_albedo(scene: Node, player_index: int) -> Color:
+	var material_value = (scene.player_tokens[player_index] as Node3D).get_meta(
+		"player_hair_material",
+		null
+	)
+	if material_value is StandardMaterial3D:
+		return (material_value as StandardMaterial3D).albedo_color
+	return Color()
 
 
 func _test_distance_scaled_token_motion(scene: Node) -> void:

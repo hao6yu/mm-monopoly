@@ -90,6 +90,8 @@ class GodotBoardPlayerState {
     required this.logicalPosition,
     required this.visualPosition,
     required this.isActive,
+    this.avatarId = '',
+    this.avatarIsPhoto = false,
   });
 
   final String id;
@@ -100,6 +102,14 @@ class GodotBoardPlayerState {
   final int visualPosition;
   final bool isActive;
 
+  /// Stable identity id of the effective avatar (3D-05). Empty for legacy
+  /// senders; Godot derives pawn appearance tints from it deterministically.
+  final String avatarId;
+
+  /// Whether the effective avatar is a user photo (never rendered by Godot;
+  /// photos stay a Flutter-side identity surface).
+  final bool avatarIsPhoto;
+
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
@@ -108,6 +118,8 @@ class GodotBoardPlayerState {
     'logicalPosition': logicalPosition,
     'visualPosition': visualPosition,
     'isActive': isActive,
+    'avatarId': avatarId,
+    'avatarIsPhoto': avatarIsPhoto,
   };
 }
 

@@ -187,6 +187,8 @@ class GodotBoardController extends ChangeNotifier {
               visualSpotCount: visualSpotCount,
             ),
             isActive: player.status == PlayerStatus.active,
+            avatarId: player.effectiveAvatar.id,
+            avatarIsPhoto: player.effectiveAvatar.isCustom,
           ),
       ],
     );

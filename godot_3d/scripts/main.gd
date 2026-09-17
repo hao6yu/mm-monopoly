@@ -94,6 +94,19 @@ const PLAYER_SKIN_COLORS := [
 	Color("#f5c99f"),
 	Color("#b97454"),
 ]
+
+# Hair tints selectable from the avatar identity id. Stable per avatar so the
+# same chosen identity always produces the same pawn appearance.
+const PLAYER_AVATAR_HAIR_COLORS := [
+	Color("#4a241b"),
+	Color("#17171d"),
+	Color("#8a5a2b"),
+	Color("#b8863b"),
+	Color("#7a3b2e"),
+	Color("#3d4a5c"),
+	Color("#6b3fa0"),
+	Color("#27694b"),
+]
 const PLAYER_HAIR_COLORS := [
 	Color("#4a241b"),
 	Color("#17171d"),
@@ -247,6 +260,10 @@ var latest_logical_tiles: Array[Dictionary] = []
 var active_visual_tile_data: Dictionary = {}
 var board_tap_targets: Array[Dictionary] = []
 var player_ids: Array[String] = ["", "", "", ""]
+# Stable avatar identity ids sent by Flutter (3D-05). The pawn derives a
+# deterministic hair tint from them so a player's token reads as theirs
+# across sessions instead of being keyed to the seat index alone.
+var player_avatar_ids: Array[String] = ["", "", "", ""]
 var brand_title_label: Label
 var brand_subtitle_label: Label
 var movement_preview_root: Node3D
@@ -2290,6 +2307,7 @@ func _make_character_piece(
 	ring.visible = active
 	model.add_child(ring)
 	character.set_meta("player_color_material", shirt_material)
+	character.set_meta("player_hair_material", hair_material)
 	return character
 
 
@@ -4644,7 +4662,9 @@ func _apply_flutter_state_json(json: String) -> void:
 		token.visible = bool(player.get("isActive", true))
 		player_names[index] = str(player.get("name", player_names[index]))
 		player_ids[index] = str(player.get("id", ""))
+		player_avatar_ids[index] = str(player.get("avatarId", ""))
 		token.name = "%sCharacterPiece" % player_names[index]
+		_apply_token_identity(token, player_avatar_ids[index])
 		var visual_position := posmod(
 			int(player.get("visualPosition", 0)),
 			BOARD_SPOT_COUNT
@@ -6176,6 +6196,16 @@ func _apply_token_color(token: Node3D, color: Color) -> void:
 	if material_value is StandardMaterial3D:
 		var material := material_value as StandardMaterial3D
 		material.albedo_color = color
+
+
+func _apply_token_identity(token: Node3D, avatar_id: String) -> void:
+	if avatar_id.is_empty():
+		return
+	var material_value = token.get_meta("player_hair_material", null)
+	if material_value is StandardMaterial3D:
+		var material := material_value as StandardMaterial3D
+		var palette_index := absi(hash(avatar_id)) % PLAYER_AVATAR_HAIR_COLORS.size()
+		material.albedo_color = PLAYER_AVATAR_HAIR_COLORS[palette_index]
 
 
 func _material(

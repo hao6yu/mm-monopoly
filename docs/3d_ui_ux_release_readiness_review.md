@@ -191,6 +191,18 @@ the iOS PCK still requires the local 4.6.3 exporter binary and must be
 regenerated before the next physical-device build. Physical-device
 validation of special movement on iPad/Android remains part of gate 1.
 
+### Appearance contract follow-up — August 25, 2026
+
+3D-05 first pass implemented: `GodotBoardPlayerState` now carries
+`avatarId` and `avatarIsPhoto`, the controller maps them from the player's
+effective avatar, and Godot stores the ids and derives a deterministic pawn
+hair tint from them (stable across sessions, verified by a bridge smoke
+assertion on the exact material color). The 3D status rail now renders the
+effective avatar — a custom photo when chosen, otherwise the avatar emoji —
+matching the portfolio, card, and victory identity surfaces instead of the
+raw setup icon. Still open under 3D-05: a live pawn preview in setup, and
+the deeper token-model decision tracked as 3D-04.
+
 ### Experience polish follow-up — August 25, 2026
 
 Physical iPad QA surfaced two confirmed experience defects, both fixed and
