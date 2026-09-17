@@ -8,6 +8,7 @@ import 'services/audio_service.dart';
 import 'services/unlock_service.dart';
 import 'services/save_service.dart';
 import 'services/notification_service.dart';
+import 'services/graphics_quality_service.dart';
 import 'services/locale_service.dart';
 
 void main() async {
@@ -27,6 +28,7 @@ void main() async {
   await UnlockService().init();
   await SaveService.instance.init();
   await LocaleService.instance.init();
+  await GraphicsQualityService.instance.init();
 
   runApp(qaAutoplay ? const QaAutoplayApp() : const MonopolyApp());
 

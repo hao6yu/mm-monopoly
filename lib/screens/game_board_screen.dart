@@ -17,6 +17,7 @@ import '../services/save_service.dart';
 import '../services/stats_service.dart';
 import '../services/locale_service.dart';
 import '../services/game_content_loader.dart';
+import '../services/graphics_quality_service.dart';
 import '../integration/godot_board_contract.dart';
 import '../integration/godot_board_controller.dart';
 import '../widgets/achievements/achievement_notification.dart';
@@ -303,6 +304,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   bool _isPaused = false; // Track if game menu is open
   bool _isMusicPlaying = true; // Track music state
   bool _cameraFollowEnabled = false; // Opt-in token-follow camera (3D-09)
+  bool _sentGraphicsQualityForBoard = false; // 3D-21 tier delivery
   bool _isProcessingTurn = false; // Prevent dice rolls while processing
   int _turnOperationId = 0;
   final Set<Timer> _scheduledTurnTimers = <Timer>{};
@@ -360,6 +362,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       GodotBoardProtocol.supportedBoardIds.contains(widget.cityBoard.boardId);
 
   Future<void> _initialize3DBoard() async {
+    _sentGraphicsQualityForBoard = false;
     _is3DBoardInitializationComplete = false;
     await _godotBoardController.initialize();
     if (!mounted) return;
@@ -450,6 +453,18 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
   void _onGodotBoardChanged() {
     if (!mounted) return;
+    // 3D-21: the persisted quality tier rides every fresh board-ready
+    // transition; the gated call no-ops until readiness is complete.
+    if (_show3DBoard &&
+        !_sentGraphicsQualityForBoard &&
+        _godotBoardController.isBoardReady) {
+      _sentGraphicsQualityForBoard = true;
+      unawaited(
+        _godotBoardController.setGraphicsQuality(
+          quality: GraphicsQualityService.instance.quality.name,
+        ),
+      );
+    }
     setState(() {});
     _scheduleCurrentAIRollIfReady();
   }

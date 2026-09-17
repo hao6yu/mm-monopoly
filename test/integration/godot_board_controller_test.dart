@@ -298,6 +298,62 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  test('setGraphicsQuality sends the tier once the board is ready', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final qualityCalls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          switch (call.method) {
+            case 'isAvailable':
+              return true;
+            case 'syncState':
+              return true;
+            case 'setGraphicsQuality':
+              qualityCalls.add(call);
+              return true;
+            default:
+              return null;
+          }
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController();
+    addTearDown(controller.dispose);
+
+    await controller.setGraphicsQuality(quality: 'low');
+    expect(qualityCalls, isEmpty);
+
+    await controller.initialize();
+    await controller.syncGameState(state, boardId: city.boardId);
+    controller.markViewCreated();
+    await sendNativeCall(
+      MethodCall('stateApplied', {
+        'sessionId': state.id,
+        'stateGeneration': 1,
+        'boardId': city.boardId,
+      }),
+    );
+    await sendNativeCall(
+      const MethodCall('boardReady', {'sceneReadyToken': 'scene-1'}),
+    );
+
+    await controller.setGraphicsQuality(quality: 'low');
+    expect(qualityCalls.single.arguments, jsonEncode({'quality': 'low'}));
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   test(
     'scene ready does not unlock play before exact state is applied',
     () async {

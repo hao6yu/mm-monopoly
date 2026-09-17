@@ -511,6 +511,23 @@ class GodotBoardController extends ChangeNotifier {
     }
   }
 
+  /// Applies a render-quality tier (3D-21: high/medium/low) to the native
+  /// scene. Silently skipped when the board is not ready; the caller re-sends
+  /// it after the next board-ready transition.
+  Future<void> setGraphicsQuality({required String quality}) async {
+    if (!_isAvailable || !isBoardReady) return;
+    try {
+      await _channel.invokeMethod<bool>(
+        'setGraphicsQuality',
+        jsonEncode({'quality': quality}),
+      );
+    } on PlatformException {
+      // A dropped tier application keeps the previous budget.
+    } on MissingPluginException {
+      // The 2D fallback has no 3D render budget.
+    }
+  }
+
   Future<void> pickBoardObject({
     required double normalizedX,
     required double normalizedY,

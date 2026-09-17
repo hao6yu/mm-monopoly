@@ -43,6 +43,15 @@ const LABEL_LANDMARK_MAX_COMPENSATION := 1.9
 const LABEL_OVERVIEW_DISTANCE := 26.0
 # Damping rate for the token-follow camera: higher closes the gap faster.
 const CAMERA_FOLLOW_DAMPING := 3.2
+# Quality tier budgets (3D-21). The scale multiplies the platform render
+# baseline (the iOS CAMetalLayer is already capped at 75% native density);
+# MSAA and shadow atlas sizes trade edge quality and shadow resolution for
+# GPU headroom. "high" matches the shipped project settings exactly.
+const GRAPHICS_QUALITY_SCALES := {
+	"high": 1.0,
+	"medium": 0.8,
+	"low": 0.65,
+}
 const HOSTED_ROLL_TIMEOUT_MSEC := 9500
 const MOBILE_CYLINDER_RADIAL_SEGMENTS := 24
 const MOBILE_MIN_SPHERE_SHADOW_RADIUS := 0.1
@@ -222,6 +231,8 @@ var touch_centroid := Vector2.ZERO
 # player's chosen view always wins.
 var camera_follow_enabled := false
 var camera_follow_suppressed := false
+# Active quality tier (3D-21); "high" matches the shipped project settings.
+var graphics_quality := "high"
 var rpg_mode := false
 var mode_transitioning := false
 var rpg_camera_yaw := 0.0
@@ -4391,6 +4402,8 @@ func host_receive_message(message: Dictionary) -> void:
 			_apply_camera_gesture_json(json)
 		"camera_follow":
 			_apply_camera_follow_json(json)
+		"graphics_quality":
+			_apply_graphics_quality_json(json)
 		"board_tap":
 			_pick_board_object_json(json)
 
@@ -4401,6 +4414,31 @@ func _apply_camera_follow_json(json: String) -> void:
 		return
 	camera_follow_enabled = bool(payload.get("enabled", false))
 	camera_follow_suppressed = false
+
+
+func _apply_graphics_quality_json(json: String) -> void:
+	var payload = JSON.parse_string(json)
+	if typeof(payload) != TYPE_DICTIONARY:
+		return
+	var quality := str(payload.get("quality", "high"))
+	if not GRAPHICS_QUALITY_SCALES.has(quality):
+		push_warning("Ignoring unknown 3D graphics quality %s." % quality)
+		return
+	graphics_quality = quality
+	var viewport := get_viewport()
+	if viewport == null:
+		return
+	viewport.scaling_3d_scale = float(GRAPHICS_QUALITY_SCALES[quality])
+	match quality:
+		"medium":
+			viewport.msaa_3d = Viewport.MSAA_DISABLED
+			RenderingServer.directional_shadow_atlas_set_size(1024, true)
+		"low":
+			viewport.msaa_3d = Viewport.MSAA_DISABLED
+			RenderingServer.directional_shadow_atlas_set_size(1024, true)
+		"high":
+			viewport.msaa_3d = Viewport.MSAA_2X
+			RenderingServer.directional_shadow_atlas_set_size(2048, true)
 
 
 func _apply_camera_gesture_json(json: String) -> void:

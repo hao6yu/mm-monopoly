@@ -978,6 +978,10 @@
   "continuedOn2DBoard": "The 3D board stopped responding. Continuing on the 2D board.",
   "cameraFollowOn": "Follow the active pawn",
   "cameraFollowOff": "Free camera",
+  "graphicsQuality3D": "3D graphics quality",
+  "qualityHigh": "High",
+  "qualityMedium": "Medium",
+  "qualityLow": "Low",
   "activeEventsOverflow": "{count} more active events",
   "@activeEventsOverflow": {
     "type": "text",

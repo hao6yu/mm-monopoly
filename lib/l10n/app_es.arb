@@ -657,6 +657,10 @@
   "continuedOn2DBoard": "El tablero 3D dejó de responder. La partida continúa en el tablero 2D.",
   "cameraFollowOn": "Seguir al peón activo",
   "cameraFollowOff": "Cámara libre",
+  "graphicsQuality3D": "Calidad gráfica 3D",
+  "qualityHigh": "Alta",
+  "qualityMedium": "Media",
+  "qualityLow": "Baja",
   "activeEventsOverflow": "{count} eventos activos más",
   "@activeEventsOverflow": {
     "type": "text",

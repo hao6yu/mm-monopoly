@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/audio_service.dart';
 import '../services/game_content_loader.dart';
+import '../services/graphics_quality_service.dart';
 import '../services/locale_service.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/city_theme/city_theme.dart';
@@ -28,12 +31,14 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen>
     with SingleTickerProviderStateMixin {
   late GameSettings _settings;
+  late GraphicsQuality _graphicsQuality;
   late final AnimationController _worldController;
 
   @override
   void initState() {
     super.initState();
     _settings = widget.settings;
+    _graphicsQuality = GraphicsQualityService.instance.quality;
     _worldController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3000),
@@ -481,6 +486,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           ],
           const SizedBox(height: 8),
           _buildLanguageTile(l10n),
+          const SizedBox(height: 8),
+          _buildGraphicsQualityTile(l10n),
         ],
       ),
     );
@@ -614,6 +621,97 @@ class _SettingsScreenState extends State<SettingsScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// 3D render-quality tier selector (3D-21). Persisted by
+  /// [GraphicsQualityService] and applied to the native scene the next time
+  /// a 3D board becomes ready.
+  Widget _buildGraphicsQualityTile(AppLocalizations l10n) {
+    final dropdown = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF172640),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x6659B8F5)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<GraphicsQuality>(
+          key: const Key('settings-graphics-quality-dropdown'),
+          value: _graphicsQuality,
+          isExpanded: true,
+          isDense: true,
+          dropdownColor: const Color(0xFF172640),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Color(0xFF8ED2FF),
+          ),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+          items: [
+            DropdownMenuItem(
+              value: GraphicsQuality.high,
+              child: Text(l10n.qualityHigh, maxLines: 1),
+            ),
+            DropdownMenuItem(
+              value: GraphicsQuality.medium,
+              child: Text(l10n.qualityMedium, maxLines: 1),
+            ),
+            DropdownMenuItem(
+              value: GraphicsQuality.low,
+              child: Text(l10n.qualityLow, maxLines: 1),
+            ),
+          ],
+          onChanged: (quality) {
+            if (quality == null) return;
+            setState(() {
+              _graphicsQuality = quality;
+            });
+            unawaited(GraphicsQualityService.instance.setQuality(quality));
+          },
+        ),
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: const Color(0x7A22314B),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFF59B8F5).withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.tune_rounded,
+              color: Color(0xFF8ED2FF),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              l10n.graphicsQuality3D,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          SizedBox(width: 150, child: dropdown),
+        ],
       ),
     );
   }

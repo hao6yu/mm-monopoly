@@ -165,6 +165,24 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
       sendToGodot(action: "camera_gesture", json: json)
       result(true)
 
+    case "setGraphicsQuality":
+      guard let json = call.arguments as? String else {
+        result(
+          FlutterError(
+            code: "invalid_graphics_quality",
+            message: "The graphics quality must be a JSON string.",
+            details: nil
+          )
+        )
+        return
+      }
+      guard sceneReadyToken != nil, viewHandle != nil else {
+        result(false)
+        return
+      }
+      sendToGodot(action: "graphics_quality", json: json)
+      result(true)
+
     case "setCameraFollow":
       guard let json = call.arguments as? String else {
         result(

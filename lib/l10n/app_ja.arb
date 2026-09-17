@@ -657,6 +657,10 @@
   "continuedOn2DBoard": "3Dボードが応答しないため、2Dボードでゲームを続けます。",
   "cameraFollowOn": "アクティブなコマを追従",
   "cameraFollowOff": "自由カメラ",
+  "graphicsQuality3D": "3Dグラフィック品質",
+  "qualityHigh": "高",
+  "qualityMedium": "中",
+  "qualityLow": "低",
   "activeEventsOverflow": "他 {count} 件のアクティブイベント",
   "@activeEventsOverflow": {
     "type": "text",

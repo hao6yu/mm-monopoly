@@ -91,6 +91,7 @@ func _run() -> void:
 	await _test_roll_cancellation_on_state_sync(scene, state)
 	await _test_special_movement_presentations(scene, state)
 	await _test_camera_follow(scene, state)
+	await _test_graphics_quality_tiers(scene)
 	_test_native_one_finger_pan(scene)
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
@@ -1247,6 +1248,64 @@ func _camera_target_in_bounds(scene: Node) -> bool:
 		and target.z >= scene.CAMERA_TARGET_MIN_Z
 		and target.z <= scene.CAMERA_TARGET_MAX_Z
 	)
+
+
+func _test_graphics_quality_tiers(scene: Node) -> void:
+	var viewport := scene.get_viewport() as Viewport
+	if viewport == null:
+		push_error("No viewport to tier.")
+		quit(1)
+		return
+	var baseline_msaa := viewport.msaa_3d
+
+	scene.host_receive_message({
+		"action": "graphics_quality",
+		"json": JSON.stringify({"quality": "low"}),
+	})
+	if scene.graphics_quality != "low":
+		push_error("Low quality tier was not recorded.")
+		quit(1)
+		return
+	if not is_equal_approx(viewport.scaling_3d_scale, 0.65):
+		push_error("Low tier did not apply its render scale.")
+		quit(1)
+		return
+	if viewport.msaa_3d != Viewport.MSAA_DISABLED:
+		push_error("Low tier did not disable MSAA.")
+		quit(1)
+		return
+
+	scene.host_receive_message({
+		"action": "graphics_quality",
+		"json": JSON.stringify({"quality": "medium"}),
+	})
+	if not is_equal_approx(viewport.scaling_3d_scale, 0.8):
+		push_error("Medium tier did not apply its render scale.")
+		quit(1)
+		return
+
+	scene.host_receive_message({
+		"action": "graphics_quality",
+		"json": JSON.stringify({"quality": "high"}),
+	})
+	if not is_equal_approx(viewport.scaling_3d_scale, 1.0):
+		push_error("High tier did not restore the baseline render scale.")
+		quit(1)
+		return
+	if viewport.msaa_3d != baseline_msaa:
+		push_error("High tier did not restore the baseline MSAA.")
+		quit(1)
+		return
+	# Unknown tiers are ignored.
+	scene.host_receive_message({
+		"action": "graphics_quality",
+		"json": JSON.stringify({"quality": "ultra"}),
+	})
+	if scene.graphics_quality != "high":
+		push_error("An unknown quality tier was applied.")
+		quit(1)
+		return
+	print("GRAPHICS_QUALITY_TIERS_OK")
 
 
 func _test_native_one_finger_pan(scene: Node) -> void:

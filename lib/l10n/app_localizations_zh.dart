@@ -1685,6 +1685,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraFollowOff => '自由视角';
 
   @override
+  String get graphicsQuality3D => '3D 画质';
+
+  @override
+  String get qualityHigh => '高';
+
+  @override
+  String get qualityMedium => '中';
+
+  @override
+  String get qualityLow => '低';
+
+  @override
   String activeEventsOverflow(int count) {
     return '还有 $count 个进行中的事件';
   }

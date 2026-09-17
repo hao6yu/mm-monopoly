@@ -1722,6 +1722,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cameraFollowOff => 'Free camera';
 
   @override
+  String get graphicsQuality3D => '3D graphics quality';
+
+  @override
+  String get qualityHigh => 'High';
+
+  @override
+  String get qualityMedium => 'Medium';
+
+  @override
+  String get qualityLow => 'Low';
+
+  @override
   String activeEventsOverflow(int count) {
     return '$count more active events';
   }

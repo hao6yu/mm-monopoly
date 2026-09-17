@@ -203,6 +203,20 @@ matching the portfolio, card, and victory identity surfaces instead of the
 raw setup icon. Still open under 3D-05: a live pawn preview in setup, and
 the deeper token-model decision tracked as 3D-04.
 
+### Graphics quality tiers follow-up — August 25, 2026
+
+3D-21 scaffolding implemented end to end: a persisted
+`GraphicsQualityService` (high/medium/low, shared preferences, unknown
+values fall back to high), a Settings selector in the Sound & Language
+panel localized across the five ARB catalogs, a `graphics_quality` bridge
+command through both native hosts, and runtime application in the native
+scene (render-scale multiplier, MSAA, directional shadow atlas size; "high"
+matches the shipped baseline exactly). The tier rides every board-ready
+transition and is covered by bridge smoke assertions per tier plus service
+and controller tests. Tuning the tier budgets — and promoting an automatic
+mode — still requires the minimum-device Instruments profiling gate, which
+needs physical-device captures.
+
 ### Token-follow camera follow-up — August 25, 2026
 
 3D-09 first pass implemented as an opt-in mode: the action bar gains a

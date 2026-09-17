@@ -3212,6 +3212,30 @@ abstract class AppLocalizations {
   /// **'Free camera'**
   String get cameraFollowOff;
 
+  /// No description provided for @graphicsQuality3D.
+  ///
+  /// In en, this message translates to:
+  /// **'3D graphics quality'**
+  String get graphicsQuality3D;
+
+  /// No description provided for @qualityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get qualityHigh;
+
+  /// No description provided for @qualityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get qualityMedium;
+
+  /// No description provided for @qualityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get qualityLow;
+
   /// No description provided for @activeEventsOverflow.
   ///
   /// In en, this message translates to:

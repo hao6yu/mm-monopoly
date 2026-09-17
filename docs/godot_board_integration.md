@@ -163,6 +163,21 @@ The iOS package vendors SwiftGodotKit's matching 4.6 Swift API. Its Xcode build
 pre-action compiles the host-side code generator before SwiftPM invokes it,
 which also works around the current Xcode 27 beta package-plugin path issue.
 
+## Graphics quality tiers
+
+The embedded renderer supports three persisted quality tiers (3D-21), chosen
+in Settings and re-sent to the native scene on every board-ready transition:
+
+- **High** — the shipped baseline: full tier scale, 2x MSAA, 2048-pixel
+  directional shadow atlas.
+- **Medium** — 0.8x render scale, MSAA off, 1024-pixel directional atlas.
+- **Low** — 0.65x render scale, MSAA off, 1024-pixel directional atlas.
+
+The scale multiplies the platform render baseline (the iOS CAMetalLayer
+stays capped at 75% native density). Unknown or dropped tier commands keep
+the previous budget. Tier thresholds for an automatic mode are deferred
+until the minimum-device Instruments profiling gate produces real budgets.
+
 ## Mobile renderer budget
 
 An idle four-player Atlantic City board on an iPad Air (5th generation) held

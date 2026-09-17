@@ -119,7 +119,23 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
                             "Expected a JSON string.",
                             null,
                         )
+                    }
+                "setGraphicsQuality" -> {
+                    val json = call.arguments as? String
+                    if (json == null) {
+                        result.error(
+                            "invalid_graphics_quality",
+                            "Expected a JSON string.",
+                            null,
+                        )
                     } else {
+                        val sessionId = boardSessions.activeSession?.id
+                        result.success(
+                            sessionId != null &&
+                                bridgePlugin?.setGraphicsQuality(sessionId, json) == true,
+                        )
+                    }
+                } else {
                         val sessionId = boardSessions.activeSession?.id
                         result.success(
                             sessionId != null &&
@@ -288,6 +304,7 @@ private class PropertyTycoonGodotBridge(
         private val ANIMATE_ROLL_SIGNAL = SignalInfo("animate_roll", String::class.java)
         private val CAMERA_GESTURE_SIGNAL = SignalInfo("camera_gesture", String::class.java)
         private val CAMERA_FOLLOW_SIGNAL = SignalInfo("camera_follow", String::class.java)
+        private val GRAPHICS_QUALITY_SIGNAL = SignalInfo("graphics_quality", String::class.java)
         private val BOARD_TAP_SIGNAL = SignalInfo("board_tap", String::class.java)
     }
 
@@ -313,6 +330,7 @@ private class PropertyTycoonGodotBridge(
             ANIMATE_ROLL_SIGNAL,
             CAMERA_GESTURE_SIGNAL,
             CAMERA_FOLLOW_SIGNAL,
+            GRAPHICS_QUALITY_SIGNAL,
             BOARD_TAP_SIGNAL,
         )
 
@@ -377,6 +395,15 @@ private class PropertyTycoonGodotBridge(
     fun setCameraFollow(sessionId: Long, json: String): Boolean {
         if (scriptReady && attachedSessionId == sessionId) {
             emitSignal(CAMERA_FOLLOW_SIGNAL.name, json)
+            return true
+        }
+        return false
+    }
+
+    @Synchronized
+    fun setGraphicsQuality(sessionId: Long, json: String): Boolean {
+        if (scriptReady && attachedSessionId == sessionId) {
+            emitSignal(GRAPHICS_QUALITY_SIGNAL.name, json)
             return true
         }
         return false

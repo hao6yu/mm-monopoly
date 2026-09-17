@@ -1686,6 +1686,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraFollowOff => '自由カメラ';
 
   @override
+  String get graphicsQuality3D => '3Dグラフィック品質';
+
+  @override
+  String get qualityHigh => '高';
+
+  @override
+  String get qualityMedium => '中';
+
+  @override
+  String get qualityLow => '低';
+
+  @override
   String activeEventsOverflow(int count) {
     return '他 $count 件のアクティブイベント';
   }
