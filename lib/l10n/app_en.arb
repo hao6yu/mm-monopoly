@@ -976,6 +976,8 @@
   "retry3DBoard": "Retry 3D",
   "use2DBoard": "Use 2D board",
   "continuedOn2DBoard": "The 3D board stopped responding. Continuing on the 2D board.",
+  "cameraFollowOn": "Follow the active pawn",
+  "cameraFollowOff": "Free camera",
   "activeEventsOverflow": "{count} more active events",
   "@activeEventsOverflow": {
     "type": "text",

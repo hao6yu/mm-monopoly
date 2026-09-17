@@ -1747,6 +1747,12 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le plateau 3D ne répond plus. La partie continue sur le plateau 2D.';
 
   @override
+  String get cameraFollowOn => 'Suivre le pion actif';
+
+  @override
+  String get cameraFollowOff => 'Caméra libre';
+
+  @override
   String activeEventsOverflow(int count) {
     return '$count événements actifs de plus';
   }

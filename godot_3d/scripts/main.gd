@@ -41,6 +41,8 @@ const LABEL_REFERENCE_DISTANCE := 20.0
 const LABEL_MAX_COMPENSATION := 1.45
 const LABEL_LANDMARK_MAX_COMPENSATION := 1.9
 const LABEL_OVERVIEW_DISTANCE := 26.0
+# Damping rate for the token-follow camera: higher closes the gap faster.
+const CAMERA_FOLLOW_DAMPING := 3.2
 const HOSTED_ROLL_TIMEOUT_MSEC := 9500
 const MOBILE_CYLINDER_RADIAL_SEGMENTS := 24
 const MOBILE_MIN_SPHERE_SHADOW_RADIUS := 0.1
@@ -215,6 +217,11 @@ var orbiting := false
 var touch_points: Dictionary = {}
 var pinch_distance := 0.0
 var touch_centroid := Vector2.ZERO
+# Optional token-follow framing (3D-09). Opt-in from Flutter; any manual
+# pan/orbit gesture suppresses it until the next movement command so the
+# player's chosen view always wins.
+var camera_follow_enabled := false
+var camera_follow_suppressed := false
 var rpg_mode := false
 var mode_transitioning := false
 var rpg_camera_yaw := 0.0
@@ -307,6 +314,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_update_theme_park_world(delta)
 	_update_label_presentation()
+	_update_camera_follow(delta)
 	if is_instance_valid(destination_beacon):
 		var beacon_pulse := 1.0 + sin(Time.get_ticks_msec() * 0.006) * 0.12
 		var pulse_node := destination_beacon.get_node_or_null("DestinationPulse") as Node3D
@@ -428,6 +436,8 @@ func _current_touch_centroid() -> Vector2:
 
 
 func _orbit_camera(delta_x: float, delta_y: float) -> void:
+	if camera_follow_enabled:
+		camera_follow_suppressed = true
 	camera_azimuth -= delta_x * CAMERA_ORBIT_HORIZONTAL_SENSITIVITY
 	camera_elevation = clampf(
 		camera_elevation - delta_y * CAMERA_ORBIT_VERTICAL_SENSITIVITY,
@@ -4341,6 +4351,7 @@ func _connect_flutter_bridge() -> void:
 		flutter_bridge.connect("sync_state", _apply_flutter_state_json)
 		flutter_bridge.connect("animate_roll", _animate_flutter_roll_json)
 		flutter_bridge.connect("camera_gesture", _apply_camera_gesture_json)
+		flutter_bridge.connect("camera_follow", _apply_camera_follow_json)
 		flutter_bridge.connect("board_tap", _pick_board_object_json)
 		flutter_bridge.ready(scene_ready_token)
 		return
@@ -4378,8 +4389,18 @@ func host_receive_message(message: Dictionary) -> void:
 			_animate_flutter_roll_json(json)
 		"camera_gesture":
 			_apply_camera_gesture_json(json)
+		"camera_follow":
+			_apply_camera_follow_json(json)
 		"board_tap":
 			_pick_board_object_json(json)
+
+
+func _apply_camera_follow_json(json: String) -> void:
+	var payload = JSON.parse_string(json)
+	if typeof(payload) != TYPE_DICTIONARY:
+		return
+	camera_follow_enabled = bool(payload.get("enabled", false))
+	camera_follow_suppressed = false
 
 
 func _apply_camera_gesture_json(json: String) -> void:
@@ -4411,6 +4432,10 @@ func _apply_camera_gesture_json(json: String) -> void:
 func _pan_camera(delta_x: float, delta_y: float) -> void:
 	if camera == null:
 		return
+	# A manual pan takes control: token-follow stays suppressed until the
+	# next movement command re-engages it.
+	if camera_follow_enabled:
+		camera_follow_suppressed = true
 	var screen_right := camera.global_transform.basis.x
 	var screen_up := camera.global_transform.basis.y
 	screen_right.y = 0.0
@@ -4764,6 +4789,10 @@ func _animate_flutter_roll_json(json: String) -> void:
 
 	movement_generation += 1
 	var generation := movement_generation
+	# A freshly accepted movement re-engages token-follow after any manual
+	# suppression, so the chase always covers the move about to start.
+	if camera_follow_enabled:
+		camera_follow_suppressed = false
 	var command := received_command.duplicate(true)
 	command["_movementGeneration"] = generation
 	command["_stateGeneration"] = board_state_generation
@@ -5927,6 +5956,10 @@ func _reset_camera() -> void:
 	camera_uses_portrait_framing = _is_portrait_viewport()
 	camera_uses_tablet_landscape_framing = _is_tablet_landscape_viewport()
 	camera_distance = _default_camera_distance()
+	# An explicit reset is a framing decision: hold follow suppression until
+	# the next movement command re-engages it.
+	if camera_follow_enabled:
+		camera_follow_suppressed = true
 	_update_camera()
 
 
@@ -5987,6 +6020,29 @@ func _update_camera() -> void:
 		cos(camera_azimuth) * horizontal
 	)
 	camera.look_at(camera_target, Vector3.UP)
+
+
+func _update_camera_follow(delta: float) -> void:
+	if not camera_follow_enabled or camera_follow_suppressed or rpg_mode:
+		return
+	if camera == null or player_tokens.is_empty():
+		return
+	var player_index := current_player_index
+	if player_index < 0 or player_index >= player_tokens.size():
+		return
+	var token := player_tokens[player_index]
+	if not is_instance_valid(token):
+		return
+	# Only the ground target follows; the player's elevation, distance, and
+	# azimuth stay exactly as framed. Damping is frame-rate independent so
+	# the chase never snaps.
+	var desired := Vector3(
+		clampf(token.position.x, CAMERA_TARGET_MIN_X, CAMERA_TARGET_MAX_X),
+		camera_target.y,
+		clampf(token.position.z, CAMERA_TARGET_MIN_Z, CAMERA_TARGET_MAX_Z)
+	)
+	var weight := 1.0 - exp(-delta * CAMERA_FOLLOW_DAMPING)
+	camera_target = camera_target.lerp(desired, weight)
 
 
 func _sample_manhattan_route(spot_count: int) -> Array[Vector3]:

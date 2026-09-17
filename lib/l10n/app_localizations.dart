@@ -3200,6 +3200,18 @@ abstract class AppLocalizations {
   /// **'The 3D board stopped responding. Continuing on the 2D board.'**
   String get continuedOn2DBoard;
 
+  /// No description provided for @cameraFollowOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the active pawn'**
+  String get cameraFollowOn;
+
+  /// No description provided for @cameraFollowOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Free camera'**
+  String get cameraFollowOff;
+
   /// No description provided for @activeEventsOverflow.
   ///
   /// In en, this message translates to:

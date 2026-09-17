@@ -203,6 +203,22 @@ matching the portfolio, card, and victory identity surfaces instead of the
 raw setup icon. Still open under 3D-05: a live pawn preview in setup, and
 the deeper token-model decision tracked as 3D-04.
 
+### Token-follow camera follow-up — August 25, 2026
+
+3D-09 first pass implemented as an opt-in mode: the action bar gains a
+follow toggle that sends `camera_follow` through both native hosts, and the
+native scene damps its ground target toward the active pawn with
+frame-rate-independent easing inside the existing target bounds. Manual
+pan/orbit suppresses the chase until the next accepted movement command,
+Reset View holds suppression, and disabling follow restores the free camera
+— preserving the earlier remediation that a roll never overrides the
+player's chosen view. Covered by a bridge smoke suite (damping, bounds,
+suppression, re-engagement, disable) and a Flutter controller test for the
+gated toggle. Reduced-motion handling rides on the toggle: following is
+entirely off unless requested. Remaining 3D-09 polish (full path-bounds
+framing and HUD safe-frame offsets inside the follow mode) rides with the
+pawn-identity work.
+
 ### Experience polish follow-up — August 25, 2026
 
 Physical iPad QA surfaced two confirmed experience defects, both fixed and

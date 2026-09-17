@@ -1716,6 +1716,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'The 3D board stopped responding. Continuing on the 2D board.';
 
   @override
+  String get cameraFollowOn => 'Follow the active pawn';
+
+  @override
+  String get cameraFollowOff => 'Free camera';
+
+  @override
   String activeEventsOverflow(int count) {
     return '$count more active events';
   }

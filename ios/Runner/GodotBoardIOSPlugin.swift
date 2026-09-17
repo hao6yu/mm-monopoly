@@ -165,6 +165,24 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
       sendToGodot(action: "camera_gesture", json: json)
       result(true)
 
+    case "setCameraFollow":
+      guard let json = call.arguments as? String else {
+        result(
+          FlutterError(
+            code: "invalid_camera_follow",
+            message: "The camera follow toggle must be a JSON string.",
+            details: nil
+          )
+        )
+        return
+      }
+      guard sceneReadyToken != nil, viewHandle != nil else {
+        result(false)
+        return
+      }
+      sendToGodot(action: "camera_follow", json: json)
+      result(true)
+
     case "pickBoardObject":
       guard let json = call.arguments as? String else {
         result(

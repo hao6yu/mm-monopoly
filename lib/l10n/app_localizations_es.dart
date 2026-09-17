@@ -1737,6 +1737,12 @@ class AppLocalizationsEs extends AppLocalizations {
       'El tablero 3D dejó de responder. La partida continúa en el tablero 2D.';
 
   @override
+  String get cameraFollowOn => 'Seguir al peón activo';
+
+  @override
+  String get cameraFollowOff => 'Cámara libre';
+
+  @override
   String activeEventsOverflow(int count) {
     return '$count eventos activos más';
   }

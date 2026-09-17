@@ -1680,6 +1680,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get continuedOn2DBoard => '3Dボードが応答しないため、2Dボードでゲームを続けます。';
 
   @override
+  String get cameraFollowOn => 'アクティブなコマを追従';
+
+  @override
+  String get cameraFollowOff => '自由カメラ';
+
+  @override
   String activeEventsOverflow(int count) {
     return '他 $count 件のアクティブイベント';
   }

@@ -35,6 +35,12 @@ Flutter sends:
 - `camera_gesture`: one-finger pan, two-finger orbit, pinch zoom, and reset-view
   commands. Two-finger orbit and pinch values can be sent together so rotating
   does not interrupt zooming.
+- `camera_follow`: opt-in token-follow framing (3D-09). When enabled, the
+  ground target damps toward the active pawn during movements with
+  frame-rate-independent easing, respecting the existing target bounds. Any
+  manual pan or orbit gesture suppresses the chase until the next accepted
+  movement command, so the player's chosen view always wins; Reset View and
+  disabling follow both restore the free camera.
 - `board_tap`: normalized view coordinates for interactive object picking.
 
 Godot returns:

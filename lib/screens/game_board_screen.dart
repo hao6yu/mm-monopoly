@@ -302,6 +302,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   final Random _random = Random.secure();
   bool _isPaused = false; // Track if game menu is open
   bool _isMusicPlaying = true; // Track music state
+  bool _cameraFollowEnabled = false; // Opt-in token-follow camera (3D-09)
   bool _isProcessingTurn = false; // Prevent dice rolls while processing
   int _turnOperationId = 0;
   final Set<Timer> _scheduledTurnTimers = <Timer>{};
@@ -879,6 +880,17 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     AudioService.instance.setMusicEnabled(_isMusicPlaying);
   }
 
+  /// UI-03-safe toggle for the opt-in token-follow camera (3D-09). The
+  /// native scene keeps following until a manual gesture suppresses it.
+  void _toggleCameraFollow() {
+    setState(() {
+      _cameraFollowEnabled = !_cameraFollowEnabled;
+    });
+    unawaited(
+      _godotBoardController.setCameraFollow(enabled: _cameraFollowEnabled),
+    );
+  }
+
   void _showGameMenu() {
     if (!_canOpenGameMenu) return;
     final canPersistTurn = _canUseStableInteractions;
@@ -1436,6 +1448,19 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           tooltip: _isMusicPlaying ? l10n.muteMusic : l10n.playMusic,
           onTap: _toggleMusic,
           color: _isMusicPlaying
+              ? const Color(0xE61D765F)
+              : const Color(0xE6111A33),
+        ),
+        const SizedBox(width: 7),
+        _build3DOverlayButton(
+          icon: _cameraFollowEnabled
+              ? Icons.center_focus_strong
+              : Icons.center_focus_weak,
+          tooltip: _cameraFollowEnabled
+              ? l10n.cameraFollowOff
+              : l10n.cameraFollowOn,
+          onTap: _toggleCameraFollow,
+          color: _cameraFollowEnabled
               ? const Color(0xE61D765F)
               : const Color(0xE6111A33),
         ),

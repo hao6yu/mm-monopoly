@@ -655,6 +655,8 @@
   "retry3DBoard": "Reintentar en 3D",
   "use2DBoard": "Usar tablero 2D",
   "continuedOn2DBoard": "El tablero 3D dejó de responder. La partida continúa en el tablero 2D.",
+  "cameraFollowOn": "Seguir al peón activo",
+  "cameraFollowOff": "Cámara libre",
   "activeEventsOverflow": "{count} eventos activos más",
   "@activeEventsOverflow": {
     "type": "text",

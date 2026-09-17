@@ -235,6 +235,69 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  test('setCameraFollow sends the toggle once the board is ready', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final followCalls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          switch (call.method) {
+            case 'isAvailable':
+              return true;
+            case 'syncState':
+              return true;
+            case 'setCameraFollow':
+              followCalls.add(call);
+              return true;
+            default:
+              return null;
+          }
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController();
+    addTearDown(controller.dispose);
+
+    // Before the board is ready the toggle is a no-op.
+    await controller.setCameraFollow(enabled: true);
+    expect(followCalls, isEmpty);
+
+    await controller.initialize();
+    await controller.syncGameState(state, boardId: city.boardId);
+    controller.markViewCreated();
+    await sendNativeCall(
+      MethodCall('stateApplied', {
+        'sessionId': state.id,
+        'stateGeneration': 1,
+        'boardId': city.boardId,
+      }),
+    );
+    await sendNativeCall(
+      const MethodCall('boardReady', {'sceneReadyToken': 'scene-1'}),
+    );
+    expect(controller.isBoardReady, isTrue);
+
+    await controller.setCameraFollow(enabled: true);
+    expect(followCalls, hasLength(1));
+    expect(followCalls.single.arguments, jsonEncode({'enabled': true}));
+
+    await controller.setCameraFollow(enabled: false);
+    expect(followCalls, hasLength(2));
+    expect(followCalls.last.arguments, jsonEncode({'enabled': false}));
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   test(
     'scene ready does not unlock play before exact state is applied',
     () async {

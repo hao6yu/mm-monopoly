@@ -90,6 +90,7 @@ func _run() -> void:
 	_test_distance_scaled_token_motion(scene)
 	await _test_roll_cancellation_on_state_sync(scene, state)
 	await _test_special_movement_presentations(scene, state)
+	await _test_camera_follow(scene, state)
 	_test_native_one_finger_pan(scene)
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
@@ -1166,6 +1167,86 @@ func _test_pinch_zoom(scene: Node) -> void:
 	release_second.pressed = false
 	scene._unhandled_input(release_second)
 	scene._reset_camera()
+
+
+func _test_camera_follow(scene: Node, state: Dictionary) -> void:
+	# Enable follow and verify the ground target damps toward the pawn.
+	scene.host_receive_message({
+		"action": "camera_follow",
+		"json": JSON.stringify({"enabled": true}),
+	})
+	if not scene.camera_follow_enabled:
+		push_error("Camera follow toggle did not reach the scene.")
+		quit(1)
+		return
+	var pawn := scene.player_tokens[0] as Node3D
+	var start_target: Vector3 = scene.camera_target
+	var pawn_flat := Vector3(pawn.position.x, start_target.y, pawn.position.z)
+	for _frame in 120:
+		await process_frame
+	var follow_target: Vector3 = scene.camera_target
+	if follow_target.distance_to(pawn_flat) >= start_target.distance_to(pawn_flat):
+		push_error("Camera follow did not damp the target toward the pawn.")
+		quit(1)
+		return
+	if not _camera_target_in_bounds(scene):
+		push_error("Camera follow pushed the target outside its bounds.")
+		quit(1)
+		return
+	# A manual pan takes control: follow stops moving the target.
+	scene._pan_camera(140.0, 0.0)
+	if not scene.camera_follow_suppressed:
+		push_error("Manual pan did not suppress camera follow.")
+		quit(1)
+		return
+	var suppressed_target: Vector3 = scene.camera_target
+	for _frame in 40:
+		await process_frame
+	if not scene.camera_target.is_equal_approx(suppressed_target):
+		push_error("Suppressed follow still moved the camera target.")
+		quit(1)
+		return
+	# A new movement command re-engages the chase for the move about to start.
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "follow-walk",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "walk",
+			"spaces": 1,
+			"toLogicalPosition": 2,
+			"toVisualPosition": 3,
+			"visualPath": [1, 2],
+		}),
+	})
+	if scene.camera_follow_suppressed:
+		push_error("A new movement command did not re-engage camera follow.")
+		quit(1)
+		return
+	await _await_movement_complete(scene)
+	# Disable and restore the overview so the camera suites start clean.
+	scene.host_receive_message({
+		"action": "camera_follow",
+		"json": JSON.stringify({"enabled": false}),
+	})
+	if scene.camera_follow_enabled:
+		push_error("Camera follow could not be disabled.")
+		quit(1)
+		return
+	scene.camera_target = Vector3(0.0, 1.4, -1.0)
+	scene._update_camera()
+	print("CAMERA_FOLLOW_OK")
+
+
+func _camera_target_in_bounds(scene: Node) -> bool:
+	var target: Vector3 = scene.camera_target
+	return (
+		target.x >= scene.CAMERA_TARGET_MIN_X
+		and target.x <= scene.CAMERA_TARGET_MAX_X
+		and target.z >= scene.CAMERA_TARGET_MIN_Z
+		and target.z <= scene.CAMERA_TARGET_MAX_Z
+	)
 
 
 func _test_native_one_finger_pan(scene: Node) -> void:

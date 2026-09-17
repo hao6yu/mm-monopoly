@@ -493,6 +493,24 @@ class GodotBoardController extends ChangeNotifier {
     }
   }
 
+  /// Toggles the optional token-follow camera (3D-09). When enabled, the
+  /// native scene damps its ground target toward the active pawn during
+  /// movements; manual gestures always win until the next movement.
+  Future<void> setCameraFollow({required bool enabled}) async {
+    if (!_isAvailable || !isBoardReady) return;
+    try {
+      await _channel.invokeMethod<bool>(
+        'setCameraFollow',
+        jsonEncode({'enabled': enabled}),
+      );
+    } on PlatformException {
+      // A dropped toggle leaves the previous mode; the button reflects the
+      // last acknowledged intent and can be tapped again.
+    } on MissingPluginException {
+      // The 2D fallback has no follow mode.
+    }
+  }
+
   Future<void> pickBoardObject({
     required double normalizedX,
     required double normalizedY,

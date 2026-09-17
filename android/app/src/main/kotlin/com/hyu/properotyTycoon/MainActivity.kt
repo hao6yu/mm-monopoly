@@ -111,6 +111,22 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
                         )
                     }
                 }
+                "setCameraFollow" -> {
+                    val json = call.arguments as? String
+                    if (json == null) {
+                        result.error(
+                            "invalid_camera_follow",
+                            "Expected a JSON string.",
+                            null,
+                        )
+                    } else {
+                        val sessionId = boardSessions.activeSession?.id
+                        result.success(
+                            sessionId != null &&
+                                bridgePlugin?.setCameraFollow(sessionId, json) == true,
+                        )
+                    }
+                }
                 "pickBoardObject" -> {
                     val json = call.arguments as? String
                     if (json == null) {
@@ -271,6 +287,7 @@ private class PropertyTycoonGodotBridge(
         private val SYNC_STATE_SIGNAL = SignalInfo("sync_state", String::class.java)
         private val ANIMATE_ROLL_SIGNAL = SignalInfo("animate_roll", String::class.java)
         private val CAMERA_GESTURE_SIGNAL = SignalInfo("camera_gesture", String::class.java)
+        private val CAMERA_FOLLOW_SIGNAL = SignalInfo("camera_follow", String::class.java)
         private val BOARD_TAP_SIGNAL = SignalInfo("board_tap", String::class.java)
     }
 
@@ -295,6 +312,7 @@ private class PropertyTycoonGodotBridge(
             SYNC_STATE_SIGNAL,
             ANIMATE_ROLL_SIGNAL,
             CAMERA_GESTURE_SIGNAL,
+            CAMERA_FOLLOW_SIGNAL,
             BOARD_TAP_SIGNAL,
         )
 
@@ -350,6 +368,15 @@ private class PropertyTycoonGodotBridge(
     fun cameraGesture(sessionId: Long, json: String): Boolean {
         if (scriptReady && attachedSessionId == sessionId) {
             emitSignal(CAMERA_GESTURE_SIGNAL.name, json)
+            return true
+        }
+        return false
+    }
+
+    @Synchronized
+    fun setCameraFollow(sessionId: Long, json: String): Boolean {
+        if (scriptReady && attachedSessionId == sessionId) {
+            emitSignal(CAMERA_FOLLOW_SIGNAL.name, json)
             return true
         }
         return false
