@@ -19,6 +19,28 @@ const TOKEN_HOP_HEIGHT := 0.62
 const TOKEN_STEP_DURATION := 0.24
 const TOKEN_MIN_DURATION_RATIO := 0.65
 const TOKEN_MAX_DURATION_RATIO := 2.4
+# Special (non-dice) hosted movements: a short beat lets the route preview
+# markers appear before the pawn departs on a walk, reverse walk, or flight.
+const HOSTED_SPECIAL_MOVE_BEAT_SEC := 0.45
+const TOKEN_FLIGHT_MIN_HEIGHT := 1.4
+const TOKEN_FLIGHT_HEIGHT_RATIO := 0.32
+const TOKEN_FLIGHT_MAX_HEIGHT := 6.0
+const TOKEN_FLIGHT_MIN_DURATION := 0.9
+const TOKEN_FLIGHT_DURATION_RATIO := 0.055
+const TOKEN_FLIGHT_MAX_DURATION := 2.1
+# City water renders as a cylinder whose top surface sits at this height.
+const CITY_WATER_SURFACE_Y := 0.98
+# Harbor craft keep their origin at the waterline; the hull extends this far
+# below it so boats read as floating in the water instead of hovering.
+const BOAT_HULL_DRAFT := 0.09
+const BOAT_BOB_AMPLITUDE := 0.022
+# Semantic zoom: label sizes were authored for close framing. Compensating for
+# camera distance keeps overview text legible without turning labels into
+# billboards that cover the city.
+const LABEL_REFERENCE_DISTANCE := 20.0
+const LABEL_MAX_COMPENSATION := 1.45
+const LABEL_LANDMARK_MAX_COMPENSATION := 1.9
+const LABEL_OVERVIEW_DISTANCE := 26.0
 const HOSTED_ROLL_TIMEOUT_MSEC := 9500
 const MOBILE_CYLINDER_RADIAL_SEGMENTS := 24
 const MOBILE_MIN_SPHERE_SHADOW_RADIUS := 0.1
@@ -230,6 +252,12 @@ var brand_subtitle_label: Label
 var movement_preview_root: Node3D
 var movement_markers: Array[MeshInstance3D] = []
 var destination_beacon: Node3D
+# Semantic zoom registry for world-space text. Each entry keeps the label node
+# and its presentation kind so camera-distance changes can compensate label
+# size in one pass instead of per-label per-frame writes.
+var world_labels: Array[Dictionary] = []
+var applied_label_compensation := -1.0
+var labels_abbreviated := false
 var camera_uses_portrait_framing := false
 var camera_uses_tablet_landscape_framing := false
 var box_mesh_cache: Dictionary = {}
@@ -261,6 +289,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_theme_park_world(delta)
+	_update_label_presentation()
 	if is_instance_valid(destination_beacon):
 		var beacon_pulse := 1.0 + sin(Time.get_ticks_msec() * 0.006) * 0.12
 		var pulse_node := destination_beacon.get_node_or_null("DestinationPulse") as Node3D
@@ -641,6 +670,7 @@ func _create_tile(index: int, position: Vector3) -> void:
 	icon.visible = _should_show_tile_icon(index, tile_type)
 	label.position = Vector3(0.0, 0.17, -0.12 if icon.visible else 0.02)
 	tile.add_child(icon)
+	_register_world_label(label, "tile")
 	_refresh_tile_development(tile, index)
 
 
@@ -1305,13 +1335,15 @@ func _create_tree(parent: Node, position: Vector3, palm: bool = false) -> void:
 
 func _create_city_coast_traffic(parent: Node3D) -> void:
 	# All animated craft use this verified ocean lane west of the land mass.
-	# It is intentionally separated from the property route and dice platform.
+	# It is intentionally separated from the property route and dice platform,
+	# and its height is the water surface so hulls draw with a real draft.
+	var lane_y := CITY_WATER_SURFACE_Y
 	var ocean_lane := [
-		Vector3(-10.4, 1.2, -13.6),
-		Vector3(-11.25, 1.2, -8.0),
-		Vector3(-11.45, 1.2, -1.5),
-		Vector3(-11.3, 1.2, 5.5),
-		Vector3(-10.2, 1.2, 12.8),
+		Vector3(-10.4, lane_y, -13.6),
+		Vector3(-11.25, lane_y, -8.0),
+		Vector3(-11.45, lane_y, -1.5),
+		Vector3(-11.3, lane_y, 5.5),
+		Vector3(-10.2, lane_y, 12.8),
 	]
 	var specs := [
 		["ferry", _theme_color("accent", "#f0c75b"), 0, 0.12, 0.82, 1],
@@ -1328,6 +1360,7 @@ func _create_city_coast_traffic(parent: Node3D) -> void:
 			"speed": float(spec[4]),
 			"direction": int(spec[5]),
 			"surface": "water",
+			"lane_y": lane_y,
 		})
 
 
@@ -1411,11 +1444,13 @@ func _sample_closed_route(points: Array[Vector2], spot_count: int) -> Array[Vect
 func _create_harbor_details(parent: Node3D) -> void:
 	var pier_material := _material(Color("#b58c61"), 0.02, 0.72)
 	var pier_edge := _material(Color("#f1d49a"), 0.08, 0.5)
+	# Piers sit with their deck just above the water surface; buoys float on
+	# it. Neither may hover above the water plane.
 	for pier_data in [
-		[Vector3(-8.05, 1.18, -7.7), Vector3(3.0, 0.16, 0.62)],
-		[Vector3(-8.3, 1.18, -5.6), Vector3(3.2, 0.16, 0.58)],
-		[Vector3(8.1, 1.18, -9.6), Vector3(3.0, 0.16, 0.62)],
-		[Vector3(8.45, 1.18, -3.8), Vector3(3.4, 0.16, 0.58)],
+		[Vector3(-8.05, 1.06, -7.7), Vector3(3.0, 0.16, 0.62)],
+		[Vector3(-8.3, 1.06, -5.6), Vector3(3.2, 0.16, 0.58)],
+		[Vector3(8.1, 1.06, -9.6), Vector3(3.0, 0.16, 0.62)],
+		[Vector3(8.45, 1.06, -3.8), Vector3(3.4, 0.16, 0.58)],
 	]:
 		_add_box(parent, pier_data[1], pier_data[0], pier_material)
 		_add_box(
@@ -1428,11 +1463,11 @@ func _create_harbor_details(parent: Node3D) -> void:
 	var buoy_red := _material(Color("#f2554d"), 0.08, 0.34, Color("#f2554d"), 0.45)
 	var buoy_white := _material(Color("#fff4d8"), 0.05, 0.4)
 	for buoy_position in [
-		Vector3(-10.8, 1.16, -12.0),
-		Vector3(10.6, 1.16, -11.0),
-		Vector3(-11.3, 1.16, 4.0),
-		Vector3(11.2, 1.16, 6.1),
-		Vector3(-7.8, 1.16, 14.0),
+		Vector3(-10.8, 0.92, -12.0),
+		Vector3(10.6, 0.92, -11.0),
+		Vector3(-11.3, 0.92, 4.0),
+		Vector3(11.2, 0.92, 6.1),
+		Vector3(-7.8, 0.92, 14.0),
 	]:
 		_add_cylinder(
 			parent,
@@ -1454,36 +1489,38 @@ func _create_harbor_details(parent: Node3D) -> void:
 
 func _create_harbor_traffic(parent: Node3D) -> void:
 	# These are explicit, water-only navigation lanes. Traffic never uses the
-	# decorative board route, and every point stays outside land, piers and dice.
+	# decorative board route, and every point stays outside land, piers and
+	# dice. Lane height is the water surface so hulls draw with a real draft.
+	var lane_y := CITY_WATER_SURFACE_Y
 	var hudson_lane := [
-		Vector3(-8.5, 1.2, -13.6),
-		Vector3(-10.4, 1.2, -10.5),
-		Vector3(-11.3, 1.2, -5.0),
-		Vector3(-11.5, 1.2, 1.0),
-		Vector3(-10.7, 1.2, 7.0),
-		Vector3(-7.8, 1.2, 13.0),
+		Vector3(-8.5, lane_y, -13.6),
+		Vector3(-10.4, lane_y, -10.5),
+		Vector3(-11.3, lane_y, -5.0),
+		Vector3(-11.5, lane_y, 1.0),
+		Vector3(-10.7, lane_y, 7.0),
+		Vector3(-7.8, lane_y, 13.0),
 	]
 	var east_river_lane := [
-		Vector3(6.0, 1.2, -14.0),
-		Vector3(10.0, 1.2, -11.0),
-		Vector3(12.4, 1.2, -7.5),
-		Vector3(12.4, 1.2, -3.0),
-		Vector3(12.1, 1.2, 4.0),
-		Vector3(11.8, 1.2, 6.5),
-		Vector3(10.2, 1.2, 8.0),
-		Vector3(7.3, 1.2, 12.5),
+		Vector3(6.0, lane_y, -14.0),
+		Vector3(10.0, lane_y, -11.0),
+		Vector3(12.4, lane_y, -7.5),
+		Vector3(12.4, lane_y, -3.0),
+		Vector3(12.1, lane_y, 4.0),
+		Vector3(11.8, lane_y, 6.5),
+		Vector3(10.2, lane_y, 8.0),
+		Vector3(7.3, lane_y, 12.5),
 	]
 	var liberty_ferry_lane := [
-		Vector3(-8.5, 1.2, -12.8),
-		Vector3(-7.0, 1.2, -15.0),
-		Vector3(-4.8, 1.2, -16.7),
-		Vector3(-2.8, 1.2, -17.7),
+		Vector3(-8.5, lane_y, -12.8),
+		Vector3(-7.0, lane_y, -15.0),
+		Vector3(-4.8, lane_y, -16.7),
+		Vector3(-2.8, lane_y, -17.7),
 	]
 	var south_harbor_lane := [
-		Vector3(3.0, 1.2, -17.6),
-		Vector3(5.2, 1.2, -16.1),
-		Vector3(7.5, 1.2, -13.7),
-		Vector3(9.5, 1.2, -10.5),
+		Vector3(3.0, lane_y, -17.6),
+		Vector3(5.2, lane_y, -16.1),
+		Vector3(7.5, lane_y, -13.7),
+		Vector3(9.5, lane_y, -10.5),
 	]
 	var boat_specs := [
 		["ferry", Color("#f4c84b"), hudson_lane, 1, 0.25, 1.15, 1],
@@ -1501,6 +1538,7 @@ func _create_harbor_traffic(parent: Node3D) -> void:
 			"progress": float(spec[4]),
 			"speed": float(spec[5]),
 			"direction": int(spec[6]),
+			"lane_y": lane_y,
 		})
 
 
@@ -1513,17 +1551,19 @@ func _make_harbor_boat(kind: String, accent: Color) -> Node3D:
 	var glass := _material(Color("#76d4eb"), 0.2, 0.16, Color("#76d4eb"), 0.22)
 	# A pointed plan-view hull and visible wake make these read as boats even
 	# from the board's high camera, instead of road vehicles on blue terrain.
+	# The node origin is the waterline: the hull reaches BOAT_HULL_DRAFT below
+	# it, so lanes can be authored directly on the water surface.
 	var lower_hull := _add_triangular_prism(
 		boat,
 		Vector3(1.18, 0.3, 2.35),
-		Vector3(0.0, 0.2, -0.08),
+		Vector3(0.0, 0.21 - BOAT_HULL_DRAFT, -0.08),
 		hull_dark
 	)
 	lower_hull.rotation_degrees.y = 180.0
 	var upper_hull := _add_triangular_prism(
 		boat,
 		Vector3(1.02, 0.18, 2.0),
-		Vector3(0.0, 0.4, -0.12),
+		Vector3(0.0, 0.41 - BOAT_HULL_DRAFT, -0.12),
 		hull
 	)
 	upper_hull.rotation_degrees.y = 180.0
@@ -1533,7 +1573,7 @@ func _make_harbor_boat(kind: String, accent: Color) -> Node3D:
 		var wake := _add_box(
 			boat,
 			Vector3(0.13, 0.025, 1.35),
-			Vector3(wake_x, 0.04, 1.25),
+			Vector3(wake_x, 0.03, 1.25),
 			wake_material
 		)
 		wake.rotation_degrees.y = -10.0 if wake_x < 0.0 else 10.0
@@ -1544,32 +1584,32 @@ func _make_harbor_boat(kind: String, accent: Color) -> Node3D:
 			0.025,
 			0.035,
 			1.55,
-			Vector3(0.0, 1.12, 0.06),
+			Vector3(0.0, 0.99, 0.06),
 			hull_dark
 		)
 		var sail := _add_box(
 			boat,
 			Vector3(0.055, 0.95, 0.72),
-			Vector3(0.04, 1.17, 0.1),
+			Vector3(0.04, 1.04, 0.1),
 			accent_material
 		)
 		sail.rotation_degrees.x = -9.0
 	else:
-		_add_box(boat, Vector3(0.76, 0.38, 0.92), Vector3(0.0, 0.66, 0.02), hull)
-		_add_box(boat, Vector3(0.78, 0.16, 0.48), Vector3(0.0, 0.7, -0.38), glass)
-		_add_box(boat, Vector3(0.86, 0.08, 0.98), Vector3(0.0, 0.9, 0.02), accent_material)
+		_add_box(boat, Vector3(0.76, 0.38, 0.92), Vector3(0.0, 0.53, 0.02), hull)
+		_add_box(boat, Vector3(0.78, 0.16, 0.48), Vector3(0.0, 0.57, -0.38), glass)
+		_add_box(boat, Vector3(0.86, 0.08, 0.98), Vector3(0.0, 0.77, 0.02), accent_material)
 		if kind == "ferry":
 			_add_box(
 				boat,
 				Vector3(0.58, 0.2, 0.62),
-				Vector3(0.0, 1.04, 0.08),
+				Vector3(0.0, 0.91, 0.08),
 				hull
 			)
 			var ferry_label := Label3D.new()
 			ferry_label.text = "FERRY"
 			ferry_label.font_size = 28
 			ferry_label.pixel_size = 0.006
-			ferry_label.position = Vector3(0.0, 0.73, -0.5)
+			ferry_label.position = Vector3(0.0, 0.6, -0.5)
 			ferry_label.modulate = Color("#122e41")
 			ferry_label.outline_modulate = Color.WHITE
 			ferry_label.outline_size = 3
@@ -1824,11 +1864,94 @@ func _update_theme_park_world(delta: float) -> void:
 			start = path[segment] as Vector3
 			finish = path[target_index] as Vector3
 		boat.position = start.lerp(finish, progress)
-		if boat.position.distance_squared_to(finish) > 0.000001:
-			boat.look_at(finish, Vector3.UP)
+		# Craft ride ON the water: the lane height is the waterline and a slow
+		# bob/sway keeps them alive without ever lifting the hull clear.
+		var lane_y := float(route.get("lane_y", CITY_WATER_SURFACE_Y))
+		var bob_phase := float(route.get("bob_phase", 0.0)) + delta * 1.7
+		route["bob_phase"] = bob_phase
+		boat.position.y = lane_y + sin(bob_phase) * BOAT_BOB_AMPLITUDE
+		var heading_target := Vector3(finish.x, boat.position.y, finish.z)
+		if boat.position.distance_squared_to(heading_target) > 0.000001:
+			boat.look_at(heading_target, Vector3.UP)
+		boat.rotate_object_local(
+			Vector3(0.0, 0.0, 1.0),
+			sin(bob_phase * 0.8) * 0.02
+		)
 		route["segment"] = segment
 		route["progress"] = progress
 		route["direction"] = direction
+
+
+func _register_world_label(label: Label3D, kind: String) -> void:
+	if label == null:
+		return
+	if kind == "tile" and not label.has_meta("full_text"):
+		label.set_meta("full_text", label.text)
+	world_labels.append({"node": label, "kind": kind})
+
+
+func _apply_tile_label_text(label: Label3D) -> void:
+	# Tiles render the full localized name and price when the camera is close
+	# enough, and collapse to the name alone at overview distances where the
+	# price line costs more legibility than it is worth.
+	var full_text := str(label.get_meta("full_text", label.text))
+	if labels_abbreviated:
+		var line_break := full_text.find("\n")
+		label.text = (
+			full_text.substr(0, line_break)
+			if line_break >= 0
+			else full_text
+		)
+	else:
+		label.text = full_text
+
+
+func _update_label_presentation() -> void:
+	var compensation := clampf(
+		camera_distance / LABEL_REFERENCE_DISTANCE,
+		1.0,
+		LABEL_MAX_COMPENSATION
+	)
+	var landmark_compensation := minf(
+		compensation * 1.3,
+		LABEL_LANDMARK_MAX_COMPENSATION
+	)
+	var overview := camera_distance >= LABEL_OVERVIEW_DISTANCE
+	if (
+		absf(compensation - applied_label_compensation) < 0.02
+		and overview == labels_abbreviated
+	):
+		return
+	applied_label_compensation = compensation
+	labels_abbreviated = overview
+	var stale_entries: Array[int] = []
+	for entry_index in world_labels.size():
+		var entry := world_labels[entry_index]
+		var node_value: Variant = entry.get("node")
+		if not is_instance_valid(node_value) or not (node_value is Label3D):
+			stale_entries.append(entry_index)
+			continue
+		var label := node_value as Label3D
+		var kind := str(entry.get("kind", "tile"))
+		match kind:
+			"landmark":
+				label.scale = Vector3.ONE * landmark_compensation
+			"beacon":
+				# The floating destination label reads well far away but
+				# competes with tile text up close, so it is allowed to
+				# shrink below its authored size when the camera moves in.
+				label.scale = Vector3.ONE * clampf(
+					camera_distance / LABEL_REFERENCE_DISTANCE,
+					0.7,
+					LABEL_LANDMARK_MAX_COMPENSATION
+				)
+			_:
+				label.scale = Vector3.ONE * compensation
+		if kind == "tile":
+			_apply_tile_label_text(label)
+	stale_entries.reverse()
+	for entry_index in stale_entries:
+		world_labels.remove_at(entry_index)
 
 
 func _add_landmark_label(
@@ -1850,6 +1973,7 @@ func _add_landmark_label(
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	parent.add_child(label)
+	_register_world_label(label, "landmark")
 	board_tap_targets.append({
 		"node": label,
 		"kind": "landmark",
@@ -2559,15 +2683,24 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 		if not die.visible:
 			continue
 		var settle_rotation := _die_face_rotation(die_value)
+		# Extra whole revolutions keep the settled face correct while making
+		# every roll spin differently; whole-revolution counts vary per die.
 		var target_rotation := settle_rotation + Vector3(
-			TAU * float(2 + index),
-			TAU * float(3 - index),
-			TAU * 2.0
+			TAU * float(2 + index + randi() % 2),
+			TAU * float(3 - index + randi() % 3),
+			TAU * float(2 + randi() % 2)
 		)
+		# The two settled dice may swap platform slots, and each roll lands
+		# with a small random offset so repeated rolls never look identical.
+		var slot := index
+		if die_two > 0 and die_one > 0 and randi() % 2 == 0:
+			slot = 1 - index
 		var target_position := Vector3(
-			platform_center.x - 0.78 + index * 1.53,
+			platform_center.x - 0.78 + slot * 1.53
+				+ randf_range(-0.12, 0.12),
 			1.9,
-			platform_center.z - 0.16 + index * 0.3
+			platform_center.z - 0.16 + slot * 0.3
+				+ randf_range(-0.1, 0.1)
 		)
 		var tween := create_tween()
 		dice_tweens.append(tween)
@@ -2798,6 +2931,9 @@ func _rebuild_city_board(
 	cloud_nodes.clear()
 	cloud_speeds.clear()
 	boat_routes.clear()
+	world_labels.clear()
+	applied_label_compensation = -1.0
+	labels_abbreviated = false
 	board_tap_targets.clear()
 	movement_markers.clear()
 	movement_preview_root = null
@@ -2870,7 +3006,11 @@ func _refresh_visual_tiles(
 			continue
 		var label := tile.get_node_or_null("TileLabel") as Label3D
 		if label != null:
-			label.text = _tile_label_text(index)
+			# Keep the semantic-zoom abbreviation source in sync with the
+			# latest localized tile names and prices, then re-apply whichever
+			# presentation the current camera distance calls for.
+			label.set_meta("full_text", _tile_label_text(index))
+			_apply_tile_label_text(label)
 		var previous_payload_value = previous_visual_tile_data.get(index, {})
 		var previous_payload := (
 			previous_payload_value as Dictionary
@@ -4612,23 +4752,67 @@ func _animate_flutter_roll_json(json: String) -> void:
 	active_roll_deadline_msec = Time.get_ticks_msec() + HOSTED_ROLL_TIMEOUT_MSEC
 
 	var player_index := int(command.get("playerIndex", -1))
-	var die_one := int(command.get("die1", 0))
-	var die_two := int(command.get("die2", 0))
+	var presentation := _hosted_move_presentation(command)
 	current_player_index = player_index
 	_set_active_player(player_index)
 	_reset_token_vertical_presentation(player_tokens[player_index])
-	turn_label.text = "%s IS ROLLING…" % player_names[player_index]
 	_show_movement_preview(command)
-	_animate_3d_dice(die_one, die_two)
-
-	get_tree().create_timer(1.04).timeout.connect(
-		_begin_flutter_token_path.bind(command, generation),
-		CONNECT_ONE_SHOT
-	)
+	if presentation == "standard":
+		var die_one := int(command.get("die1", 0))
+		var die_two := int(command.get("die2", 0))
+		turn_label.text = "%s IS ROLLING…" % player_names[player_index]
+		_animate_3d_dice(die_one, die_two)
+		get_tree().create_timer(1.04).timeout.connect(
+			_begin_flutter_token_path.bind(command, generation),
+			CONNECT_ONE_SHOT
+		)
+	else:
+		turn_label.text = _hosted_move_start_label(command, presentation)
+		var start_delay := HOSTED_SPECIAL_MOVE_BEAT_SEC
+		var start_callback: Callable = _begin_flutter_token_path
+		if presentation == "teleport" or presentation == "jail":
+			start_callback = _begin_flutter_token_flight
+		get_tree().create_timer(start_delay).timeout.connect(
+			start_callback.bind(command, generation),
+			CONNECT_ONE_SHOT
+		)
 	get_tree().create_timer(float(HOSTED_ROLL_TIMEOUT_MSEC) / 1000.0).timeout.connect(
 		_expire_hosted_roll.bind(command_id, generation),
 		CONNECT_ONE_SHOT
 	)
+
+
+func _hosted_move_presentation(command: Dictionary) -> String:
+	var presentation := str(command.get("presentation", "standard"))
+	match presentation:
+		"walk", "reverse", "teleport", "jail":
+			return presentation
+		_:
+			# Unknown or missing presentations keep the historical dice-roll
+			# staging so older Flutter builds and native smoke commands work.
+			return "standard"
+
+
+func _hosted_move_start_label(command: Dictionary, presentation: String) -> String:
+	var player_index := int(command.get("playerIndex", 0))
+	var player_name: String = (
+		player_names[player_index]
+		if player_index >= 0 and player_index < player_names.size()
+		else "PLAYER"
+	)
+	match presentation:
+		"reverse":
+			var backward_spaces := absi(int(command.get("spaces", 0)))
+			return "%s MOVES BACK %d SPACES…" % [player_name, backward_spaces]
+		"teleport":
+			return "%s TELEPORTS…" % player_name
+		"jail":
+			return "%s IS TAKEN TO JAIL…" % player_name
+		_:
+			return "%s MOVES %d SPACES…" % [
+				player_name,
+				absi(int(command.get("spaces", 0))),
+			]
 
 
 func _is_valid_hosted_roll_command(command: Dictionary) -> bool:
@@ -4735,24 +4919,25 @@ func _begin_flutter_token_path(command: Dictionary, generation: int) -> void:
 	if player_index < 0 or player_index >= player_tokens.size():
 		_cancel_hosted_roll("3D roll player disappeared before movement")
 		return
-	var die_one := int(command.get("die1", 0))
-	var die_two := int(command.get("die2", 0))
-	var spaces := int(command.get("spaces", die_one + die_two))
-	dice_value_label.text = (
-		"DICE\n%d" % die_one
-		if die_two <= 0
-		else "DICE\n%d + %d" % [die_one, die_two]
-	)
-	turn_label.text = "%s MOVES %d SPACES…" % [
-		player_names[player_index],
-		spaces,
-	]
+	var presentation := _hosted_move_presentation(command)
+	if presentation == "standard":
+		var die_one := int(command.get("die1", 0))
+		var die_two := int(command.get("die2", 0))
+		dice_value_label.text = (
+			"DICE\n%d" % die_one
+			if die_two <= 0
+			else "DICE\n%d + %d" % [die_one, die_two]
+		)
+		# Special movements keep whatever dice presentation the last roll
+		# settled on; they are not new dice outcomes.
+	turn_label.text = _hosted_move_start_label(command, presentation)
 
 	var visual_path_value = command.get("visualPath", [])
 	if typeof(visual_path_value) != TYPE_ARRAY:
 		await _finish_flutter_roll(command, generation)
 		return
 	var visual_path: Array = visual_path_value
+	var total_steps := visual_path.size()
 	for path_index in visual_path.size():
 		if not _is_hosted_roll_current(command, generation):
 			return
@@ -4767,7 +4952,151 @@ func _begin_flutter_token_path(command: Dictionary, generation: int) -> void:
 		)
 		if not step_completed or not _is_hosted_roll_current(command, generation):
 			return
+		# Tick Flutter for every arrived waypoint so walks carry footstep
+		# audio; flights skip this and rely on the landing cue instead.
+		_emit_movement_step(command, generation, path_index + 1, total_steps)
 	await _finish_flutter_roll(command, generation)
+
+
+func _emit_movement_step(
+	command: Dictionary,
+	generation: int,
+	step_index: int,
+	total_steps: int
+) -> void:
+	if not _is_hosted_roll_current(command, generation):
+		return
+	var command_id := str(command.get("commandId", ""))
+	var player_id := str(command.get("playerId", ""))
+	if flutter_bridge != null:
+		flutter_bridge.movementStep(
+			command_id,
+			player_id,
+			step_index,
+			total_steps
+		)
+	else:
+		_emit_swift_host_event("movementStep", {
+			"commandId": command_id,
+			"playerId": player_id,
+			"stepIndex": step_index,
+			"totalSteps": total_steps,
+		})
+
+
+func _begin_flutter_token_flight(command: Dictionary, generation: int) -> void:
+	if not _is_hosted_roll_current(command, generation):
+		return
+	var player_index := int(command.get("playerIndex", -1))
+	if player_index < 0 or player_index >= player_tokens.size():
+		_cancel_hosted_roll("3D flight player disappeared before movement")
+		return
+	var to_visual := posmod(
+		int(command.get("toVisualPosition", command.get("toLogicalPosition", 0))),
+		BOARD_SPOT_COUNT
+	)
+	var token := player_tokens[player_index]
+	var visual := _token_visual(token)
+	_reset_token_vertical_presentation(token)
+	var old_tile: int = player_tiles[player_index]
+	var start_local := token.position
+	var target_local := _token_anchor_for_tile(to_visual, player_index)
+	player_tiles[player_index] = to_visual
+
+	var move_direction := Vector3(
+		target_local.x - start_local.x,
+		0.0,
+		target_local.z - start_local.z
+	)
+	var start_rotation := token.rotation.y
+	var target_rotation := start_rotation
+	if move_direction.length_squared() > 0.001:
+		target_rotation = atan2(-move_direction.x, -move_direction.z)
+	var travel_distance := start_local.distance_to(target_local)
+	var flight_height := clampf(
+		travel_distance * TOKEN_FLIGHT_HEIGHT_RATIO,
+		TOKEN_FLIGHT_MIN_HEIGHT,
+		TOKEN_FLIGHT_MAX_HEIGHT
+	)
+	var flight_midpoint := (
+		(start_local + target_local) * 0.5
+		+ Vector3.UP * flight_height
+	)
+	var flight_duration := clampf(
+		travel_distance * TOKEN_FLIGHT_DURATION_RATIO + 0.55,
+		TOKEN_FLIGHT_MIN_DURATION,
+		TOKEN_FLIGHT_MAX_DURATION
+	)
+
+	active_tween = create_tween()
+	var flight_tween := active_tween
+	flight_tween.tween_method(
+		_set_token_flight_progress.bind(
+			token,
+			start_local,
+			flight_midpoint,
+			target_local,
+			start_rotation,
+			target_rotation
+		),
+		0.0,
+		1.0,
+		flight_duration
+	)
+	if visual != null:
+		flight_tween.parallel().tween_property(
+			visual,
+			"scale",
+			_token_scale_for_tile(to_visual, player_index),
+			flight_duration
+		)
+	_append_tile_occupant_reflow(
+		flight_tween,
+		old_tile,
+		player_index,
+		flight_duration
+	)
+	_append_tile_occupant_reflow(
+		flight_tween,
+		to_visual,
+		player_index,
+		flight_duration
+	)
+	await flight_tween.finished
+	if active_tween == flight_tween:
+		active_tween = null
+	if not _is_hosted_roll_current(command, generation):
+		_reset_token_vertical_presentation(token)
+		return
+	token.position = target_local
+	_reset_token_vertical_presentation(token)
+	_reflow_tile_occupants(old_tile, player_index)
+	_reflow_tile_occupants(to_visual, player_index)
+	await _finish_flutter_roll(command, generation)
+
+
+func _set_token_flight_progress(
+	progress: float,
+	token: Node3D,
+	start_local: Vector3,
+	mid_local: Vector3,
+	target_local: Vector3,
+	start_rotation: float,
+	target_rotation: float
+) -> void:
+	if not is_instance_valid(token):
+		return
+	# Quadratic Bezier through the elevated midpoint keeps takeoff and landing
+	# tangents gentle instead of a linear climb and drop.
+	token.position = (
+		start_local.lerp(mid_local, progress)
+		.lerp(mid_local.lerp(target_local, progress), progress)
+	)
+	token.rotation.y = lerp_angle(
+		start_rotation,
+		target_rotation,
+		clampf(progress * 2.5, 0.0, 1.0)
+	)
 
 
 func _animate_token_to_tile(
@@ -4990,21 +5319,44 @@ func _show_movement_preview(command: Dictionary) -> void:
 		marker_tween.tween_property(marker, "scale", Vector3.ONE, 0.18)
 
 	if visual_path.is_empty():
+		# Dice-less flights do not draw route markers, but their destination
+		# still deserves a landing beacon so the movement reads intentionally.
+		var presentation := _hosted_move_presentation(command)
+		if presentation == "teleport" or presentation == "jail":
+			destination_beacon = _create_destination_beacon(
+				posmod(
+					int(
+						command.get(
+							"toVisualPosition",
+							command.get("toLogicalPosition", 0)
+						)
+					),
+					BOARD_SPOT_COUNT
+				),
+				player_index
+			)
 		return
 	var destination_visual := posmod(
 		int(visual_path[visual_path.size() - 1]),
 		BOARD_SPOT_COUNT
 	)
-	destination_beacon = Node3D.new()
-	destination_beacon.name = "DestinationBeacon"
-	destination_beacon.position = _token_anchor_for_tile(
+	destination_beacon = _create_destination_beacon(
 		destination_visual,
 		player_index
 	)
-	movement_preview_root.add_child(destination_beacon)
+
+
+func _create_destination_beacon(
+	destination_visual: int,
+	player_index: int
+) -> Node3D:
+	var beacon := Node3D.new()
+	beacon.name = "DestinationBeacon"
+	beacon.position = _token_anchor_for_tile(destination_visual, player_index)
+	movement_preview_root.add_child(beacon)
 	var destination_pulse := Node3D.new()
 	destination_pulse.name = "DestinationPulse"
-	destination_beacon.add_child(destination_pulse)
+	beacon.add_child(destination_pulse)
 	var beacon_material := _material(
 		Color(1.0, 0.75, 0.22, 0.48),
 		0.3,
@@ -5032,6 +5384,8 @@ func _show_movement_preview(command: Dictionary) -> void:
 	destination_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	destination_label.position = Vector3(0.0, 1.28, 0.0)
 	destination_pulse.add_child(destination_label)
+	_register_world_label(destination_label, "beacon")
+	return beacon
 
 
 func _advance_movement_preview(path_index: int) -> void:
@@ -5080,6 +5434,17 @@ func _clear_movement_preview() -> void:
 	if is_instance_valid(movement_preview_root):
 		movement_preview_root.queue_free()
 	movement_preview_root = null
+	# Drop the freed preview's beacon label from the semantic-zoom registry.
+	# Validity is checked on the untyped Variant first: casting a freed
+	# reference is itself an error in GDScript.
+	var stale_entries: Array[int] = []
+	for entry_index in world_labels.size():
+		var node_value: Variant = world_labels[entry_index].get("node")
+		if not is_instance_valid(node_value) or not (node_value is Label3D):
+			stale_entries.append(entry_index)
+	stale_entries.reverse()
+	for entry_index in stale_entries:
+		world_labels.remove_at(entry_index)
 
 
 func _play_landing_reaction(player_index: int) -> void:

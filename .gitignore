@@ -113,3 +113,9 @@ coverage/
 
 # FVM (Flutter Version Management)
 .fvm/
+
+# Local Godot exporter binaries used by tool/export_godot_*_pack.sh
+.tools/
+
+# Manual device/simulator QA captures and drive helpers
+qa_shots/

@@ -466,6 +466,32 @@ private class PropertyTycoonGodotBridge(
     }
 
     @UsedByGodot
+    fun movementStep(
+        commandId: String,
+        playerId: String,
+        stepIndex: Long,
+        totalSteps: Long,
+    ) {
+        // Progress events peek instead of consume: the command still owes its
+        // movementComplete, and stale or retired sessions stay silent.
+        val sessionId =
+            synchronized(this) {
+                val commandSession = commandSessions.peekSession(commandId)
+                commandSession?.takeIf { it == attachedSessionId }
+            } ?: return
+        activity.notifyFlutterForSession(
+            sessionId,
+            "movementStep",
+            mapOf(
+                "commandId" to commandId,
+                "playerId" to playerId,
+                "stepIndex" to stepIndex,
+                "totalSteps" to totalSteps,
+            ),
+        )
+    }
+
+    @UsedByGodot
     fun boardObjectTapped(
         kind: String,
         logicalIndex: Long,

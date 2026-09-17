@@ -136,12 +136,14 @@ symptoms. The follow-up now advances the authoritative round number, expands
 every logical move through all intervening positions on the 52-waypoint visual
 road, starts new games with an explicit unrolled dice state, and schedules an
 AI-first opening turn only after exact scene readiness. Non-dice
-jail/card/teleport movement still snaps and remains tracked below.
+jail/card/teleport movement no longer snaps: the special-movement presentation
+contract below now animates it, pending the same physical-device validation
+as standard movement.
 
 | Original gate | Feature-branch status |
 |---|---|
 | Live-game state integrity | **Remediated.** A single `GameSessionController` now owns authoritative state. In-game Help preserves the board in an `IndexedStack`, and load/restart/quit invalidate delayed work. Regression tests cover Help round trips and stale AI callbacks. |
-| Pawn placement and motion | **Standard dice movement validated on physical iPad; special movement open.** Pawn roots use tile-surface contact anchors. Visual bob, hop, landing, and model transforms have separate owners; a single cancellable sequence controls each move; landing completes before Flutter is notified. Two consecutive AI rolls showed attached bodies, stable contact, and completed landings. Jail/card/teleport movement still needs an intentional animation contract and device validation. |
+| Pawn placement and motion | **Standard dice movement validated on physical iPad; special movement animated in code, device validation open.** Pawn roots use tile-surface contact anchors. Visual bob, hop, landing, and model transforms have separate owners; a single cancellable sequence controls each move; landing completes before Flutter is notified. Two consecutive AI rolls showed attached bodies, stable contact, and completed landings. Jail, card, teleport, and reverse movement now reuse the same scoped movement contract with typed presentations (`standard`/`walk`/`reverse`/`teleport`/`jail`), covered by bridge smoke tests and still needing a physical-device pass. |
 | Pawn/road alignment and occupancy | **Standard routes validated; occupancy breadth pending.** A lone pawn is centered, two to four occupants use deterministic slots, pawns/markers share anchors, the plinth is narrower, every intervening 52-position road waypoint is emitted, and duration scales with segment distance. The two physical AI routes and settled anchors remained on the road. One-to-four co-occupancy, a complete lap, reverse movement, and every corner angle remain device gates. |
 | Repeat Android 3D sessions | **Remediated; device validation pending.** Reattached views receive a new native-view session, cached state, an observed scene-ready token, and an exact game-session/state-generation acknowledgement; detached rendering is lifecycle-paused; stale commands and callbacks are bounded and rejected. |
 | Victory/restart/quit | **Remediated.** Navigation owns the result screen, so Replay and Home no longer call a disposed game-board owner. System Back now follows app-owned confirmation behavior. |
@@ -168,6 +170,55 @@ jail/card/teleport movement still snaps and remains tracked below.
 - CocoaPods regeneration from `ios/`: **passed** after removing machine-specific tracked plugin symlinks.
 - No local Android emulator is configured, and the iOS bridge intentionally disables Godot in Simulator. The simulator build therefore validates host integration only, not the shipped 3D rendering path.
 - `git diff --check`: **passed**.
+
+### Special-movement follow-up — August 25, 2026
+
+Finding 3D-07 is implemented on this branch. The `animate_roll` command now
+carries a `presentation` field (`standard`/`walk`/`reverse`/`teleport`/`jail`)
+that reuses the dice-roll scoped contract for every non-dice movement: jail
+escorts, Chance/Community Chest relocations, and spin-prize teleports animate
+with route walks or parabolic beacon flights instead of snapping during the
+next state sync. Failure still degrades deterministically: a rejected,
+expired, or timed-out presentation settles through a scene-state sync, and a
+state sync cancels any in-flight presentation exactly as it cancels rolls.
+Verification added: four new bridge smoke scenarios (walk, reverse, teleport
+flight, jail flight, plus overlap/replay rejection and settled-dice
+preservation), three new Dart tests for the typed contract and card-action
+mapping, and `flutter test` now reports **135/135 passed** with the analyzer
+still at 0 errors/0 warnings. The Android PCK was regenerated (Godot 4.7.2
+exporter against the 4.7.1 vendor runtime — the same skew tracked by gate 3);
+the iOS PCK still requires the local 4.6.3 exporter binary and must be
+regenerated before the next physical-device build. Physical-device
+validation of special movement on iPad/Android remains part of gate 1.
+
+### Experience polish follow-up — August 25, 2026
+
+Physical iPad QA surfaced two confirmed experience defects, both fixed and
+re-verified on device. (1) Overview labels were a few pixels tall; world-space
+text now uses distance-adaptive semantic zoom — tile and landmark labels
+compensate for camera distance, and overview framing abbreviates tile labels
+to the name alone (prices return on zoom-in and remain on the detail sheet),
+with the abbreviation surviving every state resync (3D-15 first pass).
+(2) Harbor boats hovered roughly 0.3 units above the water plane; lanes,
+piers, and buoys now sit at the measured water surface, hulls carry a real
+draft, and a gentle bob/sway keeps craft alive without lifting them clear
+(3D-26 partial elevation-contract fix). New bridge smoke coverage asserts the
+waterline and the semantic-zoom behavior including the resync regression, and
+both packs were regenerated — the iOS pack now uses a downloaded Godot 4.6.3
+exporter at `.tools/Godot.app`, removing the earlier iOS pack staleness.
+Remaining experience findings recorded during the same review were then
+implemented in the same pass and re-verified on device: 3D walks now emit
+`movementStep` progress events through both native hosts so the Flutter board
+plays per-waypoint footstep audio exactly like the 2D hop rhythm (Android
+peeks the command session without consuming it; the iOS host forwards host
+events generically; Flutter dedupes retries, out-of-order waypoints, and
+events trailing a completion); the active-event badge now stacks above the
+3D gesture-hint slot instead of colliding with it (UI-03 scoped fix); the
+destination beacon label scales down at close camera range; and settled dice
+gained per-roll landing variety (slot swap, small position jitter, and
+variable whole-revolution spins that preserve the settled face). Full UI-03
+overlay slots, the damped token-follow camera, rigged pawn identity, and the
+GPU-headroom release gate remain open.
 
 ### Remaining release gates
 
@@ -394,6 +445,8 @@ Forty logical spaces map to 52 visual endpoints (`lib/integration/godot_board_co
 State synchronization directly assigns token position (`main.gd:4384-4393`). Jail, teleport, backward, and card moves are updated outside the normal dice animation protocol (`lib/engine/game_engine.dart:375-378`; `lib/screens/game_board_screen.dart:2541-2571`).
 
 **Required change:** generalize the movement command to path, reverse, teleport, and jail presentation types, with cancel/complete IDs and equivalent sound/haptics.
+
+**Remediation (in code, device validation pending):** the `animate_roll` command now carries a `presentation` field — `standard` (unchanged dice staging), `walk` (dice-less route walk for forward card moves), `reverse` (back-N card moves), `teleport` (parabolic flight with a destination beacon for teleport prizes and advance-to-GO), and `jail` (the same flight staged as an escort). Godot stages every presentation under the existing generation/session/cancellation contract, shows intentional turn labels, and emits the same `movementComplete`. Flutter applies the logical move first, sends one typed command from the jail handler, card-draw paths, and spin-prize teleport, and on native rejection, staleness, or timeout settles with a scene-state sync instead of leaving the pawn stranded. Card actions map to presentations through `GodotMovementPresentation.forCardAction`, and the bridge smoke suite covers walk, reverse, teleport, and jail completion, label staging, dice preservation, route/beacon correctness, overlapping-command rejection, and replay rejection.
 
 ### 3D-08 — P1 — destination is revealed before dice settle
 
@@ -832,4 +885,4 @@ Add automated tests for:
 
 ## 16. Bottom line
 
-The feature branch now implements the session/build, pawn-grounding, standard-route, readiness/recovery, AI authorization, camera, and multi-player HUD foundations. The remaining path to a credible release is device breadth and sustained performance first, followed by intentional special-movement animation, coherent authored/rigged token identity, a small-phone 3D HUD, board-wide accessibility and localization, visual-system consolidation, protected signing/CI, and repeatable physical-device regression coverage. More scenery should wait until those gates pass.
+The feature branch now implements the session/build, pawn-grounding, standard-route, readiness/recovery, AI authorization, camera, multi-player HUD, and typed special-movement foundations. The remaining path to a credible release is device breadth and sustained performance first, followed by coherent authored/rigged token identity, a small-phone 3D HUD, board-wide accessibility and localization, visual-system consolidation, protected signing/CI, and repeatable physical-device regression coverage — including a physical pass of the new special-movement presentations. More scenery should wait until those gates pass.

@@ -234,6 +234,20 @@ class _TurnOperationToken {
   final String playerId;
 }
 
+/// The logical outcome of a picked Chance/Community Chest card, including the
+/// movement presentation information needed to animate the relocation.
+class _CardMoveOutcome {
+  const _CardMoveOutcome({
+    required this.action,
+    required this.fromPosition,
+    required this.landingPosition,
+  });
+
+  final String action;
+  final int fromPosition;
+  final int landingPosition;
+}
+
 /// Main game board screen
 class GameBoardScreen extends StatefulWidget {
   final GameSessionController session;
@@ -307,7 +321,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
   bool _waitingForCardPick = false;
   bool _isChanceCard = false;
   Player? _cardPickPlayer;
-  Completer<int?>? _cardPickCompleter;
+  Completer<_CardMoveOutcome?>? _cardPickCompleter;
 
   // Localized cards (loaded from JSON)
   List<Map<String, dynamic>> _localizedChanceCards = [];
@@ -333,6 +347,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       ),
     );
     _godotBoardController.addListener(_onGodotBoardChanged);
+    _godotBoardController.onMovementStep = _onGodotMovementStep;
     _godotSelectionSubscription = _godotBoardController.selections.listen(
       _handle3DBoardSelection,
     );
@@ -369,10 +384,79 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
+  /// Animates an already-applied non-dice movement (jail, card, teleport
+  /// prize) on the 3D board.
+  ///
+  /// The logical state was mutated first, so on any native failure this
+  /// settles with a scene-state sync that snaps the pawn to the authoritative
+  /// tile instead of leaving it stranded until the next turn-end sync.
+  Future<void> _settleSpecialMovePresentation({
+    required Player player,
+    required int fromLogicalPosition,
+    required int toLogicalPosition,
+    required String presentation,
+    _TurnOperationToken? operation,
+  }) async {
+    final animated = await _animateSpecialMove3D(
+      player: player,
+      fromLogicalPosition: fromLogicalPosition,
+      toLogicalPosition: toLogicalPosition,
+      presentation: presentation,
+      operation: operation,
+    );
+    if (animated) {
+      AudioService.instance.onTokenLand();
+    } else {
+      await _sync3DBoard();
+    }
+  }
+
+  Future<bool> _animateSpecialMove3D({
+    required Player player,
+    required int fromLogicalPosition,
+    required int toLogicalPosition,
+    required String presentation,
+    _TurnOperationToken? operation,
+  }) async {
+    if (!_show3DBoard || !_godotBoardController.isBoardReady) return false;
+    if (operation != null && !_isTurnOperationActive(operation)) return false;
+    final playerIndex = gameState.players.indexOf(player);
+    if (playerIndex < 0) return false;
+    final command = _godotBoardController.createSpecialMoveCommand(
+      gameState: gameState,
+      playerIndex: playerIndex,
+      fromLogicalPosition: fromLogicalPosition,
+      toLogicalPosition: toLogicalPosition,
+      presentation: presentation,
+    );
+    try {
+      final movement = await _godotBoardController.animateRoll(command);
+      return movement.playerId == player.id &&
+          movement.logicalPosition == toLogicalPosition;
+    } on Object {
+      // Rejection, timeout, or a stale completion: the sync fallback in the
+      // caller remains the deterministic presentation.
+      return false;
+    }
+  }
+
+  /// Maps a card action from the [CardEffectEngine] grammar to the 3D
+  /// movement presentation it should use, or null when the card does not
+  /// relocate the player.
+  String? _cardMovePresentation(String action) =>
+      GodotMovementPresentation.forCardAction(action);
+
   void _onGodotBoardChanged() {
     if (!mounted) return;
     setState(() {});
     _scheduleCurrentAIRollIfReady();
+  }
+
+  /// Footstep cue for every visual waypoint the 3D pawn lands on, matching
+  /// the 2D board's per-hop audio rhythm.
+  void _onGodotMovementStep(GodotMovementStep step) {
+    if (!mounted || !_show3DBoard) return;
+    AudioService.instance.onTokenStep();
   }
 
   bool get _isPreparingInitial3DBoard =>
@@ -488,6 +572,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     _cameraGestureDispatcher.dispose();
     _godotBoardController.removeListener(_onGodotBoardChanged);
     _godotSelectionSubscription?.cancel();
+    _godotBoardController.onMovementStep = null;
     _godotBoardController.dispose();
     super.dispose();
   }
@@ -1035,10 +1120,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
                     onTap: _canUseStableInteractions ? _showPowerUpHand : null,
                   ),
                 ),
-              // Phase 3: Active event indicators
+              // Phase 3: Active event indicators. The 3D experience keeps the
+              // bottom-left slot reserved for the gesture hint, so badges
+              // stack above it instead of colliding (UI-03 scoped fix).
               if (gameState.activeEvents.isNotEmpty)
                 Positioned(
-                  bottom: 8,
+                  bottom: _isShowing3DExperience ? 64 : 8,
                   left: 8,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2465,11 +2552,11 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         break;
 
       case TileActionType.goToJail:
-        await _handleGoToJail(player);
+        await _handleGoToJail(player, operation: operation);
         break;
 
       case TileActionType.drawCard:
-        await _handleDrawCard(player, result.tile!);
+        await _handleDrawCard(player, result.tile!, operation: operation);
         break;
 
       case TileActionType.upgradeProperty:
@@ -2813,10 +2900,24 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
-  Future<void> _handleGoToJail(Player player) async {
+  Future<void> _handleGoToJail(
+    Player player, {
+    _TurnOperationToken? operation,
+  }) async {
     AudioService.instance.onJail();
+    final fromPosition = player.position;
     engine.sendToJail(player);
     setState(() {});
+
+    // Animate the escort to jail instead of snapping the pawn during the next
+    // state sync; the dialog below still waits for the presentation to finish.
+    await _settleSpecialMovePresentation(
+      player: player,
+      fromLogicalPosition: fromPosition,
+      toLogicalPosition: player.position,
+      presentation: GodotMovementPresentation.jail,
+      operation: operation,
+    );
 
     if (!mounted) return;
 
@@ -2996,20 +3097,31 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         // Show teleport dialog for human players
         if (!player.isAI && mounted) {
           bool teleportUsed = false;
+          int teleportTarget = player.position;
           await showTeleportDialog(
             context: context,
             tiles: gameState.tiles,
             currentPosition: player.position,
             onTileSelected: (tileIndex) {
               teleportUsed = true;
-              player.position = tileIndex;
-              setState(() {});
+              teleportTarget = tileIndex;
             },
           );
           // If player chose "Save for Later", store the prize
           if (!teleportUsed) {
             gameState.playerSpinPrizes[player.id] ??= [];
             gameState.playerSpinPrizes[player.id]!.add(prize);
+          } else if (mounted && teleportTarget != player.position) {
+            final fromPosition = player.position;
+            setState(() {
+              player.position = teleportTarget;
+            });
+            await _settleSpecialMovePresentation(
+              player: player,
+              fromLogicalPosition: fromPosition,
+              toLogicalPosition: teleportTarget,
+              presentation: GodotMovementPresentation.teleport,
+            );
           }
         } else {
           // AI: teleport to a random unowned property if available
@@ -3020,7 +3132,16 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           if (unownedProperties.isNotEmpty) {
             final randomProperty =
                 unownedProperties[_random.nextInt(unownedProperties.length)];
-            player.position = randomProperty.index;
+            final fromPosition = player.position;
+            setState(() {
+              player.position = randomProperty.index;
+            });
+            await _settleSpecialMovePresentation(
+              player: player,
+              fromLogicalPosition: fromPosition,
+              toLogicalPosition: randomProperty.index,
+              presentation: GodotMovementPresentation.teleport,
+            );
           }
         }
         break;
@@ -3275,10 +3396,11 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       cards: pickableCards,
       onCardPicked: (pickedCard) {
         AudioService.instance.onFlipCard();
-        final newPosition = _applyCardEffect(
-          _cardPickPlayer!,
-          pickedCard.action,
-        );
+        final cardPlayer = _cardPickPlayer;
+        final fromPosition = cardPlayer?.position ?? 0;
+        final newPosition = cardPlayer == null
+            ? null
+            : _applyCardEffect(cardPlayer, pickedCard.action);
 
         // Reset card picking state
         setState(() {
@@ -3287,14 +3409,27 @@ class _GameBoardScreenState extends State<GameBoardScreen>
           _cardPickPlayer = null;
         });
 
-        // Complete the future to continue game flow (pass new position if moved)
-        _cardPickCompleter?.complete(newPosition);
+        // Complete the future to continue game flow (movement presentation
+        // details let the awaiting turn animate the relocation in 3D)
+        _cardPickCompleter?.complete(
+          cardPlayer == null || newPosition == null
+              ? null
+              : _CardMoveOutcome(
+                  action: pickedCard.action,
+                  fromPosition: fromPosition,
+                  landingPosition: newPosition,
+                ),
+        );
         _cardPickCompleter = null;
       },
     );
   }
 
-  Future<void> _handleDrawCard(Player player, TileData tile) async {
+  Future<void> _handleDrawCard(
+    Player player,
+    TileData tile, {
+    _TurnOperationToken? operation,
+  }) async {
     final isChance = tile.type == TileType.chance;
 
     final localizedCards = isChance
@@ -3314,16 +3449,28 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         isChance ? Icons.help_outline : Icons.inventory_2,
         isChance ? Colors.orange : Colors.blue,
       );
-      final newPosition = _applyCardEffect(player, card['action'] as String);
-      // If card moved the player, resolve the new tile (skip end turn since outer caller handles it)
+      final action = card['action'] as String;
+      final fromPosition = player.position;
+      final newPosition = _applyCardEffect(player, action);
+      // If card moved the player, animate the relocation and resolve the new
+      // tile (skip end turn since outer caller handles it)
       if (newPosition != null) {
+        await _settleSpecialMovePresentation(
+          player: player,
+          fromLogicalPosition: fromPosition,
+          toLogicalPosition: newPosition,
+          presentation:
+              _cardMovePresentation(action) ??
+              GodotMovementPresentation.walk,
+          operation: operation,
+        );
         await _resolveTileLanding(player, newPosition, skipEndTurn: true);
       }
       return;
     }
 
     // Human player - highlight the deck and wait for them to tap it
-    _cardPickCompleter = Completer<int?>();
+    _cardPickCompleter = Completer<_CardMoveOutcome?>();
     setState(() {
       _waitingForCardPick = true;
       _isChanceCard = isChance;
@@ -3331,10 +3478,20 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     });
 
     // Wait for the card to be picked
-    final newPosition = await _cardPickCompleter!.future;
-    // If card moved the player, resolve the new tile (skip end turn since outer caller handles it)
-    if (newPosition != null) {
-      await _resolveTileLanding(player, newPosition, skipEndTurn: true);
+    final outcome = await _cardPickCompleter!.future;
+    // If card moved the player, animate the relocation and resolve the new
+    // tile (skip end turn since outer caller handles it)
+    if (outcome != null) {
+      await _settleSpecialMovePresentation(
+        player: player,
+        fromLogicalPosition: outcome.fromPosition,
+        toLogicalPosition: outcome.landingPosition,
+        presentation:
+            _cardMovePresentation(outcome.action) ??
+            GodotMovementPresentation.walk,
+        operation: operation,
+      );
+      await _resolveTileLanding(player, outcome.landingPosition, skipEndTurn: true);
     }
   }
 

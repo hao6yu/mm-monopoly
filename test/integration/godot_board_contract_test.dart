@@ -131,4 +131,55 @@ void main() {
       expect(applied.boardId, 'usa');
     });
   });
+
+  group('movement presentations', () {
+    test('card actions map onto intentional 3D movement presentations', () {
+      expect(
+        GodotMovementPresentation.forCardAction('goToJail'),
+        GodotMovementPresentation.jail,
+      );
+      expect(
+        GodotMovementPresentation.forCardAction('advanceGo'),
+        GodotMovementPresentation.teleport,
+      );
+      expect(
+        GodotMovementPresentation.forCardAction('back3'),
+        GodotMovementPresentation.reverse,
+      );
+      expect(
+        GodotMovementPresentation.forCardAction('back5'),
+        GodotMovementPresentation.reverse,
+      );
+      expect(
+        GodotMovementPresentation.forCardAction('forward5'),
+        GodotMovementPresentation.walk,
+      );
+      expect(
+        GodotMovementPresentation.forCardAction('nearestRailroad'),
+        GodotMovementPresentation.walk,
+      );
+      expect(
+        GodotMovementPresentation.forCardAction('nearestUtility'),
+        GodotMovementPresentation.walk,
+      );
+    });
+
+    test('non-relocating card actions never request a movement', () {
+      for (final action in [
+        'collect100',
+        'pay25',
+        'collect20FromEach',
+        'pay20Each',
+        'propertyBonus25',
+        'repairs25',
+        'freeUpgrade',
+      ]) {
+        expect(
+          GodotMovementPresentation.forCardAction(action),
+          isNull,
+          reason: '$action must not move the pawn',
+        );
+      }
+    });
+  });
 }

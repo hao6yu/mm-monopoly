@@ -60,4 +60,17 @@ class GodotCommandSessionRegistryTest {
 
         assertFalse(registry.contains("bridge-smoke"))
     }
+
+    @Test
+    fun peekSessionReturnsOwningSessionWithoutConsumingTheCommand() {
+        val registry = GodotCommandSessionRegistry()
+        assertTrue(registry.register("cmd", sessionId = 7L))
+
+        assertEquals(7L, registry.peekSession("cmd"))
+        // Progress events must not retire the command: the completion can
+        // still remove it exactly once afterwards.
+        assertEquals(7L, registry.peekSession("cmd"))
+        assertEquals(7L, registry.remove("cmd"))
+        assertNull(registry.peekSession("cmd"))
+    }
 }

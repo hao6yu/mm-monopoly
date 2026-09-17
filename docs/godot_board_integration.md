@@ -17,6 +17,21 @@ Flutter sends:
   animation, pawn movement, and landing reaction before returning completion.
   A roll never overrides the camera angle, target, or zoom selected by the
   player.
+- `animate_roll` also carries every non-dice board movement (jail escorts,
+  Chance/Community Chest relocations, teleport prizes) under the same scoped,
+  cancellable command contract. A `presentation` field selects how Godot
+  stages the movement; missing values mean the historical dice-roll staging:
+  - `standard`: dice animation, route preview, waypoint walk (dice rolls).
+  - `walk`: route preview and waypoint walk without touching the settled dice
+    (forward card moves, nearest railroad/utility).
+  - `reverse`: backwards route walk with its own "moves back" staging
+    (back-N card moves).
+  - `teleport`: a parabolic pawn flight with a destination beacon and no
+    route markers (teleport prizes, advance-to-GO).
+  - `jail`: the same flight staged as a jail escort (go-to-jail tile and
+    card). Flights receive an explicit `toVisualPosition` and an empty
+    `visualPath`; walks receive the complete waypoint path and a positive
+    `spaces` count.
 - `camera_gesture`: one-finger pan, two-finger orbit, pinch zoom, and reset-view
   commands. Two-finger orbit and pinch values can be sent together so rotating
   does not interrupt zooming.
@@ -30,6 +45,12 @@ Godot returns:
 - `stateApplied`: the exact game `sessionId`, `stateGeneration`, and board ID
   that Godot finished applying after any city rebuild, tile refresh, pawn
   placement, active-player update, and dice synchronization.
+- `movementStep`: a purely presentational progress event emitted for every
+  visual waypoint a walking pawn arrives on (dice rolls and card walks; never
+  for flights). It drives footstep audio and carries `commandId`, `playerId`,
+  a 1-based `stepIndex`, and `totalSteps`. It never gates gameplay —
+  `movementComplete` remains the only authoritative completion signal, and
+  stale or cancelled commands stop emitting steps.
 - `movementComplete`: the command ID, player ID, logical destination, and
   visual destination.
 - `boardObjectTapped`: the selected logical tile, character, dice, landmark,
@@ -73,6 +94,14 @@ boards suppress foreground clouds so ambient scenery cannot cover a pawn,
 property, or landmark; standalone previews keep smaller clouds outside the
 playable route.
 
+World-space text uses distance-adaptive semantic zoom: tile name labels and
+floating landmark labels compensate for camera distance so overview framing
+stays legible, and at overview distances tile labels collapse to the name
+alone — prices remain on the tap detail sheet and return when the player
+zooms in. Harbor craft, piers, and buoys sit at the measured water surface
+height; hulls carry a real draft below the waterline and ride a gentle bob,
+so boats never hover above the water.
+
 Changing orientation recenters the board target and refits the overview, so a
 camera panned for the previous aspect ratio cannot strand the board off-screen.
 Pawn plinths stay narrower than the property road. Flutter-hosted boards also
@@ -83,7 +112,11 @@ Pawn tween duration scales with the physical distance between visual
 waypoints, keeping route speed consistent when the 40-space game mapping spans
 different numbers of the 52 rendered spots. Roll commands should include every
 intervening visual waypoint so curved sections follow the road rather than a
-straight chord between logical destinations.
+straight chord between logical destinations. Jail, card, and teleport
+movements use the same command contract: Flutter applies the logical move,
+sends one typed movement command, and waits for the matching
+`movementComplete`; a rejected, expired, or timed-out presentation settles
+with a scene-state sync so the pawn still reaches the authoritative tile.
 
 Property mutations are synchronized immediately after purchases, auctions,
 upgrades, free-house prizes, power-ups, trades, mortgages, and unmortgages.

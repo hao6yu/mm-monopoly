@@ -257,20 +257,62 @@ class GodotBoardSelection {
   }
 }
 
+/// Movement presentation requested for an [GodotRollCommand].
+///
+/// Every non-dice board movement (jail, cards, teleport prizes) reuses the
+/// dice-roll command channel so the native scene keeps a single scoped,
+/// cancellable movement contract. The presentation tells Godot how to stage
+/// the movement; missing values mean [standard] for backward compatibility.
+abstract final class GodotMovementPresentation {
+  static const String standard = 'standard';
+  static const String walk = 'walk';
+  static const String reverse = 'reverse';
+  static const String teleport = 'teleport';
+  static const String jail = 'jail';
+
+  static const Set<String> supportedValues = {
+    standard,
+    walk,
+    reverse,
+    teleport,
+    jail,
+  };
+
+  /// Maps a data-driven card action from the [CardEffectEngine] action
+  /// grammar to the movement presentation that should animate it, or null
+  /// when the card does not relocate the player.
+  static String? forCardAction(String action) {
+    if (action == 'goToJail') return jail;
+    // "Advance to GO" can span most of the board, so it flies instead of
+    // walking up to fifty visual waypoints.
+    if (action == 'advanceGo') return teleport;
+    if (action.startsWith('back')) return reverse;
+    if (action.startsWith('forward') ||
+        action == 'nearestRailroad' ||
+        action == 'nearestUtility') {
+      return walk;
+    }
+    return null;
+  }
+}
+
 class GodotRollCommand {
   const GodotRollCommand({
     required this.sessionId,
     required this.commandId,
     required this.playerId,
     required this.playerIndex,
-    required this.die1,
-    required this.die2,
+    this.die1 = 0,
+    this.die2 = 0,
+    int? spaces,
     required this.fromLogicalPosition,
     required this.toLogicalPosition,
+    required this.toVisualPosition,
     required this.logicalTileCount,
     required this.visualSpotCount,
     required this.visualPath,
-  });
+    this.presentation = GodotMovementPresentation.standard,
+  }) : _spaces = spaces;
 
   final String sessionId;
   final String commandId;
@@ -280,11 +322,17 @@ class GodotRollCommand {
   final int die2;
   final int fromLogicalPosition;
   final int toLogicalPosition;
+  final int toVisualPosition;
   final int logicalTileCount;
   final int visualSpotCount;
   final List<int> visualPath;
+  final String presentation;
 
-  int get spaces => die1 + die2;
+  /// Explicit step count for non-dice movements; dice rolls derive it from
+  /// the two die values.
+  final int? _spaces;
+
+  int get spaces => _spaces ?? die1 + die2;
 
   Map<String, Object?> toJson() => {
     'schemaVersion': GodotBoardProtocol.schemaVersion,
@@ -296,8 +344,10 @@ class GodotRollCommand {
     'die1': die1,
     'die2': die2,
     'spaces': spaces,
+    'presentation': presentation,
     'fromLogicalPosition': fromLogicalPosition,
     'toLogicalPosition': toLogicalPosition,
+    'toVisualPosition': toVisualPosition,
     'logicalTileCount': logicalTileCount,
     'visualSpotCount': visualSpotCount,
     'visualPath': visualPath,
@@ -323,6 +373,33 @@ class GodotMovementComplete {
       playerId: map['playerId'] as String? ?? '',
       logicalPosition: (map['logicalPosition'] as num?)?.toInt() ?? 0,
       visualPosition: (map['visualPosition'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// A single arrived visual waypoint of an in-flight hosted movement. Purely
+/// presentational (footstep audio/haptics); never gates gameplay logic.
+class GodotMovementStep {
+  const GodotMovementStep({
+    required this.commandId,
+    required this.playerId,
+    required this.stepIndex,
+    required this.totalSteps,
+  });
+
+  final String commandId;
+  final String playerId;
+
+  /// 1-based index of the arrived waypoint.
+  final int stepIndex;
+  final int totalSteps;
+
+  factory GodotMovementStep.fromMap(Map<Object?, Object?> map) {
+    return GodotMovementStep(
+      commandId: map['commandId'] as String? ?? '',
+      playerId: map['playerId'] as String? ?? '',
+      stepIndex: (map['stepIndex'] as num?)?.toInt() ?? 0,
+      totalSteps: (map['totalSteps'] as num?)?.toInt() ?? 0,
     );
   }
 }

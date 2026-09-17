@@ -88,6 +88,7 @@ func _run() -> void:
 	_test_token_grounding_and_occupancy(scene)
 	_test_distance_scaled_token_motion(scene)
 	await _test_roll_cancellation_on_state_sync(scene, state)
+	await _test_special_movement_presentations(scene, state)
 	_test_native_one_finger_pan(scene)
 	_test_pinch_zoom(scene)
 	_test_host_camera_gesture(scene)
@@ -95,6 +96,8 @@ func _run() -> void:
 	_test_mobile_camera_framing(scene)
 	_test_die_face_rotations(scene)
 	_test_boat_lanes(scene)
+	await _test_boat_waterline(scene)
+	await _test_label_presentation(scene)
 	_test_embedded_cloud_policy(scene)
 	await _test_city_catalog(scene, state)
 	# The development/picking fixtures below assert New York-specific model
@@ -142,12 +145,23 @@ func _run() -> void:
 		return
 	print("ROLL_PRESENTATION_OK")
 
+	var step_events := 0
 	for _attempt in 160:
 		await create_timer(0.05).timeout
 		var message: Dictionary = scene.host_poll_message()
 		if message.is_empty():
 			continue
+		if message.get("method", "") == "movementStep":
+			step_events += 1
+			continue
 		if message.get("method", "") == "movementComplete":
+			# One footstep event per arrived waypoint, none after completion.
+			if step_events != 5:
+				push_error(
+					"Expected 5 movementStep events, got %d." % step_events
+				)
+				quit(1)
+				return
 			var token_visual := scene._token_visual(scene.player_tokens[0]) as Node3D
 			if (
 				scene.active_tween != null
@@ -192,6 +206,306 @@ func _test_state_applied_handshake(scene: Node, state: Dictionary) -> void:
 		quit(1)
 		return
 	print("STATE_APPLIED_HANDSHAKE_OK ", arguments)
+
+
+func _sync_state_and_wait(scene: Node, state: Dictionary) -> void:
+	scene.host_receive_message({
+		"action": "sync_state",
+		"json": JSON.stringify(state),
+	})
+	for _attempt in 40:
+		await create_timer(0.05).timeout
+		var message: Dictionary = scene.host_poll_message()
+		if str(message.get("method", "")) == "stateApplied":
+			return
+	push_error("Timed out waiting for stateApplied during special movement tests.")
+	quit(1)
+
+
+func _await_movement_complete(scene: Node) -> Dictionary:
+	for _attempt in 300:
+		await create_timer(0.05).timeout
+		var message: Dictionary = scene.host_poll_message()
+		if str(message.get("method", "")) == "movementComplete":
+			return message
+	push_error("Timed out waiting for a special movementComplete.")
+	quit(1)
+	return {}
+
+
+func _test_special_movement_presentations(scene: Node, state: Dictionary) -> void:
+	# Card "walk" presentation: a dice-less relocation along the visual route.
+	var walk_state: Dictionary = state.duplicate(true)
+	walk_state["stateGeneration"] = int(walk_state["stateGeneration"]) + 1
+	var walk_players: Array = (walk_state["players"] as Array).duplicate(true)
+	(walk_players[0] as Dictionary)["visualPosition"] = 8
+	walk_state["players"] = walk_players
+	await _sync_state_and_wait(scene, walk_state)
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-walk",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "walk",
+			"spaces": 2,
+			"toLogicalPosition": 7,
+			"toVisualPosition": 10,
+			"visualPath": [9, 10],
+		}),
+	})
+	await create_timer(0.3).timeout
+	if scene.movement_markers.size() != 2:
+		push_error("Walk presentation did not draw its two-step route preview.")
+		quit(1)
+		return
+	if scene.dice_value_label.text != "DICE\n—":
+		push_error("A dice-less walk mutated the settled dice presentation.")
+		quit(1)
+		return
+	if scene.turn_label.text != "Player 1 MOVES 2 SPACES…":
+		push_error(
+			"Walk presentation used the wrong label: %s" % scene.turn_label.text
+		)
+		quit(1)
+		return
+	var walk_completion := await _await_movement_complete(scene)
+	var walk_arguments_value = JSON.parse_string(
+		str(walk_completion.get("arguments", "{}"))
+	)
+	var walk_arguments: Dictionary = (
+		walk_arguments_value as Dictionary
+		if typeof(walk_arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if (
+		str(walk_arguments.get("commandId", "")) != "special-walk"
+		or int(walk_arguments.get("logicalPosition", -1)) != 7
+		or int(walk_arguments.get("visualPosition", -1)) != 10
+	):
+		push_error("Walk presentation completed with mismatched movement data.")
+		quit(1)
+		return
+	var walk_token := scene.player_tokens[0] as Node3D
+	if not walk_token.position.is_equal_approx(
+		scene._token_anchor_for_tile(10, 0)
+	):
+		push_error("Walk presentation did not anchor the pawn on its destination.")
+		quit(1)
+		return
+	print("SPECIAL_WALK_OK")
+
+	# Reverse presentation: backward card movement faces and labels the retreat.
+	var reverse_state: Dictionary = state.duplicate(true)
+	reverse_state["stateGeneration"] = int(reverse_state["stateGeneration"]) + 2
+	var reverse_players: Array = (
+		reverse_state["players"] as Array
+	).duplicate(true)
+	(reverse_players[0] as Dictionary)["visualPosition"] = 8
+	reverse_state["players"] = reverse_players
+	await _sync_state_and_wait(scene, reverse_state)
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-reverse",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "reverse",
+			"spaces": 3,
+			"toLogicalPosition": 3,
+			"toVisualPosition": 5,
+			"visualPath": [7, 6, 5],
+		}),
+	})
+	await create_timer(0.3).timeout
+	if scene.turn_label.text != "Player 1 MOVES BACK 3 SPACES…":
+		push_error(
+			"Reverse presentation used the wrong label: %s"
+			% scene.turn_label.text
+		)
+		quit(1)
+		return
+	if scene.movement_markers.size() != 3:
+		push_error("Reverse presentation did not draw its backward route.")
+		quit(1)
+		return
+	var reverse_completion := await _await_movement_complete(scene)
+	var reverse_arguments_value = JSON.parse_string(
+		str(reverse_completion.get("arguments", "{}"))
+	)
+	var reverse_arguments: Dictionary = (
+		reverse_arguments_value as Dictionary
+		if typeof(reverse_arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if int(reverse_arguments.get("visualPosition", -1)) != 5:
+		push_error("Reverse presentation did not land on its destination.")
+		quit(1)
+		return
+	print("SPECIAL_REVERSE_OK")
+
+	# Teleport presentation: a dice-less flight with a destination beacon, no
+	# route markers, and rejection of overlapping or replayed commands.
+	var teleport_state: Dictionary = state.duplicate(true)
+	teleport_state["stateGeneration"] = (
+		int(teleport_state["stateGeneration"]) + 3
+	)
+	await _sync_state_and_wait(scene, teleport_state)
+	var teleport_start: Vector3 = scene._token_anchor_for_tile(0, 0)
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-teleport",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "teleport",
+			"spaces": 0,
+			"toLogicalPosition": 20,
+			"toVisualPosition": 26,
+			"visualPath": [],
+		}),
+	})
+	await create_timer(0.85).timeout
+	if not scene.movement_markers.is_empty():
+		push_error("Teleport flight drew dice-roll route markers.")
+		quit(1)
+		return
+	if scene.destination_beacon == null:
+		push_error("Teleport flight had no destination beacon.")
+		quit(1)
+		return
+	if not scene.dice_tweens.is_empty():
+		push_error("Teleport flight animated the dice.")
+		quit(1)
+		return
+	var teleport_token := scene.player_tokens[0] as Node3D
+	if teleport_token.position.y <= teleport_start.y + 0.4:
+		push_error("Teleport flight never lifted the pawn off the board.")
+		quit(1)
+		return
+	if scene.active_roll_command_id != "special-teleport":
+		push_error("Teleport flight did not own the scoped presentation.")
+		quit(1)
+		return
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "overlap-teleport",
+			"playerId": "player-two",
+			"playerIndex": 1,
+			"presentation": "teleport",
+			"spaces": 0,
+			"toLogicalPosition": 5,
+			"toVisualPosition": 7,
+			"visualPath": [],
+		}),
+	})
+	if scene.active_roll_command_id != "special-teleport":
+		push_error("An overlapping special movement was not rejected.")
+		quit(1)
+		return
+	var teleport_completion := await _await_movement_complete(scene)
+	var teleport_arguments_value = JSON.parse_string(
+		str(teleport_completion.get("arguments", "{}"))
+	)
+	var teleport_arguments: Dictionary = (
+		teleport_arguments_value as Dictionary
+		if typeof(teleport_arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if (
+		str(teleport_arguments.get("commandId", "")) != "special-teleport"
+		or int(teleport_arguments.get("logicalPosition", -1)) != 20
+		or int(teleport_arguments.get("visualPosition", -1)) != 26
+	):
+		push_error("Teleport flight completed with mismatched movement data.")
+		quit(1)
+		return
+	if not teleport_token.position.is_equal_approx(
+		scene._token_anchor_for_tile(26, 0)
+	):
+		push_error("Teleport flight did not land the pawn on its target anchor.")
+		quit(1)
+		return
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-teleport",
+			"playerId": "player-one",
+			"playerIndex": 0,
+			"presentation": "teleport",
+			"spaces": 0,
+			"toLogicalPosition": 20,
+			"toVisualPosition": 26,
+			"visualPath": [],
+		}),
+	})
+	if not scene.active_roll_command_id.is_empty():
+		push_error("A replayed special movement command restarted its animation.")
+		quit(1)
+		return
+	print("SPECIAL_TELEPORT_FLIGHT_OK")
+
+	# Jail presentation: the escort flight labels itself and lands in jail.
+	var jail_state: Dictionary = state.duplicate(true)
+	jail_state["stateGeneration"] = int(jail_state["stateGeneration"]) + 4
+	var jail_players: Array = (jail_state["players"] as Array).duplicate(true)
+	(jail_players[1] as Dictionary)["visualPosition"] = 39
+	jail_state["players"] = jail_players
+	await _sync_state_and_wait(scene, jail_state)
+	scene.host_receive_message({
+		"action": "animate_roll",
+		"json": JSON.stringify({
+			"commandId": "special-jail",
+			"playerId": "player-two",
+			"playerIndex": 1,
+			"presentation": "jail",
+			"spaces": 0,
+			"toLogicalPosition": 10,
+			"toVisualPosition": 13,
+			"visualPath": [],
+		}),
+	})
+	await create_timer(0.6).timeout
+	if scene.turn_label.text != "Player 2 IS TAKEN TO JAIL…":
+		push_error(
+			"Jail presentation used the wrong label: %s" % scene.turn_label.text
+		)
+		quit(1)
+		return
+	var jail_completion := await _await_movement_complete(scene)
+	var jail_arguments_value = JSON.parse_string(
+		str(jail_completion.get("arguments", "{}"))
+	)
+	var jail_arguments: Dictionary = (
+		jail_arguments_value as Dictionary
+		if typeof(jail_arguments_value) == TYPE_DICTIONARY
+		else {}
+	)
+	if (
+		str(jail_arguments.get("commandId", "")) != "special-jail"
+		or int(jail_arguments.get("logicalPosition", -1)) != 10
+		or int(jail_arguments.get("visualPosition", -1)) != 13
+	):
+		push_error("Jail flight completed with mismatched movement data.")
+		quit(1)
+		return
+	var jail_token := scene.player_tokens[1] as Node3D
+	if not jail_token.position.is_equal_approx(
+		scene._token_anchor_for_tile(13, 1)
+	):
+		push_error("Jail flight did not land the pawn on the jail tile.")
+		quit(1)
+		return
+	print("SPECIAL_JAIL_FLIGHT_OK")
+
+	# Restore the shared baseline state so the remaining suites start clean.
+	var restore_state: Dictionary = state.duplicate(true)
+	restore_state["stateGeneration"] = (
+		int(restore_state["stateGeneration"]) + 5
+	)
+	await _sync_state_and_wait(scene, restore_state)
+	print("SPECIAL_MOVEMENT_PRESENTATIONS_OK")
 
 
 func _camera_snapshot(scene: Node) -> Dictionary:
@@ -578,7 +892,10 @@ func _test_property_development_metadata(scene: Node) -> void:
 		quit(1)
 		return
 	var label := tile.get_node("TileLabel") as Label3D
-	if not label.text.contains("$120"):
+	# The semantic-zoom presentation may abbreviate the rendered text to the
+	# name at overview distance; the full localized name and price must always
+	# survive in the registered abbreviation source.
+	if not str(label.get_meta("full_text", label.text)).contains("$120"):
 		push_error("3D property price is missing from its location label.")
 		quit(1)
 		return
@@ -960,6 +1277,106 @@ func _test_die_face_rotations(scene: Node) -> void:
 			quit(1)
 			return
 	print("DICE_FACE_ROTATIONS_OK")
+
+
+func _test_boat_waterline(scene: Node) -> void:
+	if scene.boat_routes.is_empty():
+		push_error("No harbor traffic was created for the waterline check.")
+		quit(1)
+		return
+	for _frame in 30:
+		await process_frame
+	var surface := float(scene.CITY_WATER_SURFACE_Y)
+	for route in scene.boat_routes:
+		var boat := route.get("node") as Node3D
+		if not is_instance_valid(boat):
+			continue
+		var lane_y := float(route.get("lane_y", surface))
+		if absf(lane_y - surface) > 0.01:
+			push_error(
+				"A boat lane was authored %.2f above the water surface."
+				% (lane_y - surface)
+			)
+			quit(1)
+			return
+		if boat.position.y < surface - 0.15 or boat.position.y > surface + 0.08:
+			push_error("A boat is not riding at the water surface.")
+			quit(1)
+			return
+		if boat.position.y - scene.BOAT_HULL_DRAFT > surface:
+			push_error("A boat hull never submerges below the waterline.")
+			quit(1)
+			return
+	print("BOAT_WATERLINE_OK")
+
+
+func _test_label_presentation(scene: Node) -> void:
+	var tile_label: Label3D = null
+	var landmark_count := 0
+	for entry in scene.world_labels:
+		var kind := str(entry.get("kind", ""))
+		if kind == "landmark":
+			landmark_count += 1
+		elif kind == "tile" and tile_label == null:
+			var node_value: Variant = entry.get("node")
+			if not is_instance_valid(node_value) or not (node_value is Label3D):
+				continue
+			var candidate := node_value as Label3D
+			if str(candidate.get_meta("full_text", "")).contains("\n$"):
+				tile_label = candidate
+	if tile_label == null:
+		push_error("No priced tile label was registered for semantic zoom.")
+		quit(1)
+		return
+	if landmark_count == 0:
+		push_error("No landmark labels were registered for semantic zoom.")
+		quit(1)
+		return
+	var original_distance: float = scene.camera_distance
+	scene.camera_distance = 40.0
+	scene.applied_label_compensation = -1.0
+	await process_frame
+	await process_frame
+	if tile_label.scale.x < 1.2:
+		push_error("Overview framing did not enlarge tile labels.")
+		quit(1)
+		return
+	if str(tile_label.text).contains("\n$"):
+		push_error("Overview framing did not abbreviate tile price lines.")
+		quit(1)
+		return
+	scene.camera_distance = 16.0
+	scene.applied_label_compensation = -1.0
+	await process_frame
+	await process_frame
+	if not is_equal_approx(tile_label.scale.x, 1.0):
+		push_error("Close framing did not restore authored label size.")
+		quit(1)
+		return
+	if not str(tile_label.text).contains("\n$"):
+		push_error("Close framing did not restore the tile price line.")
+		quit(1)
+		return
+	scene.camera_distance = original_distance
+	scene.applied_label_compensation = -1.0
+	# A state refresh at overview framing must keep the abbreviation instead
+	# of reverting every tile label to its full two-line text.
+	scene.camera_distance = 40.0
+	scene.applied_label_compensation = -1.0
+	await process_frame
+	await process_frame
+	scene._refresh_visual_tiles(
+		scene.active_tile_names,
+		scene.latest_logical_tiles
+	)
+	await process_frame
+	if str(tile_label.text).contains("\n$"):
+		push_error("A state refresh reverted overview labels to full text.")
+		quit(1)
+		return
+	scene.camera_distance = original_distance
+	scene.applied_label_compensation = -1.0
+	print("LABEL_SEMANTIC_ZOOM_OK")
 
 
 func _test_embedded_cloud_policy(scene: Node) -> void:

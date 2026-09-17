@@ -81,6 +81,17 @@ internal class GodotCommandSessionRegistry(
         return entries.size
     }
 
+    /**
+     * Returns the session that owns [commandId] without consuming it. Used by
+     * progress events (movementStep) that must not retire the command before
+     * its movementComplete arrives.
+     */
+    @Synchronized
+    fun peekSession(commandId: String): Long? {
+        prune(nowMicros())
+        return entries[commandId]?.sessionId
+    }
+
     private fun prune(now: Long) {
         val iterator = entries.entries.iterator()
         while (iterator.hasNext()) {

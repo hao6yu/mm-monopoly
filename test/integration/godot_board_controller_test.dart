@@ -54,6 +54,7 @@ void main() {
         die2: 2,
         fromLogicalPosition: 0,
         toLogicalPosition: 5,
+        toVisualPosition: 7,
         logicalTileCount: 40,
         visualSpotCount: 52,
         visualPath: [1, 3, 4, 5, 7],
@@ -97,7 +98,141 @@ void main() {
 
     expect(command.toLogicalPosition, 3);
     expect(command.visualPath, orderedEquals([49, 50, 51, 0, 1, 2, 3, 4]));
+    expect(command.toVisualPosition, 4);
+    expect(command.presentation, GodotMovementPresentation.standard);
     expect(command.toJson()['visualPath'], command.visualPath);
+  });
+
+  test('special move commands carry the typed presentation contract', () {
+    final city = CityBoardRegistry.all.first;
+    final player = Player(
+      id: 'player_0',
+      name: 'Player 1',
+      icon: PlayerIcon.dog,
+      color: Colors.red,
+      position: 5,
+    );
+    final state = GameState.initial(
+      players: [player],
+      tiles: BoardFactory.generateTiles(city),
+    );
+    final controller = GodotBoardController();
+    addTearDown(controller.dispose);
+
+    // A reverse card walks the visual route backwards.
+    final reverse = controller.createSpecialMoveCommand(
+      gameState: state,
+      playerIndex: 0,
+      fromLogicalPosition: 5,
+      toLogicalPosition: 2,
+      presentation: GodotMovementPresentation.reverse,
+    );
+    expect(reverse.presentation, GodotMovementPresentation.reverse);
+    expect(reverse.toLogicalPosition, 2);
+    expect(reverse.visualPath, isNotEmpty);
+    expect(reverse.visualPath.first, lessThan(7));
+    expect(reverse.die1, 0);
+    expect(reverse.die2, 0);
+    final reverseJson = reverse.toJson();
+    expect(reverseJson['presentation'], 'reverse');
+    expect(reverseJson['spaces'], 3);
+    expect(reverseJson['toVisualPosition'], 3);
+
+    // Teleports and jail flights skip the route markers entirely and give the
+    // native scene an explicit mapped destination visual position.
+    final teleport = controller.createSpecialMoveCommand(
+      gameState: state,
+      playerIndex: 0,
+      fromLogicalPosition: 5,
+      toLogicalPosition: 24,
+      presentation: GodotMovementPresentation.teleport,
+    );
+    expect(teleport.presentation, GodotMovementPresentation.teleport);
+    expect(teleport.visualPath, isEmpty);
+    expect(teleport.spaces, 0);
+    expect(
+      teleport.toVisualPosition,
+      GodotBoardProtocol.toVisualPosition(
+        logicalPosition: 24,
+        logicalTileCount: state.tiles.length,
+        visualSpotCount: GodotBoardProtocol.cityVisualSpotCount,
+      ),
+    );
+
+    final jail = controller.createSpecialMoveCommand(
+      gameState: state,
+      playerIndex: 0,
+      fromLogicalPosition: 30,
+      toLogicalPosition: 10,
+      presentation: GodotMovementPresentation.jail,
+    );
+    expect(jail.presentation, GodotMovementPresentation.jail);
+    expect(jail.toLogicalPosition, 10);
+    expect(jail.visualPath, isEmpty);
+
+    // Forward card movement walks the route like a dice roll without dice.
+    final walk = controller.createSpecialMoveCommand(
+      gameState: state,
+      playerIndex: 0,
+      fromLogicalPosition: 5,
+      toLogicalPosition: 12,
+      presentation: GodotMovementPresentation.walk,
+    );
+    expect(walk.presentation, GodotMovementPresentation.walk);
+    expect(walk.visualPath, isNotEmpty);
+    expect(
+      walk.visualPath.last,
+      GodotBoardProtocol.toVisualPosition(
+        logicalPosition: 12,
+        logicalTileCount: state.tiles.length,
+        visualSpotCount: GodotBoardProtocol.cityVisualSpotCount,
+      ),
+    );
+  });
+
+  test('movementStep events fire footstep callbacks once per waypoint', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'isAvailable') return true;
+          return null;
+        });
+    final controller = GodotBoardController();
+    addTearDown(controller.dispose);
+    await controller.initialize();
+    final steps = <GodotMovementStep>[];
+    controller.onMovementStep = steps.add;
+
+    Future<void> sendStep(int index) {
+      return sendNativeCall(
+        MethodCall('movementStep', {
+          'commandId': '1_player_0',
+          'playerId': 'player_0',
+          'stepIndex': index,
+          'totalSteps': 5,
+        }),
+      );
+    }
+
+    await sendStep(1);
+    await sendStep(1); // Host retry for the same waypoint is suppressed.
+    await sendStep(2);
+    await sendStep(5);
+    await sendStep(3); // Out-of-order stale waypoint is suppressed.
+    expect(steps.map((step) => step.stepIndex), orderedEquals([1, 2, 5]));
+
+    await sendNativeCall(
+      MethodCall('movementComplete', {
+        'commandId': '1_player_0',
+        'playerId': 'player_0',
+        'logicalPosition': 5,
+        'visualPosition': 7,
+      }),
+    );
+    // A step trailing its completion must never fire a cue.
+    await sendStep(6);
+    expect(steps, hasLength(3));
+    debugDefaultTargetPlatformOverride = null;
   });
 
   test(

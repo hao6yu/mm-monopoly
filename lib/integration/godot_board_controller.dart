@@ -35,7 +35,14 @@ class GodotBoardController extends ChangeNotifier {
   GodotBoardController({Duration stateApplyTimeout = defaultStateApplyTimeout})
     : _stateApplyTimeout = stateApplyTimeout;
 
+  /// Optional listener for per-waypoint movement progress emitted by the
+  /// native scene. Used for footstep audio; movement completion remains the
+  /// only authoritative gameplay signal.
+  void Function(GodotMovementStep step)? onMovementStep;
+
   final Map<String, Completer<GodotMovementComplete>> _pendingMoves = {};
+  final Map<String, int> _lastStepIndexByCommand = {};
+  String? _lastCompletedCommandId;
   final Set<_PendingStateDelivery> _pendingStateDeliveries = {};
   final StreamController<GodotBoardSelection> _selections =
       StreamController<GodotBoardSelection>.broadcast();
@@ -263,6 +270,9 @@ class GodotBoardController extends ChangeNotifier {
   }) async {
     if (_disposed || _use2DFallback) return;
     _cancelPendingStateDeliveries();
+    // A fresh authoritative generation invalidates any in-flight movement's
+    // progress history; Godot cancels hosted rolls on state application too.
+    _lastStepIndexByCommand.clear();
     _latestState = sceneStateFrom(
       gameState,
       boardId: boardId,
@@ -339,6 +349,11 @@ class GodotBoardController extends ChangeNotifier {
       die2: die2,
       fromLogicalPosition: player.position,
       toLogicalPosition: (player.position + spaces) % logicalTileCount,
+      toVisualPosition: GodotBoardProtocol.toVisualPosition(
+        logicalPosition: (player.position + spaces) % logicalTileCount,
+        logicalTileCount: logicalTileCount,
+        visualSpotCount: visualSpotCount,
+      ),
       logicalTileCount: logicalTileCount,
       visualSpotCount: visualSpotCount,
       visualPath: GodotBoardProtocol.visualPath(
@@ -347,6 +362,64 @@ class GodotBoardController extends ChangeNotifier {
         logicalTileCount: logicalTileCount,
         visualSpotCount: visualSpotCount,
       ),
+    );
+  }
+
+  /// Builds a scoped movement command for a non-dice board movement such as
+  /// jail, card, or teleport-prize relocation.
+  ///
+  /// [presentation] selects how Godot stages the movement (see
+  /// [GodotMovementPresentation]). Walk and reverse presentations receive the
+  /// complete visual waypoint path; teleport and jail flights only need the
+  /// mapped destination visual position.
+  GodotRollCommand createSpecialMoveCommand({
+    required GameState gameState,
+    required int playerIndex,
+    required int fromLogicalPosition,
+    required int toLogicalPosition,
+    required String presentation,
+  }) {
+    assert(
+      GodotMovementPresentation.supportedValues.contains(presentation),
+      'Unsupported 3D movement presentation: $presentation',
+    );
+    assert(presentation != GodotMovementPresentation.standard,
+        'Dice rolls must use createRollCommand.');
+    final player = gameState.players[playerIndex];
+    final logicalTileCount = gameState.tiles.length;
+    const visualSpotCount = GodotBoardProtocol.cityVisualSpotCount;
+    final forwardDelta =
+        (toLogicalPosition - fromLogicalPosition) % logicalTileCount;
+    final isReverse = presentation == GodotMovementPresentation.reverse;
+    final signedDelta = isReverse
+        ? -((fromLogicalPosition - toLogicalPosition) % logicalTileCount)
+        : forwardDelta;
+    final walksRoute =
+        presentation == GodotMovementPresentation.walk || isReverse;
+    return GodotRollCommand(
+      sessionId: gameState.id,
+      commandId: '${DateTime.now().microsecondsSinceEpoch}_${player.id}',
+      playerId: player.id,
+      playerIndex: playerIndex,
+      fromLogicalPosition: fromLogicalPosition,
+      toLogicalPosition: toLogicalPosition,
+      toVisualPosition: GodotBoardProtocol.toVisualPosition(
+        logicalPosition: toLogicalPosition,
+        logicalTileCount: logicalTileCount,
+        visualSpotCount: visualSpotCount,
+      ),
+      logicalTileCount: logicalTileCount,
+      visualSpotCount: visualSpotCount,
+      spaces: walksRoute ? signedDelta.abs() : 0,
+      visualPath: walksRoute
+          ? GodotBoardProtocol.visualPath(
+              fromLogicalPosition: fromLogicalPosition,
+              spaces: signedDelta,
+              logicalTileCount: logicalTileCount,
+              visualSpotCount: visualSpotCount,
+            )
+          : const [],
+      presentation: presentation,
     );
   }
 
@@ -571,6 +644,21 @@ class GodotBoardController extends ChangeNotifier {
           raw.cast<Object?, Object?>(),
         );
         _pendingMoves[event.commandId]?.complete(event);
+        _lastCompletedCommandId = event.commandId;
+        _lastStepIndexByCommand.remove(event.commandId);
+        return true;
+      case 'movementStep':
+        final raw = call.arguments;
+        if (raw is! Map) return false;
+        final step = GodotMovementStep.fromMap(raw.cast<Object?, Object?>());
+        // Monotonic per-command guard: retried or out-of-order host events
+        // must not double-fire footstep cues for the same waypoint. Events
+        // trailing a completed command are dropped entirely.
+        final lastStep = _lastStepIndexByCommand[step.commandId] ?? -1;
+        if (step.stepIndex <= lastStep) return true;
+        if (step.commandId == _lastCompletedCommandId) return true;
+        _lastStepIndexByCommand[step.commandId] = step.stepIndex;
+        onMovementStep?.call(step);
         return true;
       case 'boardObjectTapped':
         final raw = call.arguments;
