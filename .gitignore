@@ -119,3 +119,7 @@ coverage/
 
 # Manual device/simulator QA captures and drive helpers
 qa_shots/
+
+# Raw Instruments traces stay on local disk; summarized exports are committed.
+qa_evidence/**/*.trace/
+qa_evidence/**/*.trace
