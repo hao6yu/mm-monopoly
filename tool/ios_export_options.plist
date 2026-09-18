@@ -8,6 +8,8 @@
 	<string>F9XW9FCX92</string>
 	<key>signingStyle</key>
 	<string>automatic</string>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
 	<key>uploadSymbols</key>
 	<true/>
 	<key>destination</key>
