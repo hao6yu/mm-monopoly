@@ -9,6 +9,7 @@ import 'package:property_tycoon/config/board_factory.dart';
 import 'package:property_tycoon/config/city_board_registry.dart';
 import 'package:property_tycoon/config/constants.dart';
 import 'package:property_tycoon/controllers/game_session_controller.dart';
+import 'package:property_tycoon/integration/godot_board_controller.dart';
 import 'package:property_tycoon/integration/godot_board_contract.dart';
 import 'package:property_tycoon/l10n/app_localizations.dart';
 import 'package:property_tycoon/models/game_state.dart';
@@ -145,8 +146,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   final host = FakeNativeBoardHost();
+  late GodotBoardController boardController;
 
   setUp(() {
+    boardController = GodotBoardController();
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(godotBridgeChannel, host.handle);
@@ -159,6 +162,7 @@ void main() {
   });
 
   tearDown(() {
+    boardController.dispose();
     debugDefaultTargetPlatformOverride = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(godotBridgeChannel, null);
@@ -173,6 +177,10 @@ void main() {
   });
 
   Future<GameBoardScreenState> pumpBoard(WidgetTester tester) async {
+    await boardController.initialize();
+    // The real host mounts GodotBoardHost (which owns platform-view creation)
+    // in the app-level board layer; emulate its view-created callback here.
+    boardController.markViewCreated();
     final city = CityBoardRegistry.byBoardId('usa_new_york')!;
     final players = [
       Player(id: 'player_0', name: 'Mia', icon: PlayerIcon.dog, color: Colors.red),
@@ -197,6 +205,7 @@ void main() {
         home: GameBoardScreen(
           session: GameSessionController(state),
           cityBoard: city,
+          boardController: boardController,
           boardTheme: BoardFactory.getThemeForCityBoard(city),
           onQuit: () {},
           onRestart: () {},
@@ -634,6 +643,7 @@ void main() {
       final chanceTile = tileOfType(gameState, TileType.chance);
       player.position = gameState.tiles.length - 5;
       final originalSessionId = host.sentStates.last['sessionId'];
+      final originalGeneration = host.sentStates.last['stateGeneration'];
 
       host.holdMovementComplete = true;
       final flow = screenState.drawCardForTesting(player, chanceTile);
@@ -645,10 +655,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       expect(host.recordedCalls, ['syncState', 'animateRoll']);
 
-      // Replace the session: the board screen (and with it the controller)
-      // is disposed while the movement is still in flight.
+      // Replace the session: the board screen is disposed while the movement
+      // is still in flight. The controller is app-scoped and survives the
+      // screen, so the in-flight movement resolves through its own completion
+      // timeout instead of a controller teardown.
       await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump(const Duration(milliseconds: 900));
+      await tester.pump(const Duration(seconds: 11));
       await flow;
       expect(tester.takeException(), isNull);
 
@@ -661,16 +673,90 @@ void main() {
       // and reaches readiness without the stale command interfering.
       host.recordedCalls.clear();
       host.animatePayloads.clear();
+      boardController.resetForNewSession();
       final replacement = await pumpBoard(tester);
       expect(host.recordedCalls, ['syncState']);
       expect(host.animatePayloads, isEmpty);
-      expect(host.sentStates.last['stateGeneration'], 1);
+      // The controller's generation is monotonic across sessions: the engine
+      // deduplicates by generation, so a replacement session must acknowledge
+      // a strictly newer generation of its own session id.
+      expect(
+        host.sentStates.last['stateGeneration'],
+        greaterThan(originalGeneration),
+      );
       expect(host.sentStates.last['sessionId'], isNot(originalSessionId));
       expect(replacement.is3DBoardReadyForTesting, isTrue);
       // A late duplicate of the stale completion stays inert, too.
       await host.completePendingMovement();
       expect(tester.takeException(), isNull);
       expect(replacement.waitingForCardPickForTesting, isFalse);
+      resetPlatformOverride();
+    },
+  );
+
+  testWidgets(
+    'session replacement reuses the shared controller with a fresh generation',
+    (tester) async {
+      await boardController.initialize();
+      final city = CityBoardRegistry.byBoardId('usa_new_york')!;
+
+      Future<GameBoardScreenState> pumpSession(String sessionId) async {
+        // The persistent board layer's platform view is created once.
+        boardController.markViewCreated();
+        final players = [
+          Player(id: 'player_0', name: 'Mia', icon: PlayerIcon.dog, color: Colors.red),
+          Player(
+            id: 'player_1',
+            name: 'Noah',
+            icon: PlayerIcon.car,
+            color: Colors.blue,
+          ),
+        ];
+        final state = GameState.initial(
+          players: players,
+          tiles: BoardFactory.generateTiles(city),
+          cityBoardId: city.boardId,
+        );
+        final savedState = state.copyWith(id: sessionId);
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            key: ValueKey(sessionId),
+            home: GameBoardScreen(
+              session: GameSessionController(savedState),
+              cityBoard: city,
+              boardController: boardController,
+              onQuit: () {},
+              onRestart: () {},
+              onGameFinished: (_) {},
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 120));
+        await tester.pump(const Duration(milliseconds: 250));
+        return tester.state<GameBoardScreenState>(
+          find.byType(GameBoardScreen),
+        );
+      }
+
+      final first = await pumpSession('111');
+      expect(first.is3DBoardReadyForTesting, isTrue);
+      final firstGeneration = host.sentStates.last['stateGeneration'];
+
+      // The Quit → Continue path unmounts the screen; the shared controller
+      // and its platform view must survive it.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+
+      host.recordedCalls.clear();
+      host.sentStates.clear();
+      boardController.resetForNewSession();
+      final second = await pumpSession('222');
+      expect(second.is3DBoardReadyForTesting, isTrue);
+      expect(host.recordedCalls, ['syncState']);
+      // A fresh session must acknowledge its own generation, not the old one.
+      expect(host.sentStates.single['stateGeneration'], firstGeneration + 1);
       resetPlatformOverride();
     },
   );

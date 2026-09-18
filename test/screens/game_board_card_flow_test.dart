@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:property_tycoon/l10n/app_localizations.dart';
 import 'package:property_tycoon/models/game_state.dart';
 import 'package:property_tycoon/models/player.dart';
 import 'package:property_tycoon/models/tile.dart';
+import 'package:property_tycoon/integration/godot_board_controller.dart';
 import 'package:property_tycoon/screens/game_board_screen.dart';
 import 'package:property_tycoon/widgets/dialogs/card_pick_dialog.dart';
 
@@ -32,12 +34,20 @@ void main() {
         });
   });
 
-  tearDown(() {
+  tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(godotChannel, null);
+    debugDefaultTargetPlatformOverride = null;
   });
 
   Future<GameBoardScreenState> pumpBoard(WidgetTester tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    final GodotBoardController boardController = GodotBoardController();
+    addTearDown(boardController.dispose);
+    await boardController.initialize();
+    // The override is only needed for availability detection; the 2D board
+    // path never consults the platform again.
+    debugDefaultTargetPlatformOverride = null;
     final city = CityBoardRegistry.byBoardId('usa_new_york')!;
     final players = [
       Player(id: 'player_0', name: 'Mia', icon: PlayerIcon.dog, color: Colors.red),
@@ -62,6 +72,7 @@ void main() {
         home: GameBoardScreen(
           session: GameSessionController(state),
           cityBoard: city,
+          boardController: boardController,
           boardTheme: BoardFactory.getThemeForCityBoard(city),
           onQuit: () {},
           onRestart: () {},

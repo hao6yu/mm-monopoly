@@ -23,7 +23,6 @@ import '../integration/godot_board_controller.dart';
 import '../widgets/achievements/achievement_notification.dart';
 import '../widgets/board/board_overlay_slots.dart';
 import '../widgets/board/game_board.dart';
-import '../widgets/board/godot_board_host.dart';
 import '../widgets/player/game_status_rail.dart';
 import '../widgets/player/player_card.dart';
 import '../widgets/dice/dice_widget.dart';
@@ -270,10 +269,23 @@ class GameBoardScreen extends StatefulWidget {  final GameSessionController sess
   final bool auctionEnabled;
   final BoardTheme? boardTheme;
 
+  /// The app-scoped board controller. The bundled Godot runtime allows one
+  /// engine per process and destroys it whenever the render view leaves the
+  /// window, so the platform view lives in a persistent app-level layer and
+  /// every board screen shares this controller across sessions.
+  final GodotBoardController boardController;
+
+  /// Reports whether this screen currently needs the persistent board layer
+  /// to be visible and rendering (3D experience active). The session identity
+  /// lets the navigator ignore callbacks from a screen that a newer session
+  /// has already superseded (e.g. the outgoing screen of a Restart switch).
+  final void Function(bool visible, Object session)? onBoardLayerVisibilityChanged;
+
   const GameBoardScreen({
     super.key,
     required this.session,
     required this.cityBoard,
+    required this.boardController,
     required this.onQuit,
     required this.onRestart,
     required this.onGameFinished,
@@ -284,6 +296,7 @@ class GameBoardScreen extends StatefulWidget {  final GameSessionController sess
     this.bankEnabled = false,
     this.auctionEnabled = false,
     this.boardTheme,
+    this.onBoardLayerVisibilityChanged,
   });
 
   @override
@@ -320,8 +333,12 @@ class GameBoardScreenState extends State<GameBoardScreen>
   late final BoardCameraGestureDispatcher _cameraGestureDispatcher;
   StreamSubscription<GodotBoardSelection>? _godotSelectionSubscription;
   bool _show3DBoard = false;
-  bool _using2DBoardFallback = false;
   bool _is3DBoardInitializationComplete = false;
+
+  /// Whether the board session was parked on the deterministic Flutter board.
+  /// The choice lives on the shared controller (it belongs to the session
+  /// that made it) and is read through the controller's change notifications.
+  bool get _using2DBoardFallback => widget.boardController.is2DFallback;
   ui.Offset _last3DGestureFocalPoint = ui.Offset.zero;
   double _last3DGestureScale = 1;
   int _last3DGesturePointerCount = 0;
@@ -348,7 +365,7 @@ class GameBoardScreenState extends State<GameBoardScreen>
     _isMusicPlaying = AudioService.instance.musicEnabled;
     _updateMusicIntensity();
     _loadLocalizedCards();
-    _godotBoardController = GodotBoardController();
+    _godotBoardController = widget.boardController;
     _cameraGestureDispatcher = BoardCameraGestureDispatcher(
       send: (delta) => _godotBoardController.updateCameraGesture(
         orbitDeltaX: delta.orbitDeltaX,
@@ -363,16 +380,26 @@ class GameBoardScreenState extends State<GameBoardScreen>
     _godotSelectionSubscription = _godotBoardController.selections.listen(
       _handle3DBoardSelection,
     );
-    _initialize3DBoard();
+    _prepare3DBoardSession();
   }
 
   bool get _supports3DBoard =>
       GodotBoardProtocol.supportedBoardIds.contains(widget.cityBoard.boardId);
 
-  Future<void> _initialize3DBoard() async {
+  Future<void> _prepare3DBoardSession() async {
     _sentGraphicsQualityForBoard = false;
     _is3DBoardInitializationComplete = false;
+    // The shared controller may still be initializing when this screen
+    // mounts (the app layer creates it); availability must be resolved
+    // before the 3D/2D presentation is chosen.
     await _godotBoardController.initialize();
+    if (!mounted) return;
+    // A new session must not inherit the previous session's 2D fallback or
+    // preparation error; the board engine itself stays alive and attached.
+    // Notify silently: this can run inside initState (build phase), where a
+    // synchronous listener rebuild of the persistent board layer would throw;
+    // the sync that follows refreshes every listener.
+    _godotBoardController.resetForNewSession(notifyListeners: false);
     if (!mounted) return;
     setState(() {
       _show3DBoard =
@@ -381,8 +408,13 @@ class GameBoardScreenState extends State<GameBoardScreen>
           _godotBoardController.isAvailable;
       _is3DBoardInitializationComplete = true;
     });
+    _notifyBoardLayerVisibility();
     await _sync3DBoard();
     _scheduleCurrentAIRollIfReady();
+  }
+
+  void _notifyBoardLayerVisibility() {
+    widget.onBoardLayerVisibilityChanged?.call(_show3DBoard, widget.session);
   }
 
   Future<void> _sync3DBoard() async {
@@ -464,6 +496,17 @@ class GameBoardScreenState extends State<GameBoardScreen>
 
   void _onGodotBoardChanged() {
     if (!mounted) return;
+    if (_show3DBoard && _using2DBoardFallback) {
+      // The board layer's recovery UI (or a mid-turn failure) parked this
+      // session on the deterministic Flutter board; follow it down and hand
+      // control back to the session scheduler.
+      setState(() {
+        _show3DBoard = false;
+        _is3DBoardInitializationComplete = true;
+      });
+      _notifyBoardLayerVisibility();
+      _scheduleCurrentAIRollIfReady();
+    }
     // 3D-21: the persisted quality tier rides every fresh board-ready
     // transition; the gated call no-ops until readiness is complete.
     if (_show3DBoard &&
@@ -477,6 +520,7 @@ class GameBoardScreenState extends State<GameBoardScreen>
       );
     }
     setState(() {});
+    _notifyBoardLayerVisibility();
     _scheduleCurrentAIRollIfReady();
   }
 
@@ -547,7 +591,7 @@ class GameBoardScreenState extends State<GameBoardScreen>
       _sync3DBoard();
     }
     if (widget.cityBoard.boardId != oldWidget.cityBoard.boardId) {
-      _initialize3DBoard();
+      _prepare3DBoardSession();
     }
     if (widget.isActive != oldWidget.isActive) {
       _isPaused = !widget.isActive;
@@ -601,7 +645,9 @@ class GameBoardScreenState extends State<GameBoardScreen>
     _godotBoardController.removeListener(_onGodotBoardChanged);
     _godotSelectionSubscription?.cancel();
     _godotBoardController.onMovementStep = null;
-    _godotBoardController.dispose();
+    // The controller is app-scoped: the persistent board layer outlives this
+    // screen, so it is never disposed here.
+    widget.onBoardLayerVisibilityChanged?.call(false, widget.session);
     super.dispose();
   }
 
@@ -1111,15 +1157,22 @@ class GameBoardScreenState extends State<GameBoardScreen>
   @override
   Widget build(BuildContext context) {
     final theme = widget.boardTheme;
-    final backgroundGradient = theme != null
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [theme.boardColor, theme.centerBackground],
-          )
-        : AppTheme.backgroundGradient;
+    // While the 3D experience is up, the screen stays transparent so the
+    // persistent app-level board layer beneath it renders through; Flutter
+    // draws only the HUD and dialogs above the native surface.
+    final showThroughBoard = _isShowing3DExperience;
+    final backgroundGradient = showThroughBoard
+        ? null
+        : (theme != null
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [theme.boardColor, theme.centerBackground],
+              )
+            : AppTheme.backgroundGradient);
 
     return Scaffold(
+      backgroundColor: showThroughBoard ? Colors.transparent : null,
       body: Container(
         decoration: BoxDecoration(gradient: backgroundGradient),
         child: SafeArea(
@@ -1337,13 +1390,10 @@ class GameBoardScreenState extends State<GameBoardScreen>
         );
         return Stack(
           children: [
-            Positioned.fill(
-              child: GodotBoardHost(
-                controller: _godotBoardController,
-                onRetry: _godotBoardController.retryStateApplication,
-                onUse2D: _continueOn2DBoard,
-              ),
-            ),
+            // The 3D surface itself lives in the app-level persistent board
+            // layer beneath this screen; this stack draws only the gesture
+            // surface and HUD. The board layer's own preparation cover and
+            // recovery actions show through the transparent screen.
             if (_godotBoardController.stateApplyError == null)
               Positioned.fill(
                 child: GestureDetector(
@@ -2534,14 +2584,16 @@ class GameBoardScreenState extends State<GameBoardScreen>
 
   void _switchTo2DRollFallback() {
     if (!mounted || !_show3DBoard) return;
+    // continueIn2D notifies listeners; _onGodotBoardChanged refreshes the
+    // derived flags below.
+    _godotBoardController.continueIn2D();
     setState(() {
-      _using2DBoardFallback = true;
       _show3DBoard = false;
       _replaceGameState(
         gameState.copyWith(animationState: TurnAnimationState.movingToken),
       );
     });
-    _godotBoardController.continueIn2D();
+    _notifyBoardLayerVisibility();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(AppLocalizations.of(context)!.continuedOn2DBoard),
@@ -2549,17 +2601,6 @@ class GameBoardScreenState extends State<GameBoardScreen>
         duration: const Duration(seconds: 3),
       ),
     );
-  }
-
-  void _continueOn2DBoard() {
-    if (!mounted) return;
-    setState(() {
-      _using2DBoardFallback = true;
-      _show3DBoard = false;
-      _is3DBoardInitializationComplete = true;
-    });
-    _godotBoardController.continueIn2D();
-    _scheduleCurrentAIRollIfReady();
   }
 
   _TurnOperationToken _captureTurnOperation({Player? player}) =>

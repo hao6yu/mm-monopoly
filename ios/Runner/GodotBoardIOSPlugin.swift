@@ -201,6 +201,29 @@ final class GodotBoardIOSPlugin: NSObject, FlutterPlugin {
       sendToGodot(action: "camera_follow", json: json)
       result(true)
 
+    case "setBoardVisible":
+      guard let json = call.arguments as? String,
+            let data = json.data(using: .utf8),
+            let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let visible = payload["visible"] as? Bool else {
+        result(
+          FlutterError(
+            code: "invalid_board_visibility",
+            message: "The board visibility must be a JSON string with a visible flag.",
+            details: nil
+          )
+        )
+        return
+      }
+      // The board view stays attached for the whole process; hidden boards are
+      // paused so they render nothing, run no gameplay, and receive no input.
+      if visible {
+        godotApp.resume()
+      } else {
+        godotApp.pause()
+      }
+      result(true)
+
     case "pickBoardObject":
       guard let json = call.arguments as? String else {
         result(

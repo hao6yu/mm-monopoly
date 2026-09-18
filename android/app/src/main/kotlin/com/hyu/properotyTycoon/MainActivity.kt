@@ -143,6 +143,22 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
                         )
                     }
                 }
+                "setBoardVisible" -> {
+                    val json = call.arguments as? String
+                    val visible = runCatching {
+                        json?.let { JSONObject(it).optBoolean("visible", true) }
+                    }.getOrNull()
+                    if (visible == null) {
+                        result.error(
+                            "invalid_board_visibility",
+                            "Expected a JSON string with a visible flag.",
+                            null,
+                        )
+                    } else {
+                        setBoardVisible(visible)
+                        result.success(true)
+                    }
+                }
                 "pickBoardObject" -> {
                     val json = call.arguments as? String
                     if (json == null) {
@@ -215,6 +231,28 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
                 .setMaxLifecycle(fragment, Lifecycle.State.STARTED)
                 .commitNowAllowingStateLoss()
         }
+    }
+
+    /**
+     * Pauses or resumes the retained engine while its platform view stays
+     * attached. The app presents ONE board for the whole process: the bundled
+     * runtime destroys the engine when the render view leaves the window and
+     * cannot re-initialize in place, so hidden boards are paused — no
+     * rendering, no gameplay, no input — instead of torn down.
+     */
+    internal fun setBoardVisible(visible: Boolean) {
+        val fragment = godotFragment ?: return
+        if (!fragment.isAdded) return
+        val targetState = if (visible) {
+            Lifecycle.State.RESUMED
+        } else {
+            Lifecycle.State.STARTED
+        }
+        supportFragmentManager
+            .beginTransaction()
+            .setMaxLifecycle(fragment, targetState)
+            .commitNowAllowingStateLoss()
+        Log.i(TAG, "Board layer ${if (visible) "resumed" else "paused"}")
     }
 
     private fun moveFragmentView(fragment: Fragment, container: FrameLayout) {

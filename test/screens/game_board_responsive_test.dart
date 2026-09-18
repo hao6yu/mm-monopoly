@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:property_tycoon/config/board_factory.dart';
 import 'package:property_tycoon/config/city_board_registry.dart';
 import 'package:property_tycoon/controllers/game_session_controller.dart';
+import 'package:property_tycoon/integration/godot_board_controller.dart';
 import 'package:property_tycoon/l10n/app_localizations.dart';
 import 'package:property_tycoon/models/game_state.dart';
 import 'package:property_tycoon/models/player.dart';
@@ -17,6 +18,15 @@ import 'package:property_tycoon/services/save_service.dart';
 import 'package:property_tycoon/widgets/board/game_board.dart';
 import 'package:property_tycoon/widgets/dice/dice_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+final GodotBoardController boardController = GodotBoardController();
+
+Future<GodotBoardController> readyController() async {
+  debugDefaultTargetPlatformOverride = TargetPlatform.android;
+  await boardController.initialize();
+  debugDefaultTargetPlatformOverride = null;
+  return boardController;
+}
 
 void main() {
   const godotChannel = MethodChannel('property_tycoon/godot_board_bridge');
@@ -88,6 +98,7 @@ void main() {
           home: GameBoardScreen(
             session: GameSessionController(state),
             cityBoard: city,
+            boardController: await readyController(),
             boardTheme: BoardFactory.getThemeForCityBoard(city),
             onQuit: () {},
             onRestart: () {},
@@ -320,6 +331,7 @@ void main() {
         home: GameBoardScreen(
           session: session,
           cityBoard: city,
+          boardController: await readyController(),
           boardTheme: BoardFactory.getThemeForCityBoard(city),
           onQuit: () {},
           onRestart: () {},
@@ -426,6 +438,7 @@ void main() {
         home: GameBoardScreen(
           session: session,
           cityBoard: city,
+          boardController: await readyController(),
           boardTheme: BoardFactory.getThemeForCityBoard(city),
           onQuit: () {},
           onRestart: () {},
@@ -490,6 +503,7 @@ void main() {
         home: GameBoardScreen(
           session: GameSessionController(state),
           cityBoard: city,
+          boardController: await readyController(),
           boardTheme: BoardFactory.getThemeForCityBoard(city),
           onQuit: () {},
           onRestart: () {},
@@ -552,6 +566,7 @@ void main() {
         home: GameBoardScreen(
           session: GameSessionController(state),
           cityBoard: city,
+          boardController: await readyController(),
           boardTheme: BoardFactory.getThemeForCityBoard(city),
           onQuit: () {},
           onRestart: () {},
@@ -635,6 +650,7 @@ void main() {
         home: GameBoardScreen(
           session: session,
           cityBoard: city,
+          boardController: await readyController(),
           boardTheme: BoardFactory.getThemeForCityBoard(city),
           onQuit: () {},
           onRestart: () {},
@@ -731,6 +747,7 @@ void main() {
           home: GameBoardScreen(
             session: GameSessionController(state),
             cityBoard: city,
+            boardController: await readyController(),
             boardTheme: BoardFactory.getThemeForCityBoard(city),
             onQuit: () {},
             onRestart: () {},

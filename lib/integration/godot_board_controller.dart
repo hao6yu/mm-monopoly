@@ -94,6 +94,47 @@ class GodotBoardController extends ChangeNotifier {
   GodotBoardStateApplyError? get stateApplyError => _stateApplyError;
   Stream<GodotBoardSelection> get selections => _selections.stream;
 
+  /// Whether this controller was parked on the deterministic Flutter board
+  /// after a failed or timed-out 3D preparation. The choice lasts for the
+  /// current board session only; a new session resets it.
+  bool get is2DFallback => _use2DFallback;
+
+  /// Prepares the controller for a brand-new board session.
+  ///
+  /// The "Use 2D board" choice and any preparation error belong to the
+  /// session that made them; a fresh session (Continue, New Game, Replay)
+  /// starts clean so a past failure cannot pin the app to 2D forever.
+  void resetForNewSession({bool notifyListeners = true}) {
+    if (_disposed) return;
+    _use2DFallback = false;
+    _stateApplyError = null;
+    if (notifyListeners) {
+      _notifyListeners();
+    }
+  }
+
+  /// Pauses or resumes native board rendering while the platform view stays
+  /// attached. The app keeps one board for the whole process (the bundled
+  /// Android runtime destroys its engine when the render view leaves the
+  /// window, and re-initializing in place crashes), so a hidden board must be
+  /// paused instead of torn down: paused boards render nothing, run no
+  /// gameplay, and receive no input.
+  Future<void> setBoardVisible({required bool visible}) async {
+    if (_disposed || !_isAvailable || _use2DFallback) return;
+    try {
+      await _channel.invokeMethod<bool>(
+        'setBoardVisible',
+        jsonEncode({'visible': visible}),
+      );
+    } on PlatformException {
+      // A dropped visibility toggle only affects background rendering cost;
+      // the next transition re-asserts the desired state.
+    } on MissingPluginException {
+      // Hosts without native pausing keep the previous behavior.
+    }
+  }
+
+
   bool get canUseNativeBoard =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||

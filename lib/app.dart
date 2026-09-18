@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'l10n/app_localizations.dart';
 import 'config/theme.dart';
@@ -16,6 +18,8 @@ import 'models/game_result.dart';
 import 'models/country.dart';
 import 'models/city_board.dart';
 import 'controllers/game_session_controller.dart';
+import 'integration/godot_board_controller.dart';
+import 'widgets/board/godot_board_host.dart';
 import 'config/board_factory.dart';
 import 'config/city_board_registry.dart';
 import 'services/audio_service.dart';
@@ -98,11 +102,22 @@ class _AppNavigatorState extends State<AppNavigator>
     Country.usa,
   ); // Track selected city board
 
+  /// The app-scoped 3D board. The bundled Godot Android runtime allows one
+  /// engine per process and destroys it when the render view leaves the
+  /// window, so the platform view lives in a persistent layer below all
+  /// screens and every session (Continue, New Game, Replay) reuses it.
+  GodotBoardController? _boardController;
+  bool _boardLayerVisible = false;
+  bool _gameScreenRequestsBoard = false;
+
   @override
   void initState() {
     super.initState();
     _currentScreen = widget.initialScreen;
     _gameSession = widget.initialGameSession;
+    if (_gameSession != null) {
+      _ensureBoardController();
+    }
     _gameResult = widget.initialGameResult;
     _diceCount = _gameSession?.state.diceCount ?? _diceCount;
     final restoredBoardId = _gameSession?.state.cityBoardId;
@@ -125,6 +140,7 @@ class _AppNavigatorState extends State<AppNavigator>
   @override
   void dispose() {
     _gameSession?.deactivate();
+    _boardController?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -205,6 +221,7 @@ class _AppNavigatorState extends State<AppNavigator>
     setState(() {
       _diceCount = diceCount;
       _selectedCityBoard = board;
+      _ensureBoardController();
       _gameSession = GameSessionController(
         GameState.initial(
           players: players,
@@ -279,7 +296,8 @@ class _AppNavigatorState extends State<AppNavigator>
       setState(() {
         _diceCount = diceCount;
         _selectedCityBoard = board;
-        _gameSession = GameSessionController(
+        _ensureBoardController();
+      _gameSession = GameSessionController(
           GameState.initial(
             players: resetPlayers,
             tiles: tiles,
@@ -301,7 +319,8 @@ class _AppNavigatorState extends State<AppNavigator>
     if (savedState != null) {
       _gameSession?.deactivate();
       setState(() {
-        _gameSession = GameSessionController(savedState);
+        _ensureBoardController();
+      _gameSession = GameSessionController(savedState);
         _gameResult = null;
         _diceCount = savedState.diceCount;
         _selectedCityBoard =
@@ -453,17 +472,74 @@ class _AppNavigatorState extends State<AppNavigator>
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _handleSystemBack();
       },
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _buildVisibleContent(),
+      child: Stack(
+        children: [
+          if (_boardController != null)
+            Positioned.fill(
+              child: Visibility(
+                // Visibility(maintainState) keeps the platform view mounted
+                // and attached while it is hidden; the engine is paused
+                // natively through setBoardVisible instead of torn down.
+                visible: _boardLayerVisible,
+                maintainState: true,
+                child: GodotBoardHost(
+                  controller: _boardController!,
+                  onRetry: _boardController!.retryStateApplication,
+                  onUse2D: _boardController!.continueIn2D,
+                ),
+              ),
+            ),
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _buildVisibleContent(),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  /// The game screen reports whether the 3D experience needs the board layer
+  /// (mounted session + 3D mode). Requests may arrive during build (the
+  /// screen's initState), so the visibility change applies post-frame. The
+  /// session identity guards against a superseded screen: during a Restart
+  /// switch the outgoing screen's late "hidden" report must not override the
+  /// replacement's "visible".
+  void _handleGameScreenBoardRequest(bool requested, Object session) {
+    final gameInForeground =
+        _currentScreen == AppScreen.game ||
+        (_currentScreen == AppScreen.howToPlay &&
+            _previousScreen == AppScreen.game);
+    final isCurrentSession = identical(session, _gameSession);
+    final isQuitReport = !requested && _gameSession == null;
+    if (!isCurrentSession && !isQuitReport) return;
+    if (_gameScreenRequestsBoard == requested && _boardLayerVisible == requested) {
+      return;
+    }
+    _gameScreenRequestsBoard = requested;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_boardLayerVisible == requested) return;
+      setState(() {
+        _boardLayerVisible = requested;
+      });
+      unawaited(_boardController?.setBoardVisible(visible: requested));
+    });
+  }
+
+  void _ensureBoardController() {
+    if (_boardController != null) return;
+    final controller = GodotBoardController();
+    _boardController = controller;
+    unawaited(controller.initialize());
   }
 
   Widget _buildVisibleContent() {
     final showingGameHelp =
         _currentScreen == AppScreen.howToPlay &&
         _previousScreen == AppScreen.game;
+
     if (_gameSession != null &&
         (_currentScreen == AppScreen.game || showingGameHelp)) {
       return KeyedSubtree(
@@ -492,6 +568,8 @@ class _AppNavigatorState extends State<AppNavigator>
       key: ValueKey<GameSessionController>(session),
       session: session,
       cityBoard: _selectedCityBoard,
+      boardController: _boardController!,
+      onBoardLayerVisibilityChanged: _handleGameScreenBoardRequest,
       onQuit: _quitGame,
       onRestart: _restartGame,
       onHowToPlay: _openInGameHelp,
