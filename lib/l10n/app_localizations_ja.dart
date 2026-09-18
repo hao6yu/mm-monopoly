@@ -1729,7 +1729,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get privacyData =>
-      'セーブデータ、設定、統計、ランキング記録、カスタムアバターはこの端末内にのみ保存されます。開発者やサーバーに送信されることはなく、アプリを削除すると消去されます。';
+      'セーブデータ、設定、統計、ランキング記録、カスタムアバターはこの端末内にのみ保存されます。開発者やサーバーに送信されることはなく、アプリを削除すると消去されます。なお、端末のバックアップ(iCloud や Google のバックアップなど)を利用すると、OS がこれらのアプリデータをバックアップに含めることがあります。';
 
   @override
   String get privacyPermissionsTitle => '権限について';

@@ -999,7 +999,7 @@
   "privacyIntroTitle": "Overview",
   "privacyIntro": "M&M Property Tycoon is an offline board game. It runs entirely on your device and does not include advertising, analytics, or tracking of any kind.",
   "privacyDataTitle": "Data stored on your device",
-  "privacyData": "Your game saves, settings, statistics, leaderboard entries, and custom avatars are stored only on this device. They are never sent to the developer or to any server, and they are removed when you delete the app.",
+  "privacyData": "Your game saves, settings, statistics, leaderboard entries, and custom avatars are stored only on this device. They are never sent to the developer or to any server, and they are removed when you delete the app. If you back up your device (for example iCloud or a Google backup), your operating system may include this app data in your own backup.",
   "privacyPermissionsTitle": "Permissions",
   "privacyPermissions": "The camera and photo library are used only if you choose to create a custom avatar photo; photos stay on your device. Notifications are optional local reminders you can turn off in your device settings. The app requests no other permissions.",
   "privacyNoTrackingTitle": "No data collection",

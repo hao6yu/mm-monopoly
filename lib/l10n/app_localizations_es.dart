@@ -1787,7 +1787,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get privacyData =>
-      'Tus partidas guardadas, ajustes, estadísticas, entradas de la clasificación y avatares personalizados se guardan solo en este dispositivo. Nunca se envían al desarrollador ni a ningún servidor, y se eliminan al borrar la aplicación.';
+      'Tus partidas guardadas, ajustes, estadísticas, entradas de la clasificación y avatares personalizados se guardan solo en este dispositivo. Nunca se envían al desarrollador ni a ningún servidor, y se eliminan al borrar la aplicación. Si haces una copia de seguridad del dispositivo (por ejemplo, iCloud o una copia de Google), tu sistema operativo puede incluir estos datos de la aplicación en tu propia copia de seguridad.';
 
   @override
   String get privacyPermissionsTitle => 'Permisos';

@@ -678,7 +678,7 @@
   "privacyIntroTitle": "概述",
   "privacyIntro": "《M&M Property Tycoon》是一款离线棋盘游戏,完全在你的设备上运行,不含任何广告、分析或跟踪。",
   "privacyDataTitle": "保存在你设备上的数据",
-  "privacyData": "你的游戏存档、设置、统计数据、排行榜记录和自定义头像仅保存在本设备上,绝不会发送给开发者或任何服务器;卸载应用时会被一并删除。",
+  "privacyData": "你的游戏存档、设置、统计数据、排行榜记录和自定义头像仅保存在本设备上,绝不会发送给开发者或任何服务器;卸载应用时会被一并删除。如果你为设备备份(例如 iCloud 或 Google 备份),操作系统可能会将这些应用数据包含在你自己的备份中。",
   "privacyPermissionsTitle": "权限说明",
   "privacyPermissions": "相机和相册仅在你选择拍摄自定义头像照片时使用,照片只保存在你的设备上。通知是可选的本地提醒,你可以在系统设置中关闭。应用不会请求其他任何权限。",
   "privacyNoTrackingTitle": "不收集数据",

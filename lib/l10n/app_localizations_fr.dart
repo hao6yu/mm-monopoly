@@ -1796,7 +1796,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get privacyData =>
-      'Vos parties sauvegardées, réglages, statistiques, scores du classement et avatars personnalisés sont stockés uniquement sur cet appareil. Ils ne sont jamais envoyés au développeur ni à un serveur, et ils sont supprimés lorsque vous supprimez l\'application.';
+      'Vos parties sauvegardées, réglages, statistiques, scores du classement et avatars personnalisés sont stockés uniquement sur cet appareil. Ils ne sont jamais envoyés au développeur ni à un serveur, et ils sont supprimés lorsque vous supprimez l\'application. Si vous sauvegardez votre appareil (par exemple via iCloud ou une sauvegarde Google), votre système d\'exploitation peut inclure ces données de l\'application dans votre propre sauvegarde.';
 
   @override
   String get privacyPermissionsTitle => 'Autorisations';

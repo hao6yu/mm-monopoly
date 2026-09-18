@@ -3293,7 +3293,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyData.
   ///
   /// In en, this message translates to:
-  /// **'Your game saves, settings, statistics, leaderboard entries, and custom avatars are stored only on this device. They are never sent to the developer or to any server, and they are removed when you delete the app.'**
+  /// **'Your game saves, settings, statistics, leaderboard entries, and custom avatars are stored only on this device. They are never sent to the developer or to any server, and they are removed when you delete the app. If you back up your device (for example iCloud or a Google backup), your operating system may include this app data in your own backup.'**
   String get privacyData;
 
   /// No description provided for @privacyPermissionsTitle.

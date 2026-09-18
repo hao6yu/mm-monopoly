@@ -678,7 +678,7 @@
   "privacyIntroTitle": "Descripción general",
   "privacyIntro": "M&M Property Tycoon es un juego de mesa sin conexión. Funciona por completo en tu dispositivo y no incluye publicidad, análisis ni rastreo de ningún tipo.",
   "privacyDataTitle": "Datos guardados en tu dispositivo",
-  "privacyData": "Tus partidas guardadas, ajustes, estadísticas, entradas de la clasificación y avatares personalizados se guardan solo en este dispositivo. Nunca se envían al desarrollador ni a ningún servidor, y se eliminan al borrar la aplicación.",
+  "privacyData": "Tus partidas guardadas, ajustes, estadísticas, entradas de la clasificación y avatares personalizados se guardan solo en este dispositivo. Nunca se envían al desarrollador ni a ningún servidor, y se eliminan al borrar la aplicación. Si haces una copia de seguridad del dispositivo (por ejemplo, iCloud o una copia de Google), tu sistema operativo puede incluir estos datos de la aplicación en tu propia copia de seguridad.",
   "privacyPermissionsTitle": "Permisos",
   "privacyPermissions": "La cámara y la fototeca se usan únicamente si eliges crear una foto de avatar personalizada; las fotos se quedan en tu dispositivo. Las notificaciones son recordatorios locales opcionales que puedes desactivar en los ajustes del dispositivo. La aplicación no solicita ningún otro permiso.",
   "privacyNoTrackingTitle": "Sin recopilación de datos",

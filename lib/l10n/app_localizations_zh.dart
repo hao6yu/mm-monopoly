@@ -1728,7 +1728,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get privacyData =>
-      '你的游戏存档、设置、统计数据、排行榜记录和自定义头像仅保存在本设备上,绝不会发送给开发者或任何服务器;卸载应用时会被一并删除。';
+      '你的游戏存档、设置、统计数据、排行榜记录和自定义头像仅保存在本设备上,绝不会发送给开发者或任何服务器;卸载应用时会被一并删除。如果你为设备备份(例如 iCloud 或 Google 备份),操作系统可能会将这些应用数据包含在你自己的备份中。';
 
   @override
   String get privacyPermissionsTitle => '权限说明';
