@@ -157,15 +157,17 @@ Do not simply raise the timeout or report a cached boardReady as success.
 
 ## Still required before public release
 
-0. Fix the warm Android game re-entry blocker above and repeat the native
-   navigation/second-session acceptance matrix.
-1. Confirm the intended Apple team and connect its authorized Xcode account /
-   distribution signing credentials. Then export and validate the App Store
-   artifact. Development signing and an archive are not sufficient.
-2. Authenticated App Store Connect / Play Console entry: privacy URL and
-   declarations, age/content ratings, listing/screenshots, account-specific
-   testing requirements and final upload authorization. Agents can do this
-   with appropriate access; it is not inherently human-only.
+0. ~~Fix the warm Android game re-entry blocker~~ **CLOSED** (second pass,
+   this document) and the native navigation/second-session acceptance matrix
+   re-run on the signed minified install. Remaining native coverage: the 2D
+   fallback recovery cannot be triggered now that the lifecycle is fixed
+   (Dart-covered only), and end-to-end auction/bankruptcy/end-game workflows.
+1. ~~iOS distribution signing~~ **CLOSED**: ISW TECHNOLOGIES LLC App Store
+   IPA exported and verified (see above). Still open: authenticated App
+   Store Connect / Play Console entry (privacy URL + declarations, age and
+   content ratings, listing/screenshots, account-specific testing
+   requirements), upload authorization, and the actual upload/server-side
+   validation.
 3. Real minimum-spec Android and older-iOS sustained gameplay, memory/thermal
    and graphics-tier profiling. Emulator results do not close these gates.
 4. Complete the remaining acceptance matrix: auction/bankruptcy/end-game
