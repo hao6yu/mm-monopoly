@@ -4383,6 +4383,21 @@ func _update_city_brand() -> void:
 		brand_subtitle_label.text = str(city_theme.get("subtitle", "CITY THEME PARK"))
 
 
+## Signal-to-handler mapping for the embedded Android bridge plugin. The iOS
+## host dispatches the same actions through host_receive_message; keep both
+## dispatch tables complete when adding a signal (bridge_smoke.gd asserts
+## every Android plugin signal is mapped here).
+func _flutter_bridge_signal_handlers() -> Dictionary:
+	return {
+		"sync_state": _apply_flutter_state_json,
+		"animate_roll": _animate_flutter_roll_json,
+		"camera_gesture": _apply_camera_gesture_json,
+		"camera_follow": _apply_camera_follow_json,
+		"graphics_quality": _apply_graphics_quality_json,
+		"board_tap": _pick_board_object_json,
+	}
+
+
 func _connect_flutter_bridge() -> void:
 	flutter_bridge = (
 		Engine.get_singleton("PropertyTycoonBridge")
@@ -4391,11 +4406,9 @@ func _connect_flutter_bridge() -> void:
 	)
 	if flutter_bridge != null:
 		_enable_embedded_mode()
-		flutter_bridge.connect("sync_state", _apply_flutter_state_json)
-		flutter_bridge.connect("animate_roll", _animate_flutter_roll_json)
-		flutter_bridge.connect("camera_gesture", _apply_camera_gesture_json)
-		flutter_bridge.connect("camera_follow", _apply_camera_follow_json)
-		flutter_bridge.connect("board_tap", _pick_board_object_json)
+		var handlers := _flutter_bridge_signal_handlers()
+		for signal_name in handlers:
+			flutter_bridge.connect(signal_name, handlers[signal_name])
 		flutter_bridge.ready(scene_ready_token)
 		return
 

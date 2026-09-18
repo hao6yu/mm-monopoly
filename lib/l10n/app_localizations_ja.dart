@@ -1707,4 +1707,55 @@ class AppLocalizationsJa extends AppLocalizations {
   String activeEventsOverflow(int count) {
     return '他 $count 件のアクティブイベント';
   }
+
+  @override
+  String get privacyPolicy => 'プライバシーポリシー';
+
+  @override
+  String get privacyPolicyTagline => 'このゲームのデータの取り扱い';
+
+  @override
+  String get privacyLastUpdated => '最終更新日: 2026年9月17日';
+
+  @override
+  String get privacyIntroTitle => '概要';
+
+  @override
+  String get privacyIntro =>
+      'M&M Property Tycoon はオフライン動作のボードゲームです。すべて端末内で動作し、広告・分析・トラッキングは一切含みません。';
+
+  @override
+  String get privacyDataTitle => '端末内に保存されるデータ';
+
+  @override
+  String get privacyData =>
+      'セーブデータ、設定、統計、ランキング記録、カスタムアバターはこの端末内にのみ保存されます。開発者やサーバーに送信されることはなく、アプリを削除すると消去されます。';
+
+  @override
+  String get privacyPermissionsTitle => '権限について';
+
+  @override
+  String get privacyPermissions =>
+      'カメラと写真ライブラリは、カスタムアバター用の写真を選ぶ場合にのみ使われ、写真は端末内に残ります。通知は任意のローカルリマインダーで、端末の設定でオフにできます。それ以外の権限は要求しません。';
+
+  @override
+  String get privacyNoTrackingTitle => 'データ収集なし';
+
+  @override
+  String get privacyNoTracking =>
+      '本アプリは個人データの収集・共有・販売を行わず、サーバーへ接続しません。任意のサポートリンクを開くとアプリ外のウェブサイトに移動し、そちらのポリシーが適用されます。';
+
+  @override
+  String get privacyChildrenTitle => 'お子様について';
+
+  @override
+  String get privacyChildren =>
+      'ファミリー向けゲームで、チャットやユーザーアカウントはなく、任意のサポートリンク以外の外部コンテンツもありません。';
+
+  @override
+  String get privacyContactTitle => 'お問い合わせ';
+
+  @override
+  String get privacyContact =>
+      '本ポリシーについてご質問がある場合は、設定内のサポートリンクまたはアプリストアの掲載情報から開発者までお問い合わせください。';
 }

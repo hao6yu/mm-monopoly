@@ -119,7 +119,14 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
                             "Expected a JSON string.",
                             null,
                         )
+                    } else {
+                        val sessionId = boardSessions.activeSession?.id
+                        result.success(
+                            sessionId != null &&
+                                bridgePlugin?.setCameraFollow(sessionId, json) == true,
+                        )
                     }
+                }
                 "setGraphicsQuality" -> {
                     val json = call.arguments as? String
                     if (json == null) {
@@ -133,13 +140,6 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
                         result.success(
                             sessionId != null &&
                                 bridgePlugin?.setGraphicsQuality(sessionId, json) == true,
-                        )
-                    }
-                } else {
-                        val sessionId = boardSessions.activeSession?.id
-                        result.success(
-                            sessionId != null &&
-                                bridgePlugin?.setCameraFollow(sessionId, json) == true,
                         )
                     }
                 }

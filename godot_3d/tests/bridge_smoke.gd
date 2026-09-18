@@ -91,6 +91,7 @@ func _run() -> void:
 	await _test_roll_cancellation_on_state_sync(scene, state)
 	await _test_special_movement_presentations(scene, state)
 	await _test_camera_follow(scene, state)
+	_test_flutter_bridge_signal_contract(scene)
 	await _test_graphics_quality_tiers(scene)
 	await _test_dice_slot_separation(scene)
 	_test_native_one_finger_pan(scene)
@@ -1249,6 +1250,42 @@ func _camera_target_in_bounds(scene: Node) -> bool:
 		and target.z >= scene.CAMERA_TARGET_MIN_Z
 		and target.z <= scene.CAMERA_TARGET_MAX_Z
 	)
+
+
+## Regression for the September review (R2): the Android plugin registers the
+## graphics_quality signal, but main.gd once connected every neighboring
+## signal except that one, so quality changes never reached the scene on
+## Android. The iOS host_receive_message path masked the gap in headless runs.
+## Assert the complete signal-to-handler contract instead of a single handler.
+func _test_flutter_bridge_signal_contract(scene: Node) -> void:
+	var handlers: Dictionary = scene._flutter_bridge_signal_handlers()
+	var expected := [
+		"sync_state",
+		"animate_roll",
+		"camera_gesture",
+		"camera_follow",
+		"graphics_quality",
+		"board_tap",
+	]
+	for signal_name in expected:
+		if not handlers.has(signal_name):
+			push_error("Flutter bridge signal %s has no connected handler." % signal_name)
+			quit(1)
+			return
+		var callable: Callable = handlers[signal_name]
+		if not callable.is_valid() or callable.get_object() != scene:
+			push_error("Flutter bridge handler for %s is not a valid scene method." % signal_name)
+			quit(1)
+			return
+	if handlers["graphics_quality"].get_method() != "_apply_graphics_quality_json":
+		push_error("graphics_quality must dispatch to _apply_graphics_quality_json.")
+		quit(1)
+		return
+	if handlers.size() != expected.size():
+		push_error("Unexpected extra Flutter bridge signals registered.")
+		quit(1)
+		return
+	print("FLUTTER_BRIDGE_SIGNAL_CONTRACT_OK")
 
 
 func _test_graphics_quality_tiers(scene: Node) -> void:

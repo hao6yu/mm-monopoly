@@ -243,16 +243,21 @@ class _CardMoveOutcome {
     required this.action,
     required this.fromPosition,
     required this.landingPosition,
+    required this.resolveLanding,
   });
 
   final String action;
   final int fromPosition;
   final int landingPosition;
+
+  /// Whether the destination tile should be resolved after the movement.
+  /// Movement and landing resolution stay separate decisions: cards such as
+  /// Advance to GO and Go To Jail relocate without resolving their landing.
+  final bool resolveLanding;
 }
 
 /// Main game board screen
-class GameBoardScreen extends StatefulWidget {
-  final GameSessionController session;
+class GameBoardScreen extends StatefulWidget {  final GameSessionController session;
   final CityBoard cityBoard;
   final VoidCallback onQuit;
   final FutureOr<void> Function() onRestart;
@@ -282,10 +287,12 @@ class GameBoardScreen extends StatefulWidget {
   });
 
   @override
-  State<GameBoardScreen> createState() => _GameBoardScreenState();
+  State<GameBoardScreen> createState() => GameBoardScreenState();
 }
 
-class _GameBoardScreenState extends State<GameBoardScreen>
+/// Public so widget tests can drive the real card-draw flow through the
+/// [@visibleForTesting] seams below.
+class GameBoardScreenState extends State<GameBoardScreen>
     with TickerProviderStateMixin {
   GameState get gameState => widget.session.state;
 
@@ -390,13 +397,17 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
   }
 
-  /// Animates an already-applied non-dice movement (jail, card, teleport
+  /// Presents an already-applied non-dice movement (jail, card, teleport
   /// prize) on the 3D board.
   ///
-  /// The logical state was mutated first, so on any native failure this
-  /// settles with a scene-state sync that snaps the pawn to the authoritative
-  /// tile instead of leaving it stranded until the next turn-end sync.
-  Future<void> _settleSpecialMovePresentation({
+  /// The logical state was mutated first, so callers must invoke this BEFORE
+  /// any state sync: a sync bumps the board's state generation, which fails
+  /// the animation readiness guard and snaps the pawn instead of animating.
+  ///
+  /// Returns true when the native 3D board animated the movement, and false
+  /// when the caller must sync the authoritative state so the pawn snaps to
+  /// its destination tile instead of being stranded until the next sync.
+  Future<bool> _settleSpecialMovePresentation({
     required Player player,
     required int fromLogicalPosition,
     required int toLogicalPosition,
@@ -412,9 +423,8 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     );
     if (animated) {
       AudioService.instance.onTokenLand();
-    } else {
-      await _sync3DBoard();
     }
+    return animated;
   }
 
   Future<bool> _animateSpecialMove3D({
@@ -3040,13 +3050,14 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     // Animate the escort to jail instead of snapping the pawn during the next
     // state sync; the dialog below still waits for the presentation to finish.
-    await _settleSpecialMovePresentation(
+    final animated = await _settleSpecialMovePresentation(
       player: player,
       fromLogicalPosition: fromPosition,
       toLogicalPosition: player.position,
       presentation: GodotMovementPresentation.jail,
       operation: operation,
     );
+    if (!animated) await _sync3DBoard();
 
     if (!mounted) return;
 
@@ -3245,12 +3256,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             setState(() {
               player.position = teleportTarget;
             });
-            await _settleSpecialMovePresentation(
+            final animated = await _settleSpecialMovePresentation(
               player: player,
               fromLogicalPosition: fromPosition,
               toLogicalPosition: teleportTarget,
               presentation: GodotMovementPresentation.teleport,
             );
+            if (!animated) await _sync3DBoard();
           }
         } else {
           // AI: teleport to a random unowned property if available
@@ -3265,12 +3277,13 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             setState(() {
               player.position = randomProperty.index;
             });
-            await _settleSpecialMovePresentation(
+            final animated = await _settleSpecialMovePresentation(
               player: player,
               fromLogicalPosition: fromPosition,
               toLogicalPosition: randomProperty.index,
               presentation: GodotMovementPresentation.teleport,
             );
+            if (!animated) await _sync3DBoard();
           }
         }
         break;
@@ -3480,8 +3493,17 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     {'text': '📦', 'effect': '🏠 FREE', 'action': 'freeUpgrade'},
   ];
 
-  /// Apply card effect. Returns the new tile index if the player moved, null otherwise.
-  int? _applyCardEffect(Player player, String action) {
+  /// Applies a card's effect. Returns the relocation outcome when the card
+  /// moved the player — including Advance to GO and Go To Jail, which move
+  /// without resolving their landing — or null when the player stayed put.
+  ///
+  /// This must not sync the 3D board: the caller presents the movement first
+  /// (the command's explicit start/destination still describe the route while
+  /// the board is ready), then syncs the authoritative mutated state. A sync
+  /// fired here would bump the state generation before the animation starts,
+  /// fail the readiness guard, and snap the pawn instead of animating it.
+  _CardMoveOutcome? _applyCardEffect(Player player, String action) {
+    final fromPosition = player.position;
     late CardEffectResult result;
     setState(() {
       result = CardEffectEngine(gameState).apply(player, action);
@@ -3489,9 +3511,59 @@ class _GameBoardScreenState extends State<GameBoardScreen>
     if (result.bankruptcy) AudioService.instance.onDefeat();
     if (result.passedGo) AudioService.instance.onPassGo();
     if (action == 'goToJail') AudioService.instance.onJail();
-    unawaited(_sync3DBoard());
-    return result.resolveLanding ? result.landingPosition : null;
+    final landingPosition = player.position;
+    if (landingPosition == fromPosition) return null;
+    return _CardMoveOutcome(
+      action: action,
+      fromPosition: fromPosition,
+      landingPosition: landingPosition,
+      resolveLanding: result.resolveLanding,
+    );
   }
+
+  /// Completes a card pick exactly as the card-pick dialog does: applies the
+  /// effect, clears the waiting state, and hands the movement outcome to the
+  /// awaiting turn flow.
+  void _handlePickedCard(PickableCard pickedCard) {
+    AudioService.instance.onFlipCard();
+    final cardPlayer = _cardPickPlayer;
+    final outcome = cardPlayer == null
+        ? null
+        : _applyCardEffect(cardPlayer, pickedCard.action);
+
+    // Reset card picking state
+    setState(() {
+      _waitingForCardPick = false;
+      _isChanceCard = false;
+      _cardPickPlayer = null;
+    });
+
+    // Complete the future to continue game flow (movement presentation
+    // details let the awaiting turn animate the relocation in 3D)
+    _cardPickCompleter?.complete(outcome);
+    _cardPickCompleter = null;
+  }
+
+  /// Test seam: starts the real human card-draw flow (waiting-for-pick state
+  /// plus the completion chain below). Tile landing normally reaches this only
+  /// after a random roll; widget tests call it directly to exercise card
+  /// selection deterministically.
+  @visibleForTesting
+  Future<void> drawCardForTesting(Player player, TileData tile) {
+    return _handleDrawCard(player, tile);
+  }
+
+  /// Test seam: completes the card pick through the same callback the card
+  /// pick dialog invokes.
+  @visibleForTesting
+  void handlePickedCardForTesting(PickableCard card) {
+    _handlePickedCard(card);
+  }
+
+  /// Test seam: whether the board is currently waiting for the human player
+  /// to pick a Chance/Community Chest card.
+  @visibleForTesting
+  bool get waitingForCardPickForTesting => _waitingForCardPick;
 
   void _onCardDeckTap(bool isChance) {
     if (!_waitingForCardPick) return;
@@ -3523,34 +3595,7 @@ class _GameBoardScreenState extends State<GameBoardScreen>
       context: context,
       isChance: isChance,
       cards: pickableCards,
-      onCardPicked: (pickedCard) {
-        AudioService.instance.onFlipCard();
-        final cardPlayer = _cardPickPlayer;
-        final fromPosition = cardPlayer?.position ?? 0;
-        final newPosition = cardPlayer == null
-            ? null
-            : _applyCardEffect(cardPlayer, pickedCard.action);
-
-        // Reset card picking state
-        setState(() {
-          _waitingForCardPick = false;
-          _isChanceCard = false;
-          _cardPickPlayer = null;
-        });
-
-        // Complete the future to continue game flow (movement presentation
-        // details let the awaiting turn animate the relocation in 3D)
-        _cardPickCompleter?.complete(
-          cardPlayer == null || newPosition == null
-              ? null
-              : _CardMoveOutcome(
-                  action: pickedCard.action,
-                  fromPosition: fromPosition,
-                  landingPosition: newPosition,
-                ),
-        );
-        _cardPickCompleter = null;
-      },
+      onCardPicked: _handlePickedCard,
     );
   }
 
@@ -3579,21 +3624,28 @@ class _GameBoardScreenState extends State<GameBoardScreen>
         isChance ? Colors.orange : Colors.blue,
       );
       final action = card['action'] as String;
-      final fromPosition = player.position;
-      final newPosition = _applyCardEffect(player, action);
-      // If card moved the player, animate the relocation and resolve the new
-      // tile (skip end turn since outer caller handles it)
-      if (newPosition != null) {
-        await _settleSpecialMovePresentation(
+      final outcome = _applyCardEffect(player, action);
+      // Present the relocation before the authoritative sync: the sync bumps
+      // the state generation, which would fail the animation readiness guard
+      // and snap the pawn instead of animating it.
+      var animated = false;
+      if (outcome != null) {
+        animated = await _settleSpecialMovePresentation(
           player: player,
-          fromLogicalPosition: fromPosition,
-          toLogicalPosition: newPosition,
+          fromLogicalPosition: outcome.fromPosition,
+          toLogicalPosition: outcome.landingPosition,
           presentation:
-              _cardMovePresentation(action) ??
+              _cardMovePresentation(outcome.action) ??
               GodotMovementPresentation.walk,
           operation: operation,
         );
-        await _resolveTileLanding(player, newPosition, skipEndTurn: true);
+      }
+      if (!animated) await _sync3DBoard();
+      // Resolve the destination only for cards that ask for it; movement and
+      // landing-resolution decisions stay separate (skip end turn since the
+      // outer caller handles it).
+      if (outcome != null && outcome.resolveLanding) {
+        await _resolveTileLanding(player, outcome.landingPosition, skipEndTurn: true);
       }
       return;
     }
@@ -3608,10 +3660,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
 
     // Wait for the card to be picked
     final outcome = await _cardPickCompleter!.future;
-    // If card moved the player, animate the relocation and resolve the new
-    // tile (skip end turn since outer caller handles it)
+    // Present the relocation before the authoritative sync: the sync bumps
+    // the state generation, which would fail the animation readiness guard
+    // and snap the pawn instead of animating it.
+    var animated = false;
     if (outcome != null) {
-      await _settleSpecialMovePresentation(
+      animated = await _settleSpecialMovePresentation(
         player: player,
         fromLogicalPosition: outcome.fromPosition,
         toLogicalPosition: outcome.landingPosition,
@@ -3620,6 +3674,12 @@ class _GameBoardScreenState extends State<GameBoardScreen>
             GodotMovementPresentation.walk,
         operation: operation,
       );
+    }
+    if (!animated) await _sync3DBoard();
+    // Resolve the destination only for cards that ask for it; movement and
+    // landing-resolution decisions stay separate (skip end turn since the
+    // outer caller handles it).
+    if (outcome != null && outcome.resolveLanding) {
       await _resolveTileLanding(player, outcome.landingPosition, skipEndTurn: true);
     }
   }

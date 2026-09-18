@@ -1706,4 +1706,53 @@ class AppLocalizationsZh extends AppLocalizations {
   String activeEventsOverflow(int count) {
     return '还有 $count 个进行中的事件';
   }
+
+  @override
+  String get privacyPolicy => '隐私政策';
+
+  @override
+  String get privacyPolicyTagline => '本游戏如何处理你的数据';
+
+  @override
+  String get privacyLastUpdated => '最后更新:2026年9月17日';
+
+  @override
+  String get privacyIntroTitle => '概述';
+
+  @override
+  String get privacyIntro =>
+      '《M&M Property Tycoon》是一款离线棋盘游戏,完全在你的设备上运行,不含任何广告、分析或跟踪。';
+
+  @override
+  String get privacyDataTitle => '保存在你设备上的数据';
+
+  @override
+  String get privacyData =>
+      '你的游戏存档、设置、统计数据、排行榜记录和自定义头像仅保存在本设备上,绝不会发送给开发者或任何服务器;卸载应用时会被一并删除。';
+
+  @override
+  String get privacyPermissionsTitle => '权限说明';
+
+  @override
+  String get privacyPermissions =>
+      '相机和相册仅在你选择拍摄自定义头像照片时使用,照片只保存在你的设备上。通知是可选的本地提醒,你可以在系统设置中关闭。应用不会请求其他任何权限。';
+
+  @override
+  String get privacyNoTrackingTitle => '不收集数据';
+
+  @override
+  String get privacyNoTracking =>
+      '本应用不收集、共享或出售任何个人数据,也不会连接任何服务器。打开可选的支持链接会离开本应用,并受该网站自身政策约束。';
+
+  @override
+  String get privacyChildrenTitle => '儿童';
+
+  @override
+  String get privacyChildren => '本游戏适合全家游玩,没有聊天、用户账号,除可选的支持链接外也没有任何外部内容。';
+
+  @override
+  String get privacyContactTitle => '联系我们';
+
+  @override
+  String get privacyContact => '对本政策有疑问?请通过设置中的支持链接或应用商店页面上的联系方式与开发者取得联系。';
 }

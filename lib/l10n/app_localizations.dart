@@ -3253,6 +3253,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} more active events'**
   String activeEventsOverflow(int count);
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicy;
+
+  /// No description provided for @privacyPolicyTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'How this game handles your data'**
+  String get privacyPolicyTagline;
+
+  /// No description provided for @privacyLastUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated: September 17, 2026'**
+  String get privacyLastUpdated;
+
+  /// No description provided for @privacyIntroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get privacyIntroTitle;
+
+  /// No description provided for @privacyIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'M&M Property Tycoon is an offline board game. It runs entirely on your device and does not include advertising, analytics, or tracking of any kind.'**
+  String get privacyIntro;
+
+  /// No description provided for @privacyDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Data stored on your device'**
+  String get privacyDataTitle;
+
+  /// No description provided for @privacyData.
+  ///
+  /// In en, this message translates to:
+  /// **'Your game saves, settings, statistics, leaderboard entries, and custom avatars are stored only on this device. They are never sent to the developer or to any server, and they are removed when you delete the app.'**
+  String get privacyData;
+
+  /// No description provided for @privacyPermissionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get privacyPermissionsTitle;
+
+  /// No description provided for @privacyPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera and photo library are used only if you choose to create a custom avatar photo; photos stay on your device. Notifications are optional local reminders you can turn off in your device settings. The app requests no other permissions.'**
+  String get privacyPermissions;
+
+  /// No description provided for @privacyNoTrackingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No data collection'**
+  String get privacyNoTrackingTitle;
+
+  /// No description provided for @privacyNoTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'The app does not collect, share, or sell personal data, and does not contact any server. Opening the optional support link leaves the app and is subject to that website\'s own policies.'**
+  String get privacyNoTracking;
+
+  /// No description provided for @privacyChildrenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Children'**
+  String get privacyChildrenTitle;
+
+  /// No description provided for @privacyChildren.
+  ///
+  /// In en, this message translates to:
+  /// **'The game is family-friendly and contains no chat, user accounts, or external content beyond the optional support link.'**
+  String get privacyChildren;
+
+  /// No description provided for @privacyContactTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get privacyContactTitle;
+
+  /// No description provided for @privacyContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions about this policy? Reach the developer through the support link in Settings or the contact options in the app store listing.'**
+  String get privacyContact;
 }
 
 class _AppLocalizationsDelegate

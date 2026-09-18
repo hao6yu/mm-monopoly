@@ -806,4 +806,93 @@ void main() {
     await controller.syncGameState(state, boardId: city.boardId);
     expect(stateSendCount, 1);
   });
+
+  test('special move animates on the ready board before the post-move sync',
+      () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          switch (call.method) {
+            case 'isAvailable':
+              return true;
+            case 'syncState':
+            case 'animateRoll':
+              calls.add(call);
+              return true;
+            default:
+              return null;
+          }
+        });
+
+    final city = CityBoardRegistry.all.first;
+    final state = GameState.initial(
+      players: [
+        Player(
+          id: 'player_0',
+          name: 'Player 1',
+          icon: PlayerIcon.dog,
+          color: Colors.red,
+          position: 7,
+        ),
+      ],
+      tiles: BoardFactory.generateTiles(city),
+      cityBoardId: city.boardId,
+    );
+    final controller = GodotBoardController();
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    await controller.syncGameState(state, boardId: city.boardId);
+    controller.markViewCreated();
+    await sendNativeCall(
+      MethodCall('stateApplied', {
+        'sessionId': state.id,
+        'stateGeneration': 1,
+        'boardId': city.boardId,
+      }),
+    );
+    await sendNativeCall(
+      const MethodCall('boardReady', {'sceneReadyToken': 'scene-1'}),
+    );
+    expect(controller.isBoardReady, isTrue);
+
+    // Card movement (an "Advance to GO" teleport): the movement command must
+    // be accepted on the ready board and complete before the authoritative
+    // post-movement state sync is sent. A sync sent first would bump the
+    // state generation, fail the readiness guard, and snap the pawn.
+    final command = controller.createSpecialMoveCommand(
+      gameState: state,
+      playerIndex: 0,
+      fromLogicalPosition: 7,
+      toLogicalPosition: 0,
+      presentation: GodotMovementPresentation.teleport,
+    );
+    final movementFuture = controller.animateRoll(command);
+    await sendNativeCall(
+      MethodCall('movementComplete', {
+        'commandId': command.commandId,
+        'playerId': 'player_0',
+        'logicalPosition': 0,
+        'visualPosition': command.toVisualPosition,
+      }),
+    );
+    final movement = await movementFuture;
+    expect(movement.playerId, 'player_0');
+    expect(movement.logicalPosition, 0);
+
+    await controller.syncGameState(state, boardId: city.boardId);
+
+    expect(calls.map((call) => call.method).toList(), [
+      'syncState',
+      'animateRoll',
+      'syncState',
+    ]);
+    final animatePayload =
+        jsonDecode(calls[1].arguments as String) as Map<String, dynamic>;
+    expect(animatePayload['presentation'], GodotMovementPresentation.teleport);
+    expect(animatePayload['fromLogicalPosition'], 7);
+    expect(animatePayload['toLogicalPosition'], 0);
+    debugDefaultTargetPlatformOverride = null;
+  });
 }

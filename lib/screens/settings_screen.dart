@@ -10,6 +10,7 @@ import '../services/graphics_quality_service.dart';
 import '../services/locale_service.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/city_theme/city_theme.dart';
+import 'privacy_policy_screen.dart';
 
 /// Settings for the shared 2D and 3D game experience.
 class SettingsScreen extends StatefulWidget {
@@ -107,6 +108,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   _buildSoundAndLanguagePanel(l10n),
                                   const SizedBox(height: 14),
                                   _buildSupportPanel(l10n),
+                                  const SizedBox(height: 14),
+                                  _buildPrivacyPanel(l10n),
                                 ],
                               );
 
@@ -913,6 +916,84 @@ class _SettingsScreenState extends State<SettingsScreen>
                 Icons.open_in_new_rounded,
                 color: Color(0xFFFFD86B),
                 size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Opens the in-app privacy policy (Apple guideline 5.1.1(i) requires an
+  /// accessible policy link inside the app itself).
+  Widget _buildPrivacyPanel(AppLocalizations l10n) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const Key('settings-privacy-button'),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const PrivacyPolicyScreen(),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xE6162036),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0x6635D5C5)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0x2435D5C5),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(
+                  Icons.privacy_tip_rounded,
+                  color: Color(0xFF9AF1E8),
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.privacyPolicy,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      l10n.privacyPolicyTagline,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                        height: 1.3,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF9AF1E8),
+                size: 22,
               ),
             ],
           ),

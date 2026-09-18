@@ -1,18 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Camera permission for custom avatars -->
+    <!-- Camera permission for optional custom avatar photos -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
-    <!-- Storage permissions for photo library access -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!--
+      No storage/media permissions: avatar selection goes through the system
+      photo picker (Android 13+) or the SAF gallery intent (older versions),
+      which grant temporary access to the single picked image.
+
+      No exact-alarm permissions: reminder notifications use
+      AndroidScheduleMode.inexactAllowWhileIdle, which requires none.
+    -->
 
     <!-- Notification permissions -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:label="Property Tycoon"

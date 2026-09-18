@@ -1743,4 +1743,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String activeEventsOverflow(int count) {
     return '$count more active events';
   }
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get privacyPolicyTagline => 'How this game handles your data';
+
+  @override
+  String get privacyLastUpdated => 'Last updated: September 17, 2026';
+
+  @override
+  String get privacyIntroTitle => 'Overview';
+
+  @override
+  String get privacyIntro =>
+      'M&M Property Tycoon is an offline board game. It runs entirely on your device and does not include advertising, analytics, or tracking of any kind.';
+
+  @override
+  String get privacyDataTitle => 'Data stored on your device';
+
+  @override
+  String get privacyData =>
+      'Your game saves, settings, statistics, leaderboard entries, and custom avatars are stored only on this device. They are never sent to the developer or to any server, and they are removed when you delete the app.';
+
+  @override
+  String get privacyPermissionsTitle => 'Permissions';
+
+  @override
+  String get privacyPermissions =>
+      'The camera and photo library are used only if you choose to create a custom avatar photo; photos stay on your device. Notifications are optional local reminders you can turn off in your device settings. The app requests no other permissions.';
+
+  @override
+  String get privacyNoTrackingTitle => 'No data collection';
+
+  @override
+  String get privacyNoTracking =>
+      'The app does not collect, share, or sell personal data, and does not contact any server. Opening the optional support link leaves the app and is subject to that website\'s own policies.';
+
+  @override
+  String get privacyChildrenTitle => 'Children';
+
+  @override
+  String get privacyChildren =>
+      'The game is family-friendly and contains no chat, user accounts, or external content beyond the optional support link.';
+
+  @override
+  String get privacyContactTitle => 'Contact';
+
+  @override
+  String get privacyContact =>
+      'Questions about this policy? Reach the developer through the support link in Settings or the contact options in the app store listing.';
 }

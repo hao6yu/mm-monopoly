@@ -1764,4 +1764,56 @@ class AppLocalizationsEs extends AppLocalizations {
   String activeEventsOverflow(int count) {
     return '$count eventos activos más';
   }
+
+  @override
+  String get privacyPolicy => 'Política de privacidad';
+
+  @override
+  String get privacyPolicyTagline => 'Cómo trata este juego tus datos';
+
+  @override
+  String get privacyLastUpdated =>
+      'Última actualización: 17 de septiembre de 2026';
+
+  @override
+  String get privacyIntroTitle => 'Descripción general';
+
+  @override
+  String get privacyIntro =>
+      'M&M Property Tycoon es un juego de mesa sin conexión. Funciona por completo en tu dispositivo y no incluye publicidad, análisis ni rastreo de ningún tipo.';
+
+  @override
+  String get privacyDataTitle => 'Datos guardados en tu dispositivo';
+
+  @override
+  String get privacyData =>
+      'Tus partidas guardadas, ajustes, estadísticas, entradas de la clasificación y avatares personalizados se guardan solo en este dispositivo. Nunca se envían al desarrollador ni a ningún servidor, y se eliminan al borrar la aplicación.';
+
+  @override
+  String get privacyPermissionsTitle => 'Permisos';
+
+  @override
+  String get privacyPermissions =>
+      'La cámara y la fototeca se usan únicamente si eliges crear una foto de avatar personalizada; las fotos se quedan en tu dispositivo. Las notificaciones son recordatorios locales opcionales que puedes desactivar en los ajustes del dispositivo. La aplicación no solicita ningún otro permiso.';
+
+  @override
+  String get privacyNoTrackingTitle => 'Sin recopilación de datos';
+
+  @override
+  String get privacyNoTracking =>
+      'La aplicación no recopila, comparte ni vende datos personales, y no contacta con ningún servidor. Abrir el enlace de apoyo opcional te saca de la aplicación y queda sujeto a las políticas de ese sitio web.';
+
+  @override
+  String get privacyChildrenTitle => 'Menores';
+
+  @override
+  String get privacyChildren =>
+      'El juego es apto para la familia y no incluye chat, cuentas de usuario ni contenido externo aparte del enlace de apoyo opcional.';
+
+  @override
+  String get privacyContactTitle => 'Contacto';
+
+  @override
+  String get privacyContact =>
+      '¿Tienes preguntas sobre esta política? Contacta con el desarrollador a través del enlace de apoyo en Ajustes o de las opciones de contacto de la ficha de la tienda.';
 }

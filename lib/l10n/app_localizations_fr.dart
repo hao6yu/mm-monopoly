@@ -1774,4 +1774,55 @@ class AppLocalizationsFr extends AppLocalizations {
   String activeEventsOverflow(int count) {
     return '$count événements actifs de plus';
   }
+
+  @override
+  String get privacyPolicy => 'Politique de confidentialité';
+
+  @override
+  String get privacyPolicyTagline => 'Comment ce jeu traite vos données';
+
+  @override
+  String get privacyLastUpdated => 'Dernière mise à jour : 17 septembre 2026';
+
+  @override
+  String get privacyIntroTitle => 'Aperçu';
+
+  @override
+  String get privacyIntro =>
+      'M&M Property Tycoon est un jeu de société hors ligne. Il fonctionne entièrement sur votre appareil et ne contient ni publicité, ni analytique, ni suivi d\'aucune sorte.';
+
+  @override
+  String get privacyDataTitle => 'Données stockées sur votre appareil';
+
+  @override
+  String get privacyData =>
+      'Vos parties sauvegardées, réglages, statistiques, scores du classement et avatars personnalisés sont stockés uniquement sur cet appareil. Ils ne sont jamais envoyés au développeur ni à un serveur, et ils sont supprimés lorsque vous supprimez l\'application.';
+
+  @override
+  String get privacyPermissionsTitle => 'Autorisations';
+
+  @override
+  String get privacyPermissions =>
+      'L\'appareil photo et la photothèque servent uniquement si vous créez la photo d\'un avatar personnalisé ; les photos restent sur votre appareil. Les notifications sont des rappels locaux facultatifs que vous pouvez désactiver dans les réglages de l\'appareil. L\'application ne demande aucune autre autorisation.';
+
+  @override
+  String get privacyNoTrackingTitle => 'Aucune collecte de données';
+
+  @override
+  String get privacyNoTracking =>
+      'L\'application ne collecte, ne partage et ne vend aucune donnée personnelle et ne contacte aucun serveur. Ouvrir le lien de soutien facultatif quitte l\'application et est soumis aux règles de ce site.';
+
+  @override
+  String get privacyChildrenTitle => 'Enfants';
+
+  @override
+  String get privacyChildren =>
+      'Le jeu convient à toute la famille : pas de clavardage, pas de comptes utilisateur et aucun contenu externe en dehors du lien de soutien facultatif.';
+
+  @override
+  String get privacyContactTitle => 'Contact';
+
+  @override
+  String get privacyContact =>
+      'Des questions sur cette politique ? Contactez le développeur via le lien de soutien dans les réglages ou les coordonnées de la fiche de l\'app store.';
 }

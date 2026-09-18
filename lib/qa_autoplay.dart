@@ -1,9 +1,9 @@
-// TEMPORARY, UNCOMMITTED QA HARNESS — do not ship.
+// TEMPORARY QA HARNESS — do not ship.
 //
 // Opened a four-AI Atlantic City session directly through the normal
 // AppNavigator so an automated physical-device pass can observe round-by-round
-// gameplay without human taps. Enabled only when the launch environment sets
-// PT_QA_AUTOPLAY=true and never in release builds.
+// gameplay without human taps. Reachable only through the dedicated
+// lib/main_qa.dart entrypoint; the store entrypoint never references it.
 //
 // This build also exercises the real in-game SFX mute button: after the board
 // initializes it dispatches a synthetic tap through the framework gesture

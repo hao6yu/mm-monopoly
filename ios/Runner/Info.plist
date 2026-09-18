@@ -58,11 +58,8 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>fetch</string>
-		<string>remote-notification</string>
-	</array>
+	<!-- This app schedules local notifications only; no background modes
+	     (fetch, remote-notification, processing) are used. -->
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>1</integer>
