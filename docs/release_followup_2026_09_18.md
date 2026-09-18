@@ -191,3 +191,118 @@ The September 17 hitch XML contains **six** hitch rows, not three: total
 duration ID. Thermal remained Nominal for the 10.03-minute trace. Flutter
 compositor timings do not establish native 3D FPS. The historical addendum
 has been corrected accordingly.
+
+---
+
+## Warm re-entry fix — September 18 (second pass)
+
+Branch `release-prep/store-readiness` at `b69425e`. The Android warm
+Quit→Continue blocker is **fixed and verified on the signed, minified
+release installed from the rebuilt AAB via bundletool** on the
+`property_tycoon_release_qa` emulator (Android 15 / API 35).
+
+### Root cause (verified against the engine, not inferred)
+
+Decompiled the bundled `org.godotengine:godot:4.7.1.stable` AAR:
+
+- Godot's forked `GLSurfaceView.onDetachedFromWindow()` exits the GL thread
+  unconditionally, and the renderer's `onRenderThreadExiting()` calls
+  `GodotLib.ondestroy()` → `Main::cleanup()`. Flutter's platform-view
+  teardown on Quit therefore **always** destroys the engine's native layer.
+- `GodotFragment.onCreate` adopts `parentHost.getGodot()` when non-null, and
+  `Godot.getInstance(context)` returns a process-wide singleton the runtime
+  never clears. `MainActivity` handed back the destroyed instance, whose
+  Java-side `scriptReady`/scene token still reported readiness — the cached
+  `boardReady` for a dead engine.
+- Two rejected alternatives were measured, not assumed: re-parenting the old
+  render view cannot work (any removal from a window-attached parent fires
+  the window detach), and a fresh in-process engine **crashes** —
+  `GodotLib.initialize` after `ondestroy` raised `Fatal signal 11 (SIGSEGV)`
+  during `InitEngine` on the emulator. Godot's own restart mechanism
+  recreates the process; in-place re-initialization is not supported.
+
+### Fix: one persistent board per process
+
+The platform view now lives in an app-level board layer that never leaves
+the window (`lib/app.dart`), owned by one `GodotBoardController` shared by
+every board screen. The navigator pauses/resumes the engine natively through
+a new `setBoardVisible` bridge call (fragment max-lifecycle RESUMED/STARTED):
+hidden boards render nothing, run no gameplay, and receive no input, but the
+engine and its render view stay alive and attached. Each new session
+(Continue, New Game, Restart, Replay, Load) resets its own per-session state
+on the shared controller (2D-fallback choice, preparation error) and sends a
+fresh, monotonic-generation state sync; acknowledgements remain exact and
+session-gated, and stale callbacks cannot cross sessions. The retained-
+fragment native lifecycle and the first-attachment container fix are kept,
+as are the release JNI/R8 keep rules.
+
+Two additional defects were found and fixed while verifying on device:
+
+- The screen computed its 3D/2D presentation before the shared controller's
+  availability resolved (cold start silently fell back to 2D).
+- The outgoing screen of a Restart switch reported "board hidden" after its
+  replacement reported "board visible"; visibility reports are now
+  session-gated so a superseded screen cannot pause the live session.
+
+### Native verification (signed minified AAB → bundletool install)
+
+Evidence: `qa_evidence/2026-09-18-lifecycle/` (screenshots `n*`, `m*`,
+`final_matrix_logcat.log`).
+
+- Cold Continue of the preserved save: 3D board ready, exact state applied.
+- **Five consecutive Quit → Continue cycles**: board returned live every
+  time; logcat shows 10 pause/resume pairs, **zero** `Destroying Godot
+  Engine`, zero crashes, zero stale/duplicate AI actions.
+- Live gameplay after the cycles: dice roll animated on the native board,
+  turn advanced normally.
+- Restart Game: fresh Round-1 board rendered through the same engine (this
+  exposed and verified the fix for the superseded-screen pause race).
+- New Game with a different city and player count (London, 2 players): the
+  city rebuilt inside the same engine; save → quit → continue round trip
+  restored it exactly.
+- Load Game from the in-game menu restored the saved state on the live board.
+- Background/resume: fragment paused and resumed cleanly, state intact.
+- Graphics-quality change (Settings → High) applied on the next Continue.
+- No save loss at any point; the device's existing saves were preserved.
+
+Not exercised on device (recorded honestly): the 2D-fallback recovery UI
+could not be legitimately triggered — backgrounding mid-boot no longer
+stalls the boot and no other legitimate failure path exists now that the
+lifecycle is fixed. The 2D path (continueIn2D, resetForNewSession) is
+covered by the automated Dart tests. Victory Replay needs a completed game;
+Player 1 cannot be AI in the normal entrypoint, and end-to-end
+auction/bankruptcy/end-game workflows on native builds remain in the
+acceptance list below.
+
+### Automated coverage after the fix
+
+- Flutter: **178 tests passed** (three new: shared-controller reset,
+  board-visibility forwarding, session replacement with fresh generations).
+  Analyzer: 0 errors / 0 warnings.
+- Android JVM tests: **14 passed** (release + debug variants; new ready-time
+  dispatch-order suite).
+- Artifact verifier: **33/33 passed**. Signed release AAB:
+  `1be61ed625c9268f9fbd5ae0a3b43c7600f695f58e5bbbf52e5c953ad6907584`.
+
+### iOS distribution signing — root cause identified, owner action pending
+
+The App Store export failure is **not** a project configuration problem:
+team `F9XW9FCX92` (ISW TECHNOLOGIES LLC) has **no signed-in Apple ID
+session** in either Xcode install, so no "iOS Distribution" certificate or
+App Store profile can be created for it. The only account currently signed
+in (`hyu@ims.consulting`) provides a free personal team (427L4Z8TUS —
+cannot distribute) and Infrastructure Management Solutions, LLC
+(K5JBK6C842 — has a distribution certificate in the keychain but was not
+chosen by the owner).
+
+Owner decision (recorded): ship under **ISW TECHNOLOGIES LLC**; the owner is
+signing the ISW Apple ID into Xcode. The exact action: Xcode → Settings →
+Accounts → add the Apple ID with an App Manager/Admin role in ISW
+TECHNOLOGIES LLC (with 2FA). Once the session exists, the export is:
+archive with `/Applications/Xcode.app` (stable 27.0 / 27A266a — archive
+already rebuilt and verified), then `xcodebuild -exportArchive
+-exportOptionsPlist` with `method=app-store-connect`, `teamID=F9XW9FCX92`,
+`signingStyle=automatic`, `-allowProvisioningUpdates`. The export options template is committed at
+`tool/ios_export_options.plist` (method `app-store-connect`, team
+`F9XW9FCX92`, automatic signing). Export success is artifact creation only; server-side
+App Store validation and any upload remain separately authorized steps.
