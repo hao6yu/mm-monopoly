@@ -3560,6 +3560,13 @@ class GameBoardScreenState extends State<GameBoardScreen>
     _handlePickedCard(card);
   }
 
+  /// Test seam: whether the screen is presenting the 3D board and the native
+  /// bridge has applied the exact current scene (the same predicate gameplay
+  /// gates use before sending movement commands).
+  @visibleForTesting
+  bool get is3DBoardReadyForTesting =>
+      _show3DBoard && _godotBoardController.isBoardReady;
+
   /// Test seam: whether the board is currently waiting for the human player
   /// to pick a Chance/Community Chest card.
   @visibleForTesting
