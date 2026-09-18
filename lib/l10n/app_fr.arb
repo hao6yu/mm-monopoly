@@ -610,7 +610,7 @@
   "taxFactOne": "Tout le monde doit payer des taxes !",
   "taxFactTwo": "Les taxes financent les services publics.",
   "taxFunFact": "Les cases Taxe peuvent vite changer le rythme de la partie.",
-  "aiBuiltOn": "A construit un {level} sur {property} !",
+  "aiBuiltOn": "A construit {level} sur {property} !",
   "@aiBuiltOn": {
     "placeholders": {
       "level": {
@@ -686,5 +686,7 @@
   "privacyChildrenTitle": "Enfants",
   "privacyChildren": "Le jeu convient à toute la famille : pas de clavardage, pas de comptes utilisateur et aucun contenu externe en dehors du lien de soutien facultatif.",
   "privacyContactTitle": "Contact",
-  "privacyContact": "Des questions sur cette politique ? Contactez le développeur via le lien de soutien dans les réglages ou les coordonnées de la fiche de l'app store."
+  "privacyContact": "Des questions sur cette politique ? Contactez le développeur via le lien de soutien dans les réglages ou les coordonnées de la fiche de l'app store.",
+  "aiLevelHouse": "une maison",
+  "aiLevelHotel": "un hôtel"
 }

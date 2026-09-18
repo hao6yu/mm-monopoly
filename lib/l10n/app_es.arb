@@ -610,7 +610,7 @@
   "taxFactOne": "¡Todos tienen que pagar impuestos!",
   "taxFactTwo": "Los impuestos ayudan a financiar servicios públicos.",
   "taxFunFact": "Las casillas de impuestos pueden cambiar el ritmo de la partida.",
-  "aiBuiltOn": "¡Construyó un {level} en {property}!",
+  "aiBuiltOn": "¡Construyó {level} en {property}!",
   "@aiBuiltOn": {
     "placeholders": {
       "level": {
@@ -686,5 +686,7 @@
   "privacyChildrenTitle": "Menores",
   "privacyChildren": "El juego es apto para la familia y no incluye chat, cuentas de usuario ni contenido externo aparte del enlace de apoyo opcional.",
   "privacyContactTitle": "Contacto",
-  "privacyContact": "¿Tienes preguntas sobre esta política? Contacta con el desarrollador a través del enlace de apoyo en Ajustes o de las opciones de contacto de la ficha de la tienda."
+  "privacyContact": "¿Tienes preguntas sobre esta política? Contacta con el desarrollador a través del enlace de apoyo en Ajustes o de las opciones de contacto de la ficha de la tienda.",
+  "aiLevelHouse": "una casa",
+  "aiLevelHotel": "un hotel"
 }

@@ -788,7 +788,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String aiBuiltOn(String level, String property) {
-    return 'A construit un $level sur $property !';
+    return 'A construit $level sur $property !';
   }
 
   @override
@@ -1825,4 +1825,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get privacyContact =>
       'Des questions sur cette politique ? Contactez le développeur via le lien de soutien dans les réglages ou les coordonnées de la fiche de l\'app store.';
+
+  @override
+  String get aiLevelHouse => 'une maison';
+
+  @override
+  String get aiLevelHotel => 'un hôtel';
 }

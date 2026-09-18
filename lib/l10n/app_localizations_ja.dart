@@ -1758,4 +1758,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get privacyContact =>
       '本ポリシーについてご質問がある場合は、設定内のサポートリンクまたはアプリストアの掲載情報から開発者までお問い合わせください。';
+
+  @override
+  String get aiLevelHouse => '家';
+
+  @override
+  String get aiLevelHotel => 'ホテル';
 }

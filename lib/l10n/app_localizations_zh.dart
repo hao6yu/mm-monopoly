@@ -1755,4 +1755,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get privacyContact => '对本政策有疑问?请通过设置中的支持链接或应用商店页面上的联系方式与开发者取得联系。';
+
+  @override
+  String get aiLevelHouse => '房屋';
+
+  @override
+  String get aiLevelHotel => '酒店';
 }

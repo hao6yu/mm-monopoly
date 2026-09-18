@@ -1499,7 +1499,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiBuiltOn.
   ///
   /// In en, this message translates to:
-  /// **'Built a {level} on {property}!'**
+  /// **'Built {level} on {property}!'**
   String aiBuiltOn(String level, String property);
 
   /// No description provided for @chance.
@@ -3343,6 +3343,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Questions about this policy? Reach the developer through the support link in Settings or the contact options in the app store listing.'**
   String get privacyContact;
+
+  /// No description provided for @aiLevelHouse.
+  ///
+  /// In en, this message translates to:
+  /// **'a house'**
+  String get aiLevelHouse;
+
+  /// No description provided for @aiLevelHotel.
+  ///
+  /// In en, this message translates to:
+  /// **'a hotel'**
+  String get aiLevelHotel;
 }
 
 class _AppLocalizationsDelegate

@@ -408,7 +408,7 @@
   "taxFactOne": "Everyone has to pay taxes!",
   "taxFactTwo": "Taxes help support public services.",
   "taxFunFact": "Tax spaces can quickly change game momentum.",
-  "aiBuiltOn": "Built a {level} on {property}!",
+  "aiBuiltOn": "Built {level} on {property}!",
   "@aiBuiltOn": {
     "placeholders": {
       "level": {
@@ -1007,5 +1007,7 @@
   "privacyChildrenTitle": "Children",
   "privacyChildren": "The game is family-friendly and contains no chat, user accounts, or external content beyond the optional support link.",
   "privacyContactTitle": "Contact",
-  "privacyContact": "Questions about this policy? Reach the developer through the support link in Settings or the contact options in the app store listing."
+  "privacyContact": "Questions about this policy? Reach the developer through the support link in Settings or the contact options in the app store listing.",
+  "aiLevelHouse": "a house",
+  "aiLevelHotel": "a hotel"
 }

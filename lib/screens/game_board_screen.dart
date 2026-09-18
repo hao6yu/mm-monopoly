@@ -2867,13 +2867,12 @@ class GameBoardScreenState extends State<GameBoardScreen>
           (player.cash >= property.upgradeCost + 200);
 
       if (shouldUpgrade) {
+        // Noun phrase (localized), composed into a grammatical sentence by
+        // aiBuiltOn — reusing the imperative "Build a House!" CTA string here
+        // produced doubled verbs ("Built a build a house on …").
         final levelName = property.upgradeLevel < 4
-            ? AppLocalizations.of(
-                context,
-              )!.buildHouse.toLowerCase().replaceAll('!', '')
-            : AppLocalizations.of(
-                context,
-              )!.buildHotel.toLowerCase().replaceAll('!', '');
+            ? AppLocalizations.of(context)!.aiLevelHouse
+            : AppLocalizations.of(context)!.aiLevelHotel;
         await _showAIActionNotification(
           player.name,
           AppLocalizations.of(context)!.aiBuiltOn(levelName, property.name),

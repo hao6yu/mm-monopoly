@@ -686,5 +686,7 @@
   "privacyChildrenTitle": "儿童",
   "privacyChildren": "本游戏适合全家游玩,没有聊天、用户账号,除可选的支持链接外也没有任何外部内容。",
   "privacyContactTitle": "联系我们",
-  "privacyContact": "对本政策有疑问?请通过设置中的支持链接或应用商店页面上的联系方式与开发者取得联系。"
+  "privacyContact": "对本政策有疑问?请通过设置中的支持链接或应用商店页面上的联系方式与开发者取得联系。",
+  "aiLevelHouse": "房屋",
+  "aiLevelHotel": "酒店"
 }
