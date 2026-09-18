@@ -196,7 +196,10 @@ class MainActivity : FlutterFragmentActivity(), GodotHost {
         godotFragment = fragment
         supportFragmentManager
             .beginTransaction()
-            .replace(container.id, fragment, GODOT_FRAGMENT_TAG)
+            // Flutter creates the platform view before attaching it to the
+            // activity hierarchy. Resolve the actual container, not its ID:
+            // FragmentManager's activity lookup cannot find that ID yet.
+            .add(container, fragment, GODOT_FRAGMENT_TAG)
             .commitNowAllowingStateLoss()
         return session.id
     }

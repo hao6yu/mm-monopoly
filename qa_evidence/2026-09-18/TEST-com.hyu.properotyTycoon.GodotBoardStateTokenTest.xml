@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hyu.properotyTycoon.GodotBoardStateTokenTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-18T15:22:34" hostname="Mac" time="0.026">
+  <properties/>
+  <testcase name="acceptsCompleteSceneApplicationToken" classname="com.hyu.properotyTycoon.GodotBoardStateTokenTest" time="0.008"/>
+  <testcase name="rejectsUnversionedOrIncompleteState" classname="com.hyu.properotyTycoon.GodotBoardStateTokenTest" time="0.001"/>
+  <testcase name="readyDispatchSendsOneCachedStateBeforeBoardReady" classname="com.hyu.properotyTycoon.GodotBoardStateTokenTest" time="0.013"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

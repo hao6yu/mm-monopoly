@@ -23,13 +23,13 @@ Everything below reflects the audited behavior of this checkout (branch
   no `READ_MEDIA_IMAGES`/`READ_EXTERNAL_STORAGE`. iOS keeps
   `NSCameraUsageDescription`/`NSPhotoLibraryUsageDescription`.
 
-## Owner confirmation required before submission
+## Publication and console entry
 
 | # | Item | Why it needs the owner |
 |---|---|---|
-| O1 | Hosted privacy-policy URL | The policy exists in-app and as `docs/privacy_policy_page.html`, but no authorized public URL exists yet. Options: GitHub Pages on `github.com/hao6yu/mm-monopoly` (e.g. `https://hao6yu.github.io/mm-monopoly/privacy_policy_page.html`) or any owner-controlled site. |
+| O1 | Hosted privacy-policy URL — complete September 18 | Published and HTTP 200 verified at `https://hao6yu.github.io/mm-monopoly/privacy_policy_page.html`. GitHub Pages uses the isolated `gh-pages` branch, not the application release branch. |
 | O2 | Support/contact identity | The policy's contact section currently points at the in-app support link and the store listing. If a direct email/contact form exists, it should replace or supplement this. |
-| O3 | Console account access | The App Store Connect privacy answer form and Play Console Data Safety form must be filled in by the account holder; the answers below are the proposed content. |
+| O3 | Console account access | The answers below are prepared for entry in App Store Connect and Play Console. An agent can enter them with authenticated access and authorization; they are not intrinsically human-only. No console entry or submission has occurred. |
 
 ## App Store — App Privacy answers
 
@@ -41,10 +41,11 @@ location, no contacts, no user content transmitted anywhere. Optional local
 notifications and on-device avatars are not "collected" under Apple's
 definitions. The support link is an external website, not an SDK integration.
 
-**Privacy policy URL (App Store Connect + in-app):** pending O1. The in-app
+**Privacy policy URL (App Store Connect):**
+https://hao6yu.github.io/mm-monopoly/privacy_policy_page.html. The in-app
 policy is reachable from Settings → Privacy Policy
-(`settings-privacy-button`), which satisfies guideline 5.1.1(i) once the
-store-listing URL (O1) is also live.
+(`settings-privacy-button`); it remains available offline. Enter the hosted
+URL in both store consoles before submission.
 
 ## Google Play — Data Safety answers
 
@@ -65,7 +66,7 @@ declared permissions).
 
 ## Store listing policy link checklist
 
-1. Publish `docs/privacy_policy_page.html` at the O1 destination unchanged.
+1. Hosting complete: `docs/privacy_policy_page.html` is published at O1.
 2. App Store Connect: App Privacy section → policy URL + "Data Not
    Collected" answers; App Description does not need the URL but App Review
    notes should mention the in-app Settings entry.

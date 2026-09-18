@@ -1,0 +1,278 @@
+09-18 10:32:41.640  6116  6116 F libc    : Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x437000008e7 in tid 6116 (properotyTycoon), pid 6116 (properotyTycoon)
+09-18 10:32:41.649  6324  6324 E crash_dump64: failed to get the guest state header for thread 6116: Bad address
+09-18 10:32:41.649  6324  6324 E crash_dump64: failed to get the guest state header for thread 6117: Bad address
+09-18 10:32:41.650  6324  6324 E crash_dump64: failed to get the guest state header for thread 6118: Bad address
+09-18 10:32:41.650  6324  6324 E crash_dump64: failed to get the guest state header for thread 6119: Bad address
+09-18 10:32:41.650  6324  6324 E crash_dump64: failed to get the guest state header for thread 6120: Bad address
+09-18 10:32:41.650  6324  6324 E crash_dump64: failed to get the guest state header for thread 6121: Bad address
+09-18 10:32:41.650  6324  6324 E crash_dump64: failed to get the guest state header for thread 6122: Bad address
+09-18 10:32:41.650  6324  6324 E crash_dump64: failed to get the guest state header for thread 6123: Bad address
+09-18 10:32:41.650  6324  6324 E crash_dump64: failed to get the guest state header for thread 6124: Bad address
+09-18 10:32:41.650  6324  6324 E crash_dump64: failed to get the guest state header for thread 6125: Bad address
+09-18 10:32:41.651  6324  6324 E crash_dump64: failed to get the guest state header for thread 6127: Bad address
+09-18 10:32:41.651  6324  6324 E crash_dump64: failed to get the guest state header for thread 6129: Bad address
+09-18 10:32:41.652  6324  6324 E crash_dump64: failed to get the guest state header for thread 6134: Bad address
+09-18 10:32:41.653  6324  6324 E crash_dump64: failed to get the guest state header for thread 6135: Bad address
+09-18 10:32:41.653  6324  6324 E crash_dump64: failed to get the guest state header for thread 6136: Bad address
+09-18 10:32:41.653  6324  6324 E crash_dump64: failed to get the guest state header for thread 6137: Bad address
+09-18 10:32:41.653  6324  6324 E crash_dump64: failed to get the guest state header for thread 6138: Bad address
+09-18 10:32:41.654  6324  6324 E crash_dump64: failed to get the guest state header for thread 6140: Bad address
+09-18 10:32:41.654  6324  6324 E crash_dump64: failed to get the guest state header for thread 6197: Bad address
+09-18 10:32:41.654  6324  6324 E crash_dump64: failed to get the guest state header for thread 6201: Bad address
+09-18 10:32:41.654  6324  6324 E crash_dump64: failed to get the guest state header for thread 6202: Bad address
+09-18 10:32:41.654  6324  6324 E crash_dump64: failed to get the guest state header for thread 6203: Bad address
+09-18 10:32:41.655  6324  6324 E crash_dump64: failed to get the guest state header for thread 6204: Bad address
+09-18 10:32:41.655  6324  6324 E crash_dump64: failed to get the guest state header for thread 6205: Bad address
+09-18 10:32:41.655  6324  6324 E crash_dump64: failed to get the guest state header for thread 6207: Bad address
+09-18 10:32:41.655  6324  6324 E crash_dump64: failed to get the guest state header for thread 6261: Bad address
+09-18 10:32:41.656  6324  6324 E crash_dump64: failed to get the guest state header for thread 6299: Bad address
+09-18 10:32:41.656  6324  6324 E crash_dump64: failed to get the guest state header for thread 6315: Bad address
+09-18 10:32:41.656  6324  6324 E crash_dump64: failed to get the guest state header for thread 6316: Bad address
+09-18 10:32:41.657  6324  6324 E crash_dump64: failed to get the guest state header for thread 6323: Bad address
+09-18 10:32:41.662  6324  6324 I crash_dump64: obtaining output fd from tombstoned, type: kDebuggerdTombstoneProto
+09-18 10:32:41.664   221   221 I tombstoned: received crash request for pid 6116
+09-18 10:32:41.664  6324  6324 I crash_dump64: performing dump of process 6116 (target tid = 6116)
+09-18 10:32:41.708   377  5796 W android.hardware.audio@7.1-impl.ranchu: pcmWrite:259 pcm_writei failed with 'cannot read/write stream data: I/O error' (-1)
+09-18 10:32:41.708   377  5796 E android.hardware.audio@7.1-impl.ranchu: pcmWrite:260 failure: -1
+09-18 10:32:41.733   171   171 I logd    : logdr: UID=10207 GID=10207 PID=6324 n tail=500 logMask=8 pid=6116 start=0ns deadline=0ns
+09-18 10:32:41.737   171   171 I logd    : logdr: UID=10207 GID=10207 PID=6324 n tail=500 logMask=1 pid=6116 start=0ns deadline=0ns
+09-18 10:32:41.747  6324  6324 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+09-18 10:32:41.747  6324  6324 F DEBUG   : Build fingerprint: 'google/sdk_gphone64_arm64/emu64a:15/AE3A.240806.043/12960925:userdebug/dev-keys'
+09-18 10:32:41.747  6324  6324 F DEBUG   : Revision: '0'
+09-18 10:32:41.747  6324  6324 F DEBUG   : ABI: 'arm64'
+09-18 10:32:41.747  6324  6324 F DEBUG   : Timestamp: 2026-09-18 10:32:41.667188916-0500
+09-18 10:32:41.747  6324  6324 F DEBUG   : Process uptime: 115s
+09-18 10:32:41.747  6324  6324 F DEBUG   : Cmdline: com.hyu.properotyTycoon
+09-18 10:32:41.747  6324  6324 F DEBUG   : pid: 6116, tid: 6116, name: properotyTycoon  >>> com.hyu.properotyTycoon <<<
+09-18 10:32:41.747  6324  6324 F DEBUG   : uid: 10207
+09-18 10:32:41.747  6324  6324 F DEBUG   : tagged_addr_ctrl: 0000000000000001 (PR_TAGGED_ADDR_ENABLE)
+09-18 10:32:41.747  6324  6324 F DEBUG   : pac_enabled_keys: 000000000000000f (PR_PAC_APIAKEY, PR_PAC_APIBKEY, PR_PAC_APDAKEY, PR_PAC_APDBKEY)
+09-18 10:32:41.747  6324  6324 F DEBUG   : signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x00000437000008e7
+09-18 10:32:41.747  6324  6324 F DEBUG   :     x0  00000000ffffffff  x1  00000437000008e7  x2  00000076271215c4  x3  0000007fc61eee88
+09-18 10:32:41.747  6324  6324 F DEBUG   :     x4  0000000000000008  x5  00000074aa0e475c  x6  00019f1400019ecf  x7  00019f1400019ecf
+09-18 10:32:41.747  6324  6324 F DEBUG   :     x8  0000000000000000  x9  000000000215da60  x10 000000000000001a  x11 0000000000008001
+09-18 10:32:41.747  6324  6324 F DEBUG   :     x12 00000000000b065c  x13 00000000000b065c  x14 0000000000000005  x15 000000000001a0b2
+09-18 10:32:41.747  6324  6324 F DEBUG   :     x16 0000000000000001  x17 00000076270863c8  x18 00000076409cc000  x19 00000437000008df
+09-18 10:32:41.747  6324  6324 F DEBUG   :     x20 0000006901068a99  x21 b40000730089c600  x22 0000006900008081  x23 0000006901068629
+09-18 10:32:41.747  6324  6324 F DEBUG   :     x24 0000006900008081  x25 0000007fc5a13000  x26 b40000751a0b9360  x27 0000006900980080
+09-18 10:32:41.747  6324  6324 F DEBUG   :     x28 0000000800000069  x29 0000007fc61eef28
+09-18 10:32:41.747  6324  6324 F DEBUG   :     lr  00000072775638c4  sp  0000007fc61eeeb0  pc  000000727754cf10  pst 0000000080000000
+09-18 10:32:41.747  6324  6324 F DEBUG   : 193 total frames
+09-18 10:32:41.747  6324  6324 F DEBUG   : backtrace:
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #00 pc 00000000004aff10  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #01 pc 00000000004c68c0  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #02 pc 0000000000764da4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #03 pc 0000000000764d78  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #04 pc 00000000007c72dc  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #05 pc 00000000007c744c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #06 pc 0000000000766ba4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #07 pc 0000000000873420  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #08 pc 0000000000331628  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #09 pc 000000000040ef88  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #10 pc 00000000004528c8  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #11 pc 0000000000452d58  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #12 pc 000000000067f2d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #13 pc 00000000003df0f0  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #14 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #15 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #16 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #17 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #18 pc 000000000070b278  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #19 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #20 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #21 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #22 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #23 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #24 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #25 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #26 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #27 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #28 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #29 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #30 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #31 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #32 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #33 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #34 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #35 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #36 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #37 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #38 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #39 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #40 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #41 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #42 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #43 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #44 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #45 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #46 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #47 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #48 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #49 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #50 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #51 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #52 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #53 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #54 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #55 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #56 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #57 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #58 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #59 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #60 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #61 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #62 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #63 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #64 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #65 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #66 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #67 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #68 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #69 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #70 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #71 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #72 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #73 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #74 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #75 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #76 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #77 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #78 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #79 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #80 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #81 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #82 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #83 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #84 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #85 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #86 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #87 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #88 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #89 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #90 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #91 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.747  6324  6324 F DEBUG   :       #92 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #93 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #94 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #95 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #96 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #97 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #98 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #99 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #100 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #101 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #102 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #103 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #104 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #105 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #106 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #107 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #108 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #109 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #110 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #111 pc 000000000070b4d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #112 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #113 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #114 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #115 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #116 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #117 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #118 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #119 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #120 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #121 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #122 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #123 pc 000000000070b278  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #124 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #125 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #126 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #127 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #128 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #129 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #130 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #131 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #132 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #133 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #134 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #135 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #136 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #137 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #138 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #139 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #140 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #141 pc 000000000070b414  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #142 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #143 pc 00000000003df124  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #144 pc 000000000070b09c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #145 pc 00000000003df0d4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #146 pc 00000000003df070  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #147 pc 00000000003fdba8  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #148 pc 00000000003df030  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #149 pc 00000000003def98  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #150 pc 00000000003783f4  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #151 pc 00000000003deec0  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #152 pc 00000000003dec8c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #153 pc 00000000003de644  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #154 pc 00000000003de608  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #155 pc 000000000037b988  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #156 pc 000000000037b720  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #157 pc 000000000037b5b8  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #158 pc 000000000037b484  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #159 pc 00000000003620e0  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #160 pc 0000000000362048  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #161 pc 0000000000362004  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #162 pc 0000000000362730  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #163 pc 0000000000333d2c  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk (offset 0xe4000) (BuildId: b7188509e308c28af90d3cfa8c3b3a11)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #164 pc 000000000090c228  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #165 pc 0000000000a66ab8  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #166 pc 0000000000869290  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #167 pc 000000000085cfe8  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #168 pc 000000000084c5e0  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #169 pc 0000000000866108  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #170 pc 00000000004e9dbc  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #171 pc 00000000004edcb0  /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!libflutter.so (offset 0x9e8000) (BuildId: 9f490a28849fd415f77ad9165383b441bf3cd3bc)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #172 pc 0000000000013498  /system/lib64/libutils.so (android::Looper::pollOnce(int, int*, int*, void**)+1520) (BuildId: eb16d925d301dcbe28e761592a8de52d)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #173 pc 0000000000183bb8  /system/lib64/libandroid_runtime.so (android::android_os_MessageQueue_nativePollOnce(_JNIEnv*, _jobject*, long, int)+44) (BuildId: 7e2a886b7a4523debea27d91258da727)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #174 pc 00000000001ece80  /system/framework/arm64/boot-framework.oat (art_jni_trampoline+112) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #175 pc 000000000052a500  /system/framework/arm64/boot-framework.oat (android.os.MessageQueue.next+256) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #176 pc 0000000000527db8  /system/framework/arm64/boot-framework.oat (android.os.Looper.loopOnce+88) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #177 pc 0000000000527ce4  /system/framework/arm64/boot-framework.oat (android.os.Looper.loop+244) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #178 pc 00000000002f8a04  /system/framework/arm64/boot-framework.oat (android.app.ActivityThread.main+1572) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #179 pc 0000000000362a40  /apex/com.android.art/lib64/libart.so (art_quick_invoke_static_stub+640) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #180 pc 000000000035e42c  /apex/com.android.art/lib64/libart.so (_jobject* art::InvokeMethod<(art::PointerSize)8>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jobject*, _jobject*, unsigned long)+732) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #181 pc 00000000006c87f8  /apex/com.android.art/lib64/libart.so (art::Method_invoke(_JNIEnv*, _jobject*, _jobject*, _jobjectArray*) (.__uniq.165753521025965369065708152063621506277)+32) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #182 pc 00000000000a2114  /system/framework/arm64/boot.oat (art_jni_trampoline+116) (BuildId: 73f9b9faa342a487ed24dfeab499cec25d5fd3c1)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #183 pc 00000000007fccf4  /system/framework/arm64/boot-framework.oat (com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run+116) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #184 pc 0000000000805f24  /system/framework/arm64/boot-framework.oat (com.android.internal.os.ZygoteInit.main+3028) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #185 pc 0000000000362a40  /apex/com.android.art/lib64/libart.so (art_quick_invoke_static_stub+640) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #186 pc 000000000034df38  /apex/com.android.art/lib64/libart.so (art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)+204) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #187 pc 000000000034beec  /apex/com.android.art/lib64/libart.so (art::JValue art::InvokeWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)+512) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #188 pc 00000000007398bc  /apex/com.android.art/lib64/libart.so (art::JNI<true>::CallStaticVoidMethodV(_JNIEnv*, _jclass*, _jmethodID*, std::__va_list)+104) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #189 pc 00000000000d5290  /system/lib64/libandroid_runtime.so (_JNIEnv::CallStaticVoidMethod(_jclass*, _jmethodID*, ...)+104) (BuildId: 7e2a886b7a4523debea27d91258da727)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #190 pc 00000000000ea74c  /system/lib64/libandroid_runtime.so (android::AndroidRuntime::start(char const*, android::Vector<android::String8> const&, bool)+908) (BuildId: 7e2a886b7a4523debea27d91258da727)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #191 pc 0000000000004568  /system/bin/app_process64 (main+1204) (BuildId: ca426b31a2d06fac00c886329fb5d520)
+09-18 10:32:41.748  6324  6324 F DEBUG   :       #192 pc 00000000000552cc  /apex/com.android.runtime/lib64/bionic/libc.so (__libc_init+116) (BuildId: 1b9fecf834d610f77e641f026ca7269b)
+09-18 10:32:41.756   569  6329 W ActivityTaskManager:   Force finishing activity com.hyu.properotyTycoon/.MainActivity
+09-18 10:32:41.756   958  1003 V WindowManagerShell: Transition requested (#47): android.os.BinderProxy@bd3bcee TransitionRequestInfo { type = CLOSE, triggerTask = null, pipTask = null, remoteTransition = null, displayChange = null, flags = 16, debugId = 47 }
+09-18 10:32:41.756   569  6330 I DropBoxManagerService: add tag=data_app_native_crash isTagEnabled=true flags=0x6
+09-18 10:32:41.757   569  6329 W OptProp : Cannot read opt property android.window.PROPERTY_CAMERA_COMPAT_ALLOW_REFRESH
+09-18 10:32:41.758   221   221 E tombstoned: Tombstone written to: tombstone_01
+09-18 10:32:41.760  1235  1235 D b/254119092: mActivity onDeviceProfileChanged
+09-18 10:32:41.760  1235  1235 D b/254119092: mActivity and mContext agree taskbarIsPresent=false
+09-18 10:32:41.761   569   665 I DropBoxManagerService: add tag=SYSTEM_TOMBSTONE_PROTO_WITH_HEADERS isTagEnabled=true flags=0x4
+09-18 10:32:41.763  1235  1235 D b/254119092: QuickstepLauncher#onDeviceProfileChanged
+09-18 10:32:41.763  1235  1235 D b/254119092: mActivity and mContext agree taskbarIsPresent=false
+09-18 10:32:41.763  1235  1235 D OverviewActionsView: updateActionButtonsVisibility() called: showSingleTaskActions = [true], showGroupActions = [false]
+09-18 10:32:41.763  1235  1235 D StatsLog: LAUNCHER_GOOGLE_SEARCH_RESTORE_LIST_SIZE_AFTER_ACTIVITY_RESTART
+09-18 10:32:41.768  1235  1235 D ModelCallbacks: startBinding: hotseat layout was vertical: false and is setting to true
+09-18 10:32:41.769   418   418 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+09-18 10:32:41.769  1235  1235 D Launcher.Workspace: addInScreenFromBind: hotseat inflation with x = 0 and y = 3
+09-18 10:32:41.769  1235  1235 D Launcher.Workspace: addInScreenFromBind: hotseat inflation with x = 0 and y = 2
+09-18 10:32:41.769  1235  1235 D Launcher.Workspace: addInScreenFromBind: hotseat inflation with x = 0 and y = 1
+09-18 10:32:41.770  1235  1235 D Launcher.Workspace: addInScreenFromBind: hotseat inflation with x = 0 and y = 0
+09-18 10:32:41.772     1     1 I init    : Untracked pid 6324 exited with status 0
+09-18 10:32:41.772     1     1 I init    : Untracked pid 6324 did not have an associated service entry and will not be reaped
+09-18 10:32:41.774     1     1 I init    : Untracked pid 6326 exited with status 0
+09-18 10:32:41.774     1     1 I init    : Untracked pid 6326 did not have an associated service entry and will not be reaped
+09-18 10:32:41.774   569   665 I BootReceiver: Copying /data/tombstones/tombstone_01 to DropBox (SYSTEM_TOMBSTONE)
+09-18 10:32:41.774   569   665 I DropBoxManagerService: add tag=SYSTEM_TOMBSTONE isTagEnabled=true flags=0x6

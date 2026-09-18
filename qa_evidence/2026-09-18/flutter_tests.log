@@ -1,0 +1,236 @@
+00:00 +0: loading /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart
+00:00 +0: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_contract_test.dart: GodotBoardProtocol registers every playable city for the 3D renderer
+00:00 +1: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_contract_test.dart: GodotBoardProtocol maps the 40 logical tiles across all 52 city spots
+00:00 +2: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_contract_test.dart: GodotBoardProtocol expands logical dice steps into every forward visual waypoint
+00:00 +3: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_contract_test.dart: GodotBoardProtocol a full forward lap visits every visual route spot in order
+00:00 +4: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_contract_test.dart: GodotBoardProtocol reverse movement includes intermediate spots and wraps past GO
+00:00 +5: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity usa keeps every special logical space
+00:00 +6: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity usa keeps every special logical space
+00:00 +7: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity usa keeps every special logical space
+00:00 +8: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity usa keeps every special logical space
+00:00 +9: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity usa keeps every special logical space
+00:00 +10: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity usa keeps every special logical space
+00:00 +11: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity usa keeps every special logical space
+00:00 +12: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: rejected native movement falls back without waiting for timeout
+00:00 +13: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: rejected native movement falls back without waiting for timeout
+00:00 +14: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity usa_los_angeles keeps every special logical space
+00:00 +15: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: roll command sends the complete visual route across GO
+00:00 +16: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: roll command sends the complete visual route across GO
+00:00 +17: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: roll command sends the complete visual route across GO
+00:00 +18: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity uk_manchester keeps every special logical space
+00:00 +19: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: special move commands carry the typed presentation contract
+00:00 +20: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: special move commands carry the typed presentation contract
+00:00 +21: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: special move commands carry the typed presentation contract
+00:00 +22: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity france_marseille keeps every special logical space
+00:00 +23: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: movementStep events fire footstep callbacks once per waypoint
+00:00 +24: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: movementStep events fire footstep callbacks once per waypoint
+00:00 +25: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity japan_osaka keeps every special logical space
+00:00 +26: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: setCameraFollow sends the toggle once the board is ready
+00:00 +27: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: setCameraFollow sends the toggle once the board is ready
+00:00 +28: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: setCameraFollow sends the toggle once the board is ready
+00:00 +29: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: setCameraFollow sends the toggle once the board is ready
+00:00 +30: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: setCameraFollow sends the toggle once the board is ready
+00:00 +31: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: setCameraFollow sends the toggle once the board is ready
+00:00 +32: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: setCameraFollow sends the toggle once the board is ready
+00:00 +33: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity mexico_cancun keeps every special logical space
+00:00 +34: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: setGraphicsQuality sends the tier once the board is ready
+00:00 +35: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity special spaces resolve through the shared Flutter game engine
+00:00 +36: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: scene ready does not unlock play before exact state is applied
+00:00 +37: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity 3D scene mirrors ownership, upgrades, mortgage, and prices
+00:00 +38: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: boardReady before stateApplied does not resend cached state
+00:00 +39: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: boardReady before stateApplied does not resend cached state
+00:00 +40: /Users/haoyu/development/mm-monopoly/test/integration/board_mode_parity_test.dart: 2D and 3D game mode parity 3D scene identifies a completed color group
+00:00 +41: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: startup watchdog bounds a platform view that never starts
+00:00 +42: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: early stateApplied keeps recovery until view and scene are ready
+00:00 +43: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: native availability wait is bounded
+00:00 +44: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: hung native retry keeps recovery bounded
+00:00 +45: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: hung state sync times out and releases its caller
+00:00 +46: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: Use 2D releases a hung state sync immediately
+00:00 +47: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: disposed view callbacks cannot resend an old session
+00:00 +48: /Users/haoyu/development/mm-monopoly/test/integration/godot_board_controller_test.dart: special move animates on the ready board before the post-move sync
+00:00 +49: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +50: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +51: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +52: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +53: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +54: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +55: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +56: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +57: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +58: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +59: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +60: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:01 +61: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:02 +62: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:02 +63: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:02 +64: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:02 +65: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: in-game help preserves the live board and latest state
+00:02 +66: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: game board fits 844.0x390.0
+00:02 +67: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: game board fits 844.0x390.0
+00:02 +68: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: game board fits 844.0x390.0
+00:02 +69: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_test.dart: forward card crosses GO, awards the bonus, and resolves the landing
+00:02 +70: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_test.dart: forward card crosses GO, awards the bonus, and resolves the landing
+00:02 +71: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_test.dart: forward card crosses GO, awards the bonus, and resolves the landing
+00:02 +72: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_test.dart: forward card crosses GO, awards the bonus, and resolves the landing
+00:02 +73: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_test.dart: forward card crosses GO, awards the bonus, and resolves the landing
+00:02 +74: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: victory replay is handled by the live app navigator
+00:02 +75: /Users/haoyu/development/mm-monopoly/test/navigation/app_navigation_regression_test.dart: victory replay is handled by the live app navigator
+00:02 +76: /Users/haoyu/development/mm-monopoly/test/screens/how_to_play_responsive_test.dart: how to play fits and navigates at 768.0x1024.0
+00:02 +77: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: game board fits 1440.0x900.0
+00:02 +78: /Users/haoyu/development/mm-monopoly/test/screens/settings_responsive_test.dart: settings toggles and resets game options
+00:02 +79: /Users/haoyu/development/mm-monopoly/test/screens/settings_responsive_test.dart: settings toggles and resets game options
+00:02 +80: /Users/haoyu/development/mm-monopoly/test/screens/settings_responsive_test.dart: settings toggles and resets game options
+00:02 +81: /Users/haoyu/development/mm-monopoly/test/screens/settings_responsive_test.dart: settings toggles and resets game options
+00:02 +82: /Users/haoyu/development/mm-monopoly/test/screens/settings_responsive_test.dart: settings toggles and resets game options
+00:02 +83: /Users/haoyu/development/mm-monopoly/test/screens/settings_responsive_test.dart: settings toggles and resets game options
+00:02 +84: /Users/haoyu/development/mm-monopoly/test/screens/settings_responsive_test.dart: settings toggles and resets game options
+00:02 +85: /Users/haoyu/development/mm-monopoly/test/screens/settings_responsive_test.dart: settings toggles and resets game options
+00:02 +86: /Users/haoyu/development/mm-monopoly/test/screens/how_to_play_responsive_test.dart: how to play fits and navigates at 1440.0x900.0
+00:02 +87: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +88: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +89: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +90: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +91: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +92: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +93: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +94: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +95: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +96: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +97: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +98: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +99: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +100: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:02 +101: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +102: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +103: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +104: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +105: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +106: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +107: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +108: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +109: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +110: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +111: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +112: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +113: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +114: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +115: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: AI-first game disables human roll and schedules one AI roll
+00:03 +116: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: reverse card walks backwards without a GO bonus before the destination sync
+00:03 +117: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: crossing the player order advances authoritative round state
+00:03 +118: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: crossing the player order advances authoritative round state
+00:03 +119: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: crossing the player order advances authoritative round state
+00:03 +119: /Users/haoyu/development/mm-monopoly/test/services/save_service_test.dart: loading a game keeps the save available
+Game saved successfully
+Game loaded successfully
+Game loaded successfully
+00:03 +120: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: crossing the player order advances authoritative round state
+00:03 +120: /Users/haoyu/development/mm-monopoly/test/services/save_service_test.dart: a progressed game survives preference reload without state loss
+Game saved successfully
+Game loaded successfully
+00:03 +121: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: crossing the player order advances authoritative round state
+00:03 +121: /Users/haoyu/development/mm-monopoly/test/services/save_service_test.dart: corrupt or future-version saves fail safely without deleting data
+Error loading game: FormatException: Unexpected character (at character 1)
+not JSON
+^
+
+Stack trace: #0      _ChunkedJsonParser.fail (dart:convert-patch/convert_patch.dart:1467:5)
+#1      _ChunkedJsonParser.parseNull (dart:convert-patch/convert_patch.dart:994:7)
+#2      _ChunkedJsonParser.parse (dart:convert-patch/convert_patch.dart:877:22)
+#3      _parseJson (dart:convert-patch/convert_patch.dart:35:10)
+#4      JsonDecoder.convert (dart:convert/json.dart:640:36)
+#5      JsonCodec.decode (dart:convert/json.dart:219:41)
+#6      jsonDecode (dart:convert/json.dart:160:12)
+#7      SaveService.loadGame (package:property_tycoon/services/save_service.dart:69:24)
+#8      main.<anonymous closure> (file:///Users/haoyu/development/mm-monopoly/test/services/save_service_test.dart:99:43)
+<asynchronous suspension>
+#9      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
+<asynchronous suspension>
+#10     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#11     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+
+Unsupported save version: 999
+00:03 +122: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: crossing the player order advances authoritative round state
+00:03 +123: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: crossing the player order advances authoritative round state
+00:03 +124: /Users/haoyu/development/mm-monopoly/test/services/audio_catalog_test.dart: every catalog track is bundled as a non-empty app asset
+00:03 +125: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +126: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +126: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: save and load actions only appear at a stable turn boundary
+Game saved successfully
+00:03 +127: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +128: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +129: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +130: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +131: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +132: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +133: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +134: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +135: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +135: /Users/haoyu/development/mm-monopoly/test/services/notification_permission_test.dart: Android notification denial skips scheduling without blocking startup
+Notifications are disabled; weekly scheduling was skipped.
+00:03 +136: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: Go To Jail flies the escort without route markers and skips landing resolution
+00:03 +137: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: save and load actions only appear at a stable turn boundary
+00:04 +138: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: landing resolution waits for movement completion
+00:04 +139: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: landing resolution waits for movement completion
+00:04 +139: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: a pre-load AI timer cannot roll replacement human state
+Game saved successfully
+00:04 +140: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: a pre-load AI timer cannot roll replacement human state
+Game loaded successfully
+00:04 +141: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: a pre-load AI timer cannot roll replacement human state
+00:04 +142: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: movement completion timeout settles through the destination sync
+00:04 +143: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: movement completion timeout settles through the destination sync
+00:04 +144: /Users/haoyu/development/mm-monopoly/test/screens/game_board_responsive_test.dart: city guide matches the active board mode without duplicate names
+00:04 +145: /Users/haoyu/development/mm-monopoly/test/screens/game_board_card_flow_bridge_test.dart: completion arriving after the session was replaced is inert
+00:04 +146: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots serialization keeps every event inline when the stack is short
+00:04 +147: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots serialization caps inline events and counts the overflow
+00:04 +148: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots left-column serialization event stack sits above the gesture hint in wide 3D
+00:04 +149: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots left-column serialization event stack uses the plain edge when no hint is shown
+00:04 +150: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots left-column serialization card prompt serializes above events and hint
+00:04 +151: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots left-column serialization compact landscape tightens margins but keeps serialization
+00:04 +152: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots left-column serialization left column serializes above its own base in every mode
+00:04 +153: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots widget rendering overflow chip appears for serialized-out events
+00:04 +154: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots widget rendering overflow chip appears for serialized-out events
+00:04 +155: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots widget rendering overflow chip appears for serialized-out events
+00:04 +156: /Users/haoyu/development/mm-monopoly/test/widgets/board/board_overlay_slots_test.dart: BoardOverlaySlots widget rendering overflow chip appears for serialized-out events
+00:04 +157: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/card_pick_dialog_test.dart: tapping a card and closing picks exactly that card
+00:05 +158: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/card_pick_dialog_test.dart: tapping a card and closing picks exactly that card
+00:05 +159: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/card_pick_dialog_test.dart: tapping a card and closing picks exactly that card
+00:05 +160: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/card_pick_dialog_test.dart: tapping a card and closing picks exactly that card
+00:05 +161: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/card_pick_dialog_test.dart: tapping a card and closing picks exactly that card
+00:05 +162: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: shows four players, identities, cash, status, and one round
+00:05 +162: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/card_pick_dialog_test.dart: tapping a second card during the first flip is ignored
+
+Warning: A call to tap() with finder "Found 1 widget with a semantics label named "CHANCE 2": [
+  Semantics(container: false, properties: SemanticsProperties, label: "CHANCE 2", dependencies: [Directionality], renderObject: RenderSemanticsAnnotations#b70ee relayoutBoundary=up2),
+]" derived an Offset (Offset(355.0, 330.5)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+The finder corresponds to this RenderBox: RenderSemanticsAnnotations#b70ee relayoutBoundary=up2
+The hit test result at that offset is: HitTestResult(RenderCustomPaint#d8896@Offset(3.0, 76.0), RenderClipRRect#2a444@Offset(3.0, 76.0), RenderStack#e363f@Offset(3.0, 76.0), RenderPadding#d78b0@Offset(5.0, 78.0), RenderDecoratedBox#db7ee@Offset(5.0, 78.0), RenderConstrainedBox#81f8e@Offset(5.0, 78.0), RenderPointerListener#282d4@Offset(5.0, 78.0), RenderSemanticsGestureHandler#0aa99@Offset(5.0, 78.0), RenderSemanticsAnnotations#4b926@Offset(5.0, 78.0), RenderAnimatedOpacity#709d9@Offset(5.0, 78.0), RenderStack#e5127@Offset(130.0, 108.0), RenderConstrainedBox#8922a@Offset(130.0, 108.0), RenderPositionedBox#fddbb@Offset(153.0, 148.0), RenderConstrainedBox#f6b9e@Offset(153.0, 148.0), RenderFlex#195c7@Offset(153.0, 148.0), RenderPadding#14171@Offset(153.0, 164.0), _RenderSingleChildViewport#e92f2@Offset(153.0, 164.0), RenderIgnorePointer#b8acd@Offset(153.0, 164.0), RenderSemanticsAnnotations#978c0@Offset(153.0, 164.0), RenderPointerListener#ca30d@Offset(153.0, 164.0), RenderSemanticsGestureHandler#b9544@Offset(153.0, 164.0), RenderPointerListener#14687@Offset(153.0, 164.0), _RenderScrollSemantics#6b186@Offset(153.0, 164.0), RenderClipRect#7c782@Offset(153.0, 164.0), RenderFlex#63934@Offset(153.0, 271.0), RenderPadding#c9255@Offset(155.0, 273.0), RenderDecoratedBox#b69af@Offset(155.0, 273.0), RenderConstrainedBox#9a533@Offset(155.0, 273.0), _RenderInkFeatures#00603@Offset(155.0, 273.0), RenderCustomPaint#b6070@Offset(155.0, 273.0), RenderPhysicalShape#75ec7@Offset(155.0, 273.0), RenderConstrainedBox#4c3c4@Offset(155.0, 273.0), RenderPositionedBox#98ed1@Offset(339.0, 314.5), RenderPadding#f2c70@Offset(355.0, 330.5), RenderSemanticsAnnotations#26887@Offset(355.0, 330.5), RenderPointerListener#77ee7@Offset(355.0, 330.5), RenderSemanticsGestureHandler#d025f@Offset(355.0, 330.5), RenderOpacity#487f4@Offset(355.0, 330.5), RenderPadding#bac8a@Offset(355.0, 330.5), RenderSemanticsAnnotations#44c58@Offset(355.0, 330.5), RenderRepaintBoundary#bee42@Offset(355.0, 330.5), RenderIgnorePointer#af2ab@Offset(355.0, 330.5), RenderAnimatedOpacity#19503@Offset(355.0, 330.5), RenderRepaintBoundary#06dcc@Offset(355.0, 330.5), RenderSemanticsAnnotations#b98ad@Offset(355.0, 330.5), RenderOffstage#73c67@Offset(355.0, 330.5), RenderSemanticsAnnotations#4ad54@Offset(355.0, 330.5), _RenderTheater#7a09d@Offset(355.0, 330.5), RenderAbsorbPointer#35818@Offset(355.0, 330.5), RenderPointerListener#8f250@Offset(355.0, 330.5), RenderSemanticsAnnotations#4d464@Offset(355.0, 330.5), RenderCustomPaint#d2fda@Offset(355.0, 330.5), RenderSemanticsAnnotations#f1549@Offset(355.0, 330.5), RenderSemanticsAnnotations#9037e@Offset(355.0, 330.5), RenderSemanticsAnnotations#c7f86@Offset(355.0, 330.5), RenderTapRegionSurface#4e5a7@Offset(355.0, 330.5), RenderSemanticsAnnotations#59114@Offset(355.0, 330.5), RenderSemanticsAnnotations#f2315@Offset(355.0, 330.5), HitTestEntry<HitTestTarget>#3a78e(_ReusableRenderView#71619), HitTestEntry<HitTestTarget>#1a18d(<AutomatedTestWidgetsFlutterBinding>))
+#0      WidgetController._getElementPoint (package:flutter_test/src/controller.dart:2165:25)
+#1      WidgetController.getCenter (package:flutter_test/src/controller.dart:1947:12)
+#2      WidgetController.tap (package:flutter_test/src/controller.dart:1080:7)
+#3      main.<anonymous closure> (file:///Users/haoyu/development/mm-monopoly/test/widgets/dialogs/card_pick_dialog_test.dart:95:18)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1952:5)
+<asynchronous suspension>
+#6      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+To silence this warning, pass "warnIfMissed: false" to "tap()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+00:05 +163: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: shows four players, identities, cash, status, and one round
+00:05 +164: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: shows four players, identities, cash, status, and one round
+00:05 +165: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: shows four players, identities, cash, status, and one round
+00:05 +166: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: shows four players, identities, cash, status, and one round
+00:05 +167: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/adaptive_game_dialogs_test.dart: spin wheel and prize collection are single-flight
+00:05 +168: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/game_menu_dialog_test.dart: save completes before gameplay resumes
+00:05 +169: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: announces AI thinking, rolling, moving, and resolving phases
+00:05 +170: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: announces AI thinking, rolling, moving, and resolving phases
+00:05 +171: /Users/haoyu/development/mm-monopoly/test/widgets/dialogs/adaptive_game_dialogs_test.dart: auction dialog is scroll-safe in compact landscape
+00:05 +172: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: narrow large-text rail scrolls and can collapse
+00:05 +173: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: four-player landscape rail remains a compact single row
+00:05 +174: /Users/haoyu/development/mm-monopoly/test/widgets/player/game_status_rail_test.dart: ordinary human names fit in the four-player iPad rail
+00:05 +175: All tests passed!

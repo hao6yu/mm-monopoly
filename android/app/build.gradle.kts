@@ -72,6 +72,9 @@ android {
             // Never publish with the debug key. Without key.properties Gradle
             // deliberately produces an unsigned local artifact.
             signingConfig = signingConfigs.findByName("release")
+            // Godot's native engine resolves Java classes/methods by name.
+            // Flutter enables release shrinking; retain that JNI boundary.
+            proguardFiles("proguard-rules.pro")
         }
     }
 }

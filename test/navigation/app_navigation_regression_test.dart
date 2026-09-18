@@ -134,7 +134,7 @@ void main() {
     final replay = find.byKey(const Key('victory-play-again-button'));
     await tester.ensureVisible(replay);
     await tester.pump();
-    tester.widget<ElevatedButton>(replay).onPressed!();
+    await tester.tap(replay);
     expect(oldSession.acceptsInput, isFalse);
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -163,7 +163,7 @@ void main() {
     final home = find.byKey(const Key('victory-home-button'));
     await tester.ensureVisible(home);
     await tester.pump();
-    tester.widget<OutlinedButton>(home).onPressed!();
+    await tester.tap(home);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 

@@ -1,5 +1,7 @@
 # Store release review — September 17, 2026
 
+> **Latest follow-up:** see [September 18 release preparation](release_followup_2026_09_18.md) for recovered Android signing, hosted privacy policy, real Android release-device findings, and the outstanding iOS distribution-signing gate.
+
 Reviewed `main` at `1fd7371` (app `2.0.1+12`), including the local AI's September follow-up commits. **Decision: hold public store release.** The recent work improves the game, but the current Android release does not compile, card-movement integration bypasses the new animations, and store-submission requirements remain unresolved.
 
 > **Remediation addendum:** the integration and submission blockers R1–R5 were fixed and re-verified after this review. See [Remediation status](#remediation-status--september-17-2026) at the end of this document. The original findings below are retained unchanged for the record; device-acceptance evidence remains outstanding.
@@ -172,7 +174,7 @@ Verified on device:
 - **Normal menu launch (store entrypoint):** signed store build launched to the correct main menu with no QA banner — `store_menu_launch.png`.
 - **Three consecutive app sessions of active gameplay** (~35–40 minutes total, rounds 1→19 observed): status rail with all four AI players, cash movement from purchases/rents/taxes, an active "Market Boom!" event, jail state ("IN JAIL" on the rail), and property development (house built on Illinois Ave) all rendered and progressed correctly; no console exception observed.
 - **Real gesture-pipeline interaction:** the QA harness pressed the actual in-game SFX mute button through hit-testing twice per run; the banner confirmed `muted-after-tap`/`restored-after-tap: true` in both runs (`qa_board_trace_t5m.png`, `qa_board_hitches_t7m.png`).
-- **Frame quality, 10-minute Instruments `Animation Hitches` trace during active gameplay:** **3 hitches total (~117 ms combined; worst 66.7 ms)** — effectively hitch-free; **thermal state Nominal for the entire 10.03 min**; Flutter-side frame lifetimes: 5,473 frames, median 29.3 ms (compositor updates only — the 3D surface runs on its own 60 FPS-capped CAMetalLayer).
+- **Frame quality, 10-minute Instruments `Animation Hitches` trace during active gameplay:** **6 hitches total (166.65 ms combined; worst 66.66 ms)**; **thermal state Nominal for the entire 10.03 min**. Corrected September 18 by counting all six rows in `export_hitches.xml`, including XML `ref` values; the earlier report counted only three literal duration nodes. Flutter-side frame lifetimes: 5,473 frames, median 29.3 ms (compositor updates only — these do not establish native 3D FPS).
 - **Defect found and fixed:** the AI upgrade notification read "Built a build a house on Illinois Ave!" (doubled verb, broken in all five languages). Fixed with localized noun-phrase keys (`aiLevelHouse`/`aiLevelHotel`) and corrected sentence templates; suite 172/172; fix committed (`de8ad7b`).
 
 Not measurable with available tooling (all on this Xcode 27.0 beta / iPadOS 27.0 beta pairing):
@@ -192,7 +194,7 @@ Not measurable with available tooling (all on this Xcode 27.0 beta / iPadOS 27.0
 
 1. **Android distributable:** the release AAB is unsigned; `android/key.properties` (owner credentials) is required to produce and validate a signed AAB. No Android hardware/emulator exists in this environment, so no Android device QA occurred at all this pass.
 2. **Hosted privacy-policy URL** and store-console privacy declarations (owner: hosting destination + console entry).
-3. **Human-acceptance matrix** (below) — automation cannot validate direct touch quality, save/load, purchase/auction dialogs, bankruptcy/victory/replay, background/resume, or accessibility with real screen readers.
+3. **Acceptance matrix** (below) — save/load, purchase/auction, bankruptcy/victory/replay, and background/resume can be tested by an agent. Subjective direct-touch quality and real screen-reader usability still benefit from human acceptance. Do not label unattempted automation as inherently impossible.
 4. **Performance gates still open:** minimum-spec device coverage (only an iPad Air 5 was tested), sustained GPU/CPU/memory instrumentation (blocked by the beta templates above), and Android graphics-tier measurement through the real plugin signal path.
 5. **Toolchain risk:** Xcode 27.0 beta + iPadOS 27.0 beta. Two of three Instruments templates malfunctioned here; App Store upload/validation has not been attempted (per instructions, nothing was uploaded or submitted).
 

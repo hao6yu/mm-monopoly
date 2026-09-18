@@ -1,0 +1,106 @@
+--------- beginning of crash
+09-18 10:10:06.929  4192  4192 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 4192 (properotyTycoon), pid 4192 (properotyTycoon)
+09-18 10:10:07.200  4601  4601 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+09-18 10:10:07.200  4601  4601 F DEBUG   : Build fingerprint: 'google/sdk_gphone64_arm64/emu64a:15/AE3A.240806.043/12960925:userdebug/dev-keys'
+09-18 10:10:07.200  4601  4601 F DEBUG   : Revision: '0'
+09-18 10:10:07.200  4601  4601 F DEBUG   : ABI: 'arm64'
+09-18 10:10:07.200  4601  4601 F DEBUG   : Timestamp: 2026-09-18 10:10:07.047358478-0500
+09-18 10:10:07.200  4601  4601 F DEBUG   : Process uptime: 89s
+09-18 10:10:07.200  4601  4601 F DEBUG   : Cmdline: com.hyu.properotyTycoon
+09-18 10:10:07.200  4601  4601 F DEBUG   : pid: 4192, tid: 4192, name: properotyTycoon  >>> com.hyu.properotyTycoon <<<
+09-18 10:10:07.200  4601  4601 F DEBUG   : uid: 10207
+09-18 10:10:07.200  4601  4601 F DEBUG   : tagged_addr_ctrl: 0000000000000001 (PR_TAGGED_ADDR_ENABLE)
+09-18 10:10:07.200  4601  4601 F DEBUG   : pac_enabled_keys: 000000000000000f (PR_PAC_APIAKEY, PR_PAC_APIBKEY, PR_PAC_APDAKEY, PR_PAC_APDBKEY)
+09-18 10:10:07.200  4601  4601 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+09-18 10:10:07.200  4601  4601 F DEBUG   : Abort message: 'Throwing new exception 'no non-static method "Lorg/godotengine/godot/GodotIO;.openURI(Ljava/lang/String;)I"' with unexpected pending exception: java.lang.NoSuchMethodError: no non-static method "Lorg/godotengine/godot/nativeapi/GodotNativeBridge;.getRenderView()Lorg/godotengine/godot/GodotRenderView;"
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at boolean org.godotengine.godot.GodotLib.initialize(org.godotengine.godot.nativeapi.GodotNativeBridge, android.content.res.AssetManager, org.godotengine.godot.GodotIO, org.godotengine.godot.utils.GodotNetUtils, org.godotengine.godot.io.directory.DirectoryAccessHandler, org.godotengine.godot.io.file.FileAccessHandler, boolean) (SourceFile:-2)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at boolean org.godotengine.godot.Godot.g(org.godotengine.godot.k, java.util.List, java.util.Set) (SourceFile:685)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void org.godotengine.godot.k.K(android.os.Bundle) (SourceFile:91)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void S.T.e() (SourceFile:72)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void S.T.k() (SourceFile:183)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void S.M.A(java.util.ArrayList, java.util.ArrayList, int, int) (SourceFile:148)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void S.M.T(java.util.ArrayList, java.util.ArrayList) (SourceFile:82)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void S.a.f() (SourceFile:124)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void F0.a.<init>(android.content.Context, com.hyu.properotyTycoon.MainActivity) (SourceFile:173)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at F0.a io.flutter.plugin.platform.q.c(R0.g, boolean) (SourceFile:47)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at long io.flutter.plugin.platform.m.m(R0.g) (SourceFile:32)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at long com.dexterous.flutterlocalnotifications.a.m(R0.g) (SourceFile:7)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void A1.t.o(S0.m, S0.o) (SourceFile:990)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void A1.t.onMethodCall(S0.m, S0.o) (SourceFile:201)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void A1.k.g(java.nio.ByteBuffer, J0.g) (SourceFile:26)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void J0.c.run() (SourceFile:128)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void android.os.Handler.handleCallback(android.os.Message) (Handler.java:959)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void android.os.Handler.dispatchMessage(android.os.Message) (Handler.java:100)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at boolean android.os.Looper.loopOnce(android.os.Looper, long, int) (Looper.java:232)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void android.os.Looper.loop() (Looper.java:317)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void android.app.ActivityThread.main(java.lang.String[]) (ActivityThread.java:8705)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at java.lang.Object java.lang.reflect.Method.invoke(java.lang.Object, java.lang.Object[]) (Method.java:-2)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run() (RuntimeInit.java:580)
+09-18 10:10:07.200  4601  4601 F DEBUG   :   at void com.android.internal.os.ZygoteInit.main(java.lang.String[]) (ZygoteInit.java:886)'
+09-18 10:10:07.200  4601  4601 F DEBUG   :     x0  0000000000000000  x1  0000000000001060  x2  0000000000000006  x3  0000007fc61ef1d0
+09-18 10:10:07.200  4601  4601 F DEBUG   :     x4  6277641f76646d1f  x5  6277641f76646d1f  x6  6277641f76646d1f  x7  7f7f7f7f7f7f7f7f
+09-18 10:10:07.200  4601  4601 F DEBUG   :     x8  00000000000000f0  x9  0000007627064468  x10 ffffff80fffffb9f  x11 0000000000000001
+09-18 10:10:07.200  4601  4601 F DEBUG   :     x12 0000007fc61edf10  x13 0000000000000aa3  x14 0000007fc61edfc0  x15 00000d1d9192aa55
+09-18 10:10:07.200  4601  4601 F DEBUG   :     x16 0000007627113ff8  x17 00000076270fe1c0  x18 00000076409cc000  x19 0000000000001060
+09-18 10:10:07.200  4601  4601 F DEBUG   :     x20 0000000000001060  x21 00000000ffffffff  x22 0000000000000000  x23 b40000754a07abe0
+09-18 10:10:07.200  4601  4601 F DEBUG   :     x24 0000000000fffff9  x25 000000005a000000  x26 0000000000000011  x27 000000763fc52a80
+09-18 10:10:07.200  4601  4601 F DEBUG   :     x28 00000073737e5a08  x29 0000007fc61ef250
+09-18 10:10:07.200  4601  4601 F DEBUG   :     lr  000000762709c6a4  sp  0000007fc61ef1b0  pc  000000762709c6d4  pst 0000000000000000
+09-18 10:10:07.200  4601  4601 F DEBUG   : 56 total frames
+09-18 10:10:07.200  4601  4601 F DEBUG   : backtrace:
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #00 pc 000000000005b6d4  /apex/com.android.runtime/lib64/bionic/libc.so (abort+168) (BuildId: 1b9fecf834d610f77e641f026ca7269b)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #01 pc 000000000092f3fc  /apex/com.android.art/lib64/libart.so (art::Runtime::Abort(char const*)+344) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #02 pc 00000000000160fc  /apex/com.android.art/lib64/libbase.so (android::base::SetAborter(std::__1::function<void (char const*)>&&)::$_0::__invoke(char const*)+80) (BuildId: 42d41ca7c77853791d096606e7186547)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #03 pc 00000000000156d0  /apex/com.android.art/lib64/libbase.so (android::base::LogMessage::~LogMessage()+516) (BuildId: 42d41ca7c77853791d096606e7186547)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #04 pc 0000000000351764  /apex/com.android.art/lib64/libart.so (art::Thread::AssertNoPendingExceptionForNewException(char const*) const+548) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #05 pc 000000000035b544  /apex/com.android.art/lib64/libart.so (art::Thread::ThrowNewExceptionF(char const*, char const*, ...)+184) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #06 pc 0000000000637918  /apex/com.android.art/lib64/libart.so (art::ThrowNoSuchMethodError(art::ScopedObjectAccess const&, art::ObjPtr<art::mirror::Class>, char const*, char const*, char const*) (.__uniq.267287648927189358846131613051554877057)+112) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #07 pc 0000000000631f5c  /apex/com.android.art/lib64/libart.so (art::JNI<false>::GetMethodID(_JNIEnv*, _jclass*, char const*, char const*)+304) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #08 pc 000000000122b480  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/base.apk!libgodot_android.so (offset 0x14dc000) (BuildId: 5a324c511a175243faee09dcee1f3c349a5fed15)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #09 pc 0000000001211b4c  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/base.apk!libgodot_android.so (offset 0x14dc000) (Java_org_godotengine_godot_GodotLib_initialize+176) (BuildId: 5a324c511a175243faee09dcee1f3c349a5fed15)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #10 pc 0000000000378f70  /apex/com.android.art/lib64/libart.so (art_quick_generic_jni_trampoline+144) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #11 pc 000000000077ebd8  /apex/com.android.art/lib64/libart.so (nterp_helper+2152) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #12 pc 000000000010a688  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (org.godotengine.godot.Godot.g+1368)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #13 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #14 pc 0000000000108bf0  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (org.godotengine.godot.k.K+180)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #15 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #16 pc 0000000000094c32  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (S.T.e+142)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #17 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #18 pc 0000000000095768  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (S.T.k+364)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #19 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #20 pc 00000000000928dc  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (S.M.A+2336)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #21 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #22 pc 0000000000092f1a  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (S.M.T+162)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #23 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #24 pc 000000000008aa1a  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (S.a.f+246)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #25 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #26 pc 00000000000604fc  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (F0.a.<init>+344)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #27 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #28 pc 00000000000efd0c  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (io.flutter.plugin.platform.q.c+92)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #29 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #30 pc 00000000000ee006  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (io.flutter.plugin.platform.m.m+62)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #31 pc 000000000077f2c4  /apex/com.android.art/lib64/libart.so (nterp_helper+3924) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #32 pc 00000000000d77f4  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (com.dexterous.flutterlocalnotifications.a.m+12)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #33 pc 00000000007800e4  /apex/com.android.art/lib64/libart.so (nterp_helper+7540) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #34 pc 000000000004b28e  /data/app/~~OazyDWYg7qljPMAh3CsZHA==/com.hyu.properotyTycoon-bNdcA1P17NEV-hFndFaYQA==/oat/arm64/base.vdex (A1.t.o+1978)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #35 pc 000000000000f5bc  [anon_shmem:dalvik-jit-code-cache] (offset 0x2000000) (A1.t.onMethodCall+1212)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #36 pc 0000000000006a68  [anon_shmem:dalvik-jit-code-cache] (offset 0x2000000) (A1.k.g+360)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #37 pc 00000000000055b8  [anon_shmem:dalvik-jit-code-cache] (offset 0x2000000) (J0.c.run+1016)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #38 pc 0000000000525074  /system/framework/arm64/boot-framework.oat (android.os.Handler.dispatchMessage+68) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #39 pc 0000000000528134  /system/framework/arm64/boot-framework.oat (android.os.Looper.loopOnce+980) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #40 pc 0000000000527ce4  /system/framework/arm64/boot-framework.oat (android.os.Looper.loop+244) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #41 pc 00000000002f8a04  /system/framework/arm64/boot-framework.oat (android.app.ActivityThread.main+1572) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #42 pc 0000000000362a40  /apex/com.android.art/lib64/libart.so (art_quick_invoke_static_stub+640) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #43 pc 000000000035e42c  /apex/com.android.art/lib64/libart.so (_jobject* art::InvokeMethod<(art::PointerSize)8>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jobject*, _jobject*, unsigned long)+732) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #44 pc 00000000006c87f8  /apex/com.android.art/lib64/libart.so (art::Method_invoke(_JNIEnv*, _jobject*, _jobject*, _jobjectArray*) (.__uniq.165753521025965369065708152063621506277)+32) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #45 pc 00000000000a2114  /system/framework/arm64/boot.oat (art_jni_trampoline+116) (BuildId: 73f9b9faa342a487ed24dfeab499cec25d5fd3c1)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #46 pc 00000000007fccf4  /system/framework/arm64/boot-framework.oat (com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run+116) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #47 pc 0000000000805f24  /system/framework/arm64/boot-framework.oat (com.android.internal.os.ZygoteInit.main+3028) (BuildId: 63f4eb325f3987ae1d20b869e98918cda0bfdf73)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #48 pc 0000000000362a40  /apex/com.android.art/lib64/libart.so (art_quick_invoke_static_stub+640) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #49 pc 000000000034df38  /apex/com.android.art/lib64/libart.so (art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)+204) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #50 pc 000000000034beec  /apex/com.android.art/lib64/libart.so (art::JValue art::InvokeWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)+512) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #51 pc 00000000007398bc  /apex/com.android.art/lib64/libart.so (art::JNI<true>::CallStaticVoidMethodV(_JNIEnv*, _jclass*, _jmethodID*, std::__va_list)+104) (BuildId: dcb9fe2b5c99aa3f1a682a6008427d08)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #52 pc 00000000000d5290  /system/lib64/libandroid_runtime.so (_JNIEnv::CallStaticVoidMethod(_jclass*, _jmethodID*, ...)+104) (BuildId: 7e2a886b7a4523debea27d91258da727)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #53 pc 00000000000ea74c  /system/lib64/libandroid_runtime.so (android::AndroidRuntime::start(char const*, android::Vector<android::String8> const&, bool)+908) (BuildId: 7e2a886b7a4523debea27d91258da727)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #54 pc 0000000000004568  /system/bin/app_process64 (main+1204) (BuildId: ca426b31a2d06fac00c886329fb5d520)
+09-18 10:10:07.200  4601  4601 F DEBUG   :       #55 pc 00000000000552cc  /apex/com.android.runtime/lib64/bionic/libc.so (__libc_init+116) (BuildId: 1b9fecf834d610f77e641f026ca7269b)

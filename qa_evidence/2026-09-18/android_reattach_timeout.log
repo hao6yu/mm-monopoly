@@ -1,0 +1,113 @@
+--------- beginning of main
+09-18 10:08:38.915  4192  4219 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+09-18 10:08:39.386  4192  4192 I flutter : Notification initialization skipped: PlatformException(invalid_icon, The resource @mipmap/ic_launcher could not be found. Please make sure it has been added as a drawable resource to your Android head project., null, null)
+09-18 10:08:39.386  4192  4192 I flutter : #0      StandardMethodCodec.decodeEnvelope (package:flutter/src/services/message_codecs.dart:653)
+09-18 10:08:39.386  4192  4192 I flutter : #1      MethodChannel._invokeMethod (package:flutter/src/services/platform_channel.dart:366)
+09-18 10:08:39.386  4192  4192 I flutter : <asynchronous suspension>
+09-18 10:08:39.386  4192  4192 I flutter : #2      AndroidFlutterLocalNotificationsPlugin.initialize (package:flutter_local_notifications/src/platform_flutter_local_notifications.dart:148)
+09-18 10:08:39.386  4192  4192 I flutter : <asynchronous suspension>
+09-18 10:08:39.386  4192  4192 I flutter : #3      NotificationService.init (package:property_tycoon/services/notification_service.dart:85)
+09-18 10:08:39.386  4192  4192 I flutter : <asynchronous suspension>
+09-18 10:10:06.846  4192  4192 V Godot   : Initializing Godot plugin registry
+09-18 10:10:06.847  4192  4192 V Godot   : InitEngine with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:12:07.254  4679  4716 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+09-18 10:12:07.628  4679  4679 I flutter : Notification initialization skipped: PlatformException(invalid_icon, The resource @mipmap/ic_launcher could not be found. Please make sure it has been added as a drawable resource to your Android head project., null, null)
+09-18 10:12:07.628  4679  4679 I flutter : #0      StandardMethodCodec.decodeEnvelope (package:flutter/src/services/message_codecs.dart:653)
+09-18 10:12:07.628  4679  4679 I flutter : #1      MethodChannel._invokeMethod (package:flutter/src/services/platform_channel.dart:366)
+09-18 10:12:07.628  4679  4679 I flutter : <asynchronous suspension>
+09-18 10:12:07.628  4679  4679 I flutter : #2      AndroidFlutterLocalNotificationsPlugin.initialize (package:flutter_local_notifications/src/platform_flutter_local_notifications.dart:148)
+09-18 10:12:07.628  4679  4679 I flutter : <asynchronous suspension>
+09-18 10:12:07.628  4679  4679 I flutter : #3      NotificationService.init (package:property_tycoon/services/notification_service.dart:85)
+09-18 10:12:07.628  4679  4679 I flutter : <asynchronous suspension>
+09-18 10:12:47.067  4679  4679 V Godot   : Initializing Godot plugin registry
+09-18 10:12:47.067  4679  4679 V Godot   : InitEngine with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:12:47.067  4679  4679 V Godot   : Godot native layer initialization completed: true
+09-18 10:12:47.067  4679  4679 V Godot   : Setting up native layer with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:12:47.081  4679  4679 V Godot   : Godot native layer setup completed
+09-18 10:12:47.081  4679  4679 V Godot   : OnInitRenderView: GodotFragment{90233c9} (dfadb92f-3267-431c-997f-89747bcf55e7 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:12:47.084  4679  4679 D Godot   : Render view should be transparent: false
+09-18 10:12:47.085  4679  4679 E godot   : WARNING: Property not found: 'xr/shaders/enabled'.
+09-18 10:12:47.085  4679  4679 E godot   :    at: get_setting_with_override (core/config/project_settings.cpp:435)
+09-18 10:12:47.085  4679  4679 D Godot   : renderingDevice: opengl3 (ProjectSettings)
+09-18 10:12:47.085  4679  4679 D Godot   : 			renderer: gl_compatibility (ProjectSettings)
+09-18 10:12:47.087  4679  4679 E flutter : [ERROR:flutter/runtime/dart_vm_initializer.cc(40)] Unhandled Exception: PlatformException(error, No view found for id 0x3 (unknown) for fragment GodotFragment{90233c9} (dfadb92f-3267-431c-997f-89747bcf55e7 id=0x3 tag=property_tycoon_godot_fragment), null, java.lang.IllegalArgumentException: No view found for id 0x3 (unknown) for fragment GodotFragment{90233c9} (dfadb92f-3267-431c-997f-89747bcf55e7 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:12:47.087  4679  4679 E flutter : 	at androidx.fragment.app.j0.f(SourceFile:137)
+09-18 10:12:47.087  4679  4679 E flutter : 	at androidx.fragment.app.j0.k(SourceFile:206)
+09-18 10:12:47.087  4679  4679 E flutter : 	at androidx.fragment.app.c0.A(SourceFile:140)
+09-18 10:12:47.087  4679  4679 E flutter : 	at androidx.fragment.app.c0.S(SourceFile:82)
+09-18 10:12:47.087  4679  4679 E flutter : 	at androidx.fragment.app.a.f(SourceFile:124)
+09-18 10:12:47.087  4679  4679 E flutter : 	at com.hyu.properotyTycoon.a.<init>(SourceFile:175)
+09-18 10:12:47.087  4679  4679 E flutter : 	at io.flutter.plugin.platform.q.b(SourceFile:47)
+09-18 10:12:47.087  4679  4679 E flutter : 	at io.flutter.plugin.platform.m.y(SourceFile:32)
+09-18 10:12:47.087  4679  4679 E flutter : 	at A1.k.y(SourceFile:7)
+09-18 10:12:47.087  4679  4679 E flutter : 	at A1.t.k(SourceFile:990)
+09-18 10:12:47.087  4679  4679 E flutter : 	at A1.t.onMethodCall(SourceFile:373)
+09-18 10:12:47.087  4679  4679 E flutter : 	at A1.k.G(SourceFile:26)
+09-18 10:12:47.087  4679  4679 E flutter : 	at I0.c.run(SourceFile:128)
+09-18 10:12:47.087  4679  4679 E flutter : 	at android.os.Handler.handleCallback(Handler.java:959)
+09-18 10:12:47.087  4679  4679 E flutter : 	at android.os.Handler.dispatchMessage(Handler.java:100)
+09-18 10:12:47.087  4679  4679 E flutter : 	at android.os.Looper.loopOnce(Looper.java:232)
+09-18 10:12:47.087  4679  4679 E flutter : 	at android.os.Looper.loop(Looper.java:317)
+09-18 10:12:47.087  4679  4679 E flutter : 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+09-18 10:12:47.087  4679  4679 E flutter : 	at java.lang.reflect.Method.invoke(Native Method)
+09-18 10:12:47.087  4679  4679 E flutter : 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+09-18 10:12:47.087  4679  4679 E flutter : 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+09-18 10:12:47.087  4679  4679 E flutter : )
+09-18 10:12:47.087  4679  4679 E flutter : #0      StandardMethodCodec.decodeEnvelope (package:flutter/src/services/message_codecs.dart:653)
+09-18 10:12:47.087  4679  4679 E flutter : #1      MethodChannel._invokeMethod (package:flutter/src/services/platform_channel.dart:366)
+09-18 10:12:47.087  4679  4679 E flutter : <asynchronous suspension>
+09-18 10:12:47.087  4679  4679 E flutter : #2      SurfaceAndroidViewController._sendCreateMessage (package:flutter/src/services/platform_views.dart:1063)
+09-18 10:12:47.087  4679  4679 E flutter : <asynchronous suspension>
+09-18 10:12:47.087  4679  4679 E flutter : #3      AndroidViewController.create (package:flutter/src/services/platform_views.dart:852)
+09-18 10:12:47.087  4679  4679 E flutter : <asynchronous suspension>
+09-18 10:12:47.087  4679  4679 E flutter : 
+09-18 10:14:59.775  4991  5012 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+09-18 10:15:26.695  4991  4991 I flutter : Notifications are disabled; weekly scheduling was skipped.
+09-18 10:15:29.925  4991  4991 V Godot   : Initializing Godot plugin registry
+09-18 10:15:29.925  4991  4991 V Godot   : InitEngine with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:15:29.926  4991  4991 V Godot   : Godot native layer initialization completed: true
+09-18 10:15:29.926  4991  4991 V Godot   : Setting up native layer with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:15:29.942  4991  4991 V Godot   : Godot native layer setup completed
+09-18 10:15:29.942  4991  4991 V Godot   : OnInitRenderView: GodotFragment{afa3f73} (d2c4e2a3-8d0f-43a4-8bc5-90a562428e16 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:15:29.945  4991  4991 D Godot   : Render view should be transparent: false
+09-18 10:15:29.945  4991  4991 E godot   : WARNING: Property not found: 'xr/shaders/enabled'.
+09-18 10:15:29.945  4991  4991 E godot   :    at: get_setting_with_override (core/config/project_settings.cpp:435)
+09-18 10:15:29.946  4991  4991 D Godot   : renderingDevice: opengl3 (ProjectSettings)
+09-18 10:15:29.946  4991  4991 D Godot   : 			renderer: gl_compatibility (ProjectSettings)
+09-18 10:15:29.946  4991  4991 V Godot   : OnStart: GodotFragment{afa3f73} (d2c4e2a3-8d0f-43a4-8bc5-90a562428e16 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:15:29.946  4991  4991 V Godot   : OnResume: GodotFragment{afa3f73} (d2c4e2a3-8d0f-43a4-8bc5-90a562428e16 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:15:30.006  4991  5159 I godot   : Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+09-18 10:15:31.993  4991  5159 I godot   : OpenGL API OpenGL ES 3.0 (4.1 Metal - 91.7) - Compatibility - Using Device: Google (Apple) - Android Emulator OpenGL ES Translator (Apple M4 Pro)
+09-18 10:15:31.999  4991  5159 I godot   : 
+09-18 10:15:32.252  4991  5159 V Godot   : OnGodotSetupCompleted
+09-18 10:15:32.344  4991  5159 V Godot   : OnGodotMainLoopStarted
+09-18 10:18:26.173  4991  4991 V Godot   : OnPause: GodotFragment{afa3f73} (d2c4e2a3-8d0f-43a4-8bc5-90a562428e16 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:18:27.031  4991  4991 V Godot   : OnStop: GodotFragment{afa3f73} (d2c4e2a3-8d0f-43a4-8bc5-90a562428e16 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:18:28.168  4991  4991 V Godot   : OnStart: GodotFragment{afa3f73} (d2c4e2a3-8d0f-43a4-8bc5-90a562428e16 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:18:28.169  4991  4991 V Godot   : OnResume: GodotFragment{afa3f73} (d2c4e2a3-8d0f-43a4-8bc5-90a562428e16 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:19:26.413  4991  4991 I flutter : Game saved successfully
+09-18 10:19:31.500  5719  5739 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+09-18 10:20:06.971  5719  5719 I flutter : Notifications are disabled; weekly scheduling was skipped.
+09-18 10:20:07.990  5719  5719 I flutter : Game loaded successfully
+09-18 10:20:08.038  5719  5719 V Godot   : Initializing Godot plugin registry
+09-18 10:20:08.038  5719  5719 V Godot   : InitEngine with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:20:08.039  5719  5719 V Godot   : Godot native layer initialization completed: true
+09-18 10:20:08.039  5719  5719 V Godot   : Setting up native layer with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:20:08.057  5719  5719 V Godot   : Godot native layer setup completed
+09-18 10:20:08.058  5719  5719 V Godot   : OnInitRenderView: GodotFragment{871e632} (79915f9c-d223-434d-877c-7c384bff21bb id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:20:08.062  5719  5719 D Godot   : Render view should be transparent: false
+09-18 10:20:08.062  5719  5719 E godot   : WARNING: Property not found: 'xr/shaders/enabled'.
+09-18 10:20:08.062  5719  5719 E godot   :    at: get_setting_with_override (core/config/project_settings.cpp:435)
+09-18 10:20:08.062  5719  5719 D Godot   : renderingDevice: opengl3 (ProjectSettings)
+09-18 10:20:08.062  5719  5719 D Godot   : 			renderer: gl_compatibility (ProjectSettings)
+09-18 10:20:08.067  5719  5719 V Godot   : OnStart: GodotFragment{871e632} (79915f9c-d223-434d-877c-7c384bff21bb id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:20:08.067  5719  5719 V Godot   : OnResume: GodotFragment{871e632} (79915f9c-d223-434d-877c-7c384bff21bb id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:20:08.155  5719  5836 I godot   : Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+09-18 10:20:09.140  5719  5836 I godot   : OpenGL API OpenGL ES 3.0 (4.1 Metal - 91.7) - Compatibility - Using Device: Google (Apple) - Android Emulator OpenGL ES Translator (Apple M4 Pro)
+09-18 10:20:09.147  5719  5836 I godot   : 
+09-18 10:20:09.348  5719  5836 V Godot   : OnGodotSetupCompleted
+09-18 10:20:09.453  5719  5836 V Godot   : OnGodotMainLoopStarted
+09-18 10:21:15.361  5719  5836 V Godot   : OnGodotTerminating
+09-18 10:21:15.365  5719  5719 V Godot   : OnPause: GodotFragment{871e632} (79915f9c-d223-434d-877c-7c384bff21bb id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:24:45.597  5719  5719 I flutter : Game loaded successfully
+09-18 10:24:45.640  5719  5719 V Godot   : OnResume: GodotFragment{871e632} (79915f9c-d223-434d-877c-7c384bff21bb id=0x3 tag=property_tycoon_godot_fragment)

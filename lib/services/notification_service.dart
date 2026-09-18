@@ -56,7 +56,7 @@ class NotificationService {
 
       // Android initialization settings
       const androidSettings = AndroidInitializationSettings(
-        '@mipmap/ic_launcher',
+        'ic_notification',
       );
 
       // Request permission explicitly after initialization so scheduling can be

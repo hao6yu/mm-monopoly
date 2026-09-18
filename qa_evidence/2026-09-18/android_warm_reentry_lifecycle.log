@@ -1,0 +1,29 @@
+09-18 10:30:47.708   569   604 I ActivityManager: Start proc 6116:com.hyu.properotyTycoon/u0a207 for broadcast {com.hyu.properotyTycoon/com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver}
+09-18 10:30:47.803  6116  6132 D nativeloader: Load /data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk!/lib/arm64-v8a/libflutter.so using ns clns-7 from class loader (caller=/data/app/~~f4S9vKLgPvvI8CSSKIsqXw==/com.hyu.properotyTycoon-JVJRI2JtS-1_1G1lvawfRQ==/base.apk): ok
+09-18 10:30:47.827  6116  6134 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+09-18 10:30:48.457  6116  6116 I flutter : Notifications are disabled; weekly scheduling was skipped.
+09-18 10:31:01.881  6116  6116 I flutter : Game loaded successfully
+09-18 10:31:01.915  6116  6116 V Godot   : Initializing Godot plugin registry
+09-18 10:31:01.915  6116  6116 I GodotPluginRegistry: Registering runtime plugin AndroidRuntime
+09-18 10:31:01.915  6116  6116 I GodotPluginRegistry: Registering runtime plugin PropertyTycoonBridge
+09-18 10:31:01.915  6116  6116 V Godot   : InitEngine with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:31:01.916  6116  6116 V Godot   : Godot native layer initialization completed: true
+09-18 10:31:01.916  6116  6116 V Godot   : Setting up native layer with params: [--main-pack, res://godot/property_tycoon.pck]
+09-18 10:31:01.936  6116  6116 V Godot   : Godot native layer setup completed
+09-18 10:31:01.937  6116  6116 V Godot   : OnInitRenderView: GodotFragment{4d0d394} (9908181a-9e9c-46cb-9d71-8e332ba4b277 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:31:01.940  6116  6116 D Godot   : Render view should be transparent: false
+09-18 10:31:01.940  6116  6116 D Godot   : renderingDevice: opengl3 (ProjectSettings)
+09-18 10:31:01.940  6116  6116 D Godot   : 			renderer: gl_compatibility (ProjectSettings)
+09-18 10:31:01.941  6116  6116 V Godot   : OnStart: GodotFragment{4d0d394} (9908181a-9e9c-46cb-9d71-8e332ba4b277 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:31:01.944  6116  6116 V Godot   : OnResume: GodotFragment{4d0d394} (9908181a-9e9c-46cb-9d71-8e332ba4b277 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:31:02.097  6116  6251 I godot   : Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+09-18 10:31:03.254  6116  6251 V Godot   : OnGodotSetupCompleted
+09-18 10:31:03.321  6116  6251 V Godot   : OnGodotMainLoopStarted
+09-18 10:31:44.534  6116  6251 W GLThread: eglSwapBuffers failed: EGL_BAD_SURFACE
+09-18 10:31:44.534  6116  6251 D GLThread: Exiting render thread
+09-18 10:31:44.534  6116  6251 D GodotRenderer: Destroying Godot Engine
+09-18 10:31:44.545  6116  6251 E eglCodecCommon: removeVertexArrayObject: ERROR: 7 not found in VAO state!
+09-18 10:31:44.555  6116  6251 V Godot   : OnGodotTerminating
+09-18 10:31:44.559  6116  6116 V Godot   : OnPause: GodotFragment{4d0d394} (9908181a-9e9c-46cb-9d71-8e332ba4b277 id=0x3 tag=property_tycoon_godot_fragment)
+09-18 10:32:26.593  6116  6116 I flutter : Game loaded successfully
+09-18 10:32:26.695  6116  6116 V Godot   : OnResume: GodotFragment{4d0d394} (9908181a-9e9c-46cb-9d71-8e332ba4b277 id=0x3 tag=property_tycoon_godot_fragment)

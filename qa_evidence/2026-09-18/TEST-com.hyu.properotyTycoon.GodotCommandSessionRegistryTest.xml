@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.hyu.properotyTycoon.GodotCommandSessionRegistryTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-18T15:22:34" hostname="Mac" time="0.024">
+  <properties/>
+  <testcase name="peekSessionReturnsOwningSessionWithoutConsumingTheCommand" classname="com.hyu.properotyTycoon.GodotCommandSessionRegistryTest" time="0.003"/>
+  <testcase name="legacyCommandWithoutTimestampIsStillBoundedFromReceipt" classname="com.hyu.properotyTycoon.GodotCommandSessionRegistryTest" time="0.0"/>
+  <testcase name="retainsOnlyTheLast64Commands" classname="com.hyu.properotyTycoon.GodotCommandSessionRegistryTest" time="0.017"/>
+  <testcase name="rejectsExpiredAndImplausiblyFutureTimestampPrefixes" classname="com.hyu.properotyTycoon.GodotCommandSessionRegistryTest" time="0.001"/>
+  <testcase name="prunesCancelledCommandsByAgeAndReturnsLiveSession" classname="com.hyu.properotyTycoon.GodotCommandSessionRegistryTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

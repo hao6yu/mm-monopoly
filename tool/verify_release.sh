@@ -6,6 +6,7 @@
 #   tool/verify_release.sh                      # verify default artifacts
 #   APP_BUNDLE=path tool/verify_release.sh      # verify a specific AAB
 #   IOS_APP=path tool/verify_release.sh         # verify a specific Runner.app
+# These are local artifact checks, not App Store validation or Play approval.
 #
 # Distinguishes successful compilation from a distributable signed artifact,
 # verifies version/build numbers, the declared Android permissions against
@@ -22,6 +23,11 @@ IOS_APP="${IOS_APP:-build/ios/iphoneos/Runner.app}"
 IOS_PCK="ios/Runner/Godot/property_tycoon.pck"
 ANDROID_PCK="android/app/src/main/assets/godot/property_tycoon.pck"
 BUNDLETOOL="${BUNDLETOOL:-$project_dir/.tools/bundletool.jar}"
+# Public certificate fingerprint of the owner's existing release key. This
+# game's first Play upload will establish its upload identity (not yet uploaded).
+EXPECTED_ANDROID_CERT_SHA256="${EXPECTED_ANDROID_CERT_SHA256:-22:67:D0:88:FB:43:EA:2E:85:7B:02:FF:2D:DD:F0:10:2D:29:FD:DF:EA:BE:85:28:5E:F9:C1:D4:E3:CA:9D:F8}"
+verify_tmp="$(mktemp -d)" || exit 1
+trap 'rm -f "$verify_tmp/libapp.so" "$verify_tmp/jarsigner.txt" "$verify_tmp/dex-symbols.txt"; rmdir "$verify_tmp"' EXIT
 
 pass=0
 fail=0
@@ -69,6 +75,7 @@ EXPECTED_PERMISSIONS=(
   CAMERA
   POST_NOTIFICATIONS
   RECEIVE_BOOT_COMPLETED
+  VIBRATE
 )
 
 flutter_bin="$(flutter_binary)"
@@ -126,41 +133,91 @@ if [[ -f "$APP_BUNDLE" ]]; then
         ok "no forbidden permission: android.permission.$forbidden"
       fi
     done
+    while IFS= read -r permission; do
+      allowed=0
+      # AndroidX's app-scoped signature permission protects dynamic receivers;
+      # it is not a user-data permission. Do not allow arbitrary custom names.
+      [[ "$permission" == 'com.hyu.properotyTycoon.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION' ]] && allowed=1
+      for expected in "${EXPECTED_PERMISSIONS[@]}"; do
+        [[ "$permission" == "android.permission.$expected" ]] && allowed=1
+      done
+      [[ "$allowed" -eq 1 ]] || bad "unreviewed permission: $permission"
+    done <<< "$permissions"
   else
     bad "bundletool jar not found at $BUNDLETOOL; cannot inspect the merged manifest"
   fi
 
-  # Signing: a distributable AAB carries a v2/v3 JAR signature (META-INF).
-  if unzip -l "$APP_BUNDLE" 'META-INF/*' 2>/dev/null | grep -Eq 'META-INF/.*\.(RSA|DSA|EC)'; then
-    ok 'AAB carries a signature block (distributable if the certificate is the release identity)'
-    unzip -l "$APP_BUNDLE" 'META-INF/*' 2>/dev/null | grep -E '\.(RSA|DSA|EC)' | sed 's/^/       /'
+  # AABs use JAR signing, not APK v2/v3 signing. A signature block alone
+  # does not prove integrity; verify the contents and pin the public identity.
+  # Consume the complete listing: grep -q may SIGPIPE unzip under pipefail.
+  if unzip -l "$APP_BUNDLE" 'META-INF/*' 2>/dev/null | grep -E 'META-INF/.*\.(RSA|DSA|EC)' >/dev/null; then
+    if jarsigner -J-Duser.language=en -verify "$APP_BUNDLE" > "$verify_tmp/jarsigner.txt" 2>&1 \
+      && grep -q 'jar verified\.' "$verify_tmp/jarsigner.txt" \
+      && ! grep -qi 'unsigned entries' "$verify_tmp/jarsigner.txt"; then
+      ok 'AAB JAR signature verifies, with no unsigned entries'
+    else
+      bad 'AAB signature verification failed or contains unsigned entries'
+    fi
+    actual_certificate="$(keytool -J-Duser.language=en -printcert -jarfile "$APP_BUNDLE" 2>/dev/null | sed -n 's/.*SHA256: //p' | sort -u)"
+    if [[ "$actual_certificate" == "$EXPECTED_ANDROID_CERT_SHA256" ]]; then
+      ok "AAB certificate matches expected release identity: $actual_certificate"
+    else
+      bad "AAB certificate does not match expected release identity: $actual_certificate"
+    fi
   else
-    info 'AAB is UNSIGNED (no signature block): compilation artifact only, not distributable'
+    bad 'AAB is UNSIGNED: compilation artifact only, not distributable'
   fi
 
-  # QA exclusion in the actual Flutter AOT snapshot.
-  aot_path="$(unzip -Z "$APP_BUNDLE" 2>/dev/null | grep -E 'lib/arm64-v8a/libapp[.]so$' | awk '{print $NF}' | head -1)"
-  if [[ -n "$aot_path" ]]; then
-    libapp="$(mktemp -d)/libapp.so"
-    unzip -p "$APP_BUNDLE" "$aot_path" > "$libapp" 2>/dev/null
-    if [[ "$(strings "$libapp" | grep -cF "$CANARY_STRING")" -gt 0 ]]; then
-      ok "AOT snapshot readable (canary string present in libapp.so)"
-    else
-      bad 'AOT snapshot canary string missing; strings check is not trustworthy'
-    fi
-    qa_hit=0
-    for marker in "${QA_MARKERS[@]}"; do
-      if [[ "$(strings "$libapp" | grep -cF "$marker")" -gt 0 ]]; then
-        bad "QA marker '$marker' found in libapp.so"
-        qa_hit=1
-      fi
-    done
-    if [[ "$qa_hit" -eq 0 ]]; then
-      ok 'no QA-autoplay markers in the AOT snapshot (store entrypoint)'
-    fi
-    rm -rf "$(dirname "$libapp")"
+  embedded_android_pck="$(unzip -p "$APP_BUNDLE" base/assets/godot/property_tycoon.pck 2>/dev/null | shasum -a 256 | awk '{print $1}')"
+  if [[ "$embedded_android_pck" == "$(sha256_of "$ANDROID_PCK")" ]]; then
+    ok 'Android embedded PCK matches source pack'
   else
-    bad 'lib/arm64-v8a/libapp.so missing from the AAB'
+    bad 'Android embedded PCK missing or differs from source pack'
+  fi
+
+  # Release-only R8 regression canaries. Native Godot uses these exact Java
+  # descriptors/names. This caught the missing GodotRenderView return type;
+  # symbol presence is not a substitute for booting a minified release build.
+  unzip -p "$APP_BUNDLE" 'base/dex/classes*.dex' 2>/dev/null | strings > "$verify_tmp/dex-symbols.txt"
+  jni_missing=0
+  for symbol in 'Lorg/godotengine/godot/GodotRenderView;' \
+    'Lorg/godotengine/godot/GodotIO;' \
+    'Lorg/godotengine/godot/nativeapi/GodotNativeBridge;' \
+    getRenderView openURI stateApplied movementComplete boardObjectTapped; do
+    # DEX strings can have a printable length prefix; do not require an exact
+    # line match from the generic strings utility.
+    if ! grep -Fq "$symbol" "$verify_tmp/dex-symbols.txt"; then
+      bad "Godot JNI/bridge symbol missing from release DEX: $symbol"
+      jni_missing=1
+    fi
+  done
+  [[ "$jni_missing" -ne 0 ]] || ok 'Godot JNI/bridge symbol canaries survive release shrinking'
+
+  # QA exclusion in the actual Flutter AOT snapshot.
+  aot_paths="$(unzip -Z1 "$APP_BUNDLE" 2>/dev/null | grep -E '^base/lib/[^/]+/libapp[.]so$')"
+  if [[ -n "$aot_paths" ]]; then
+    while IFS= read -r aot_path; do
+      info "checking $aot_path"
+      libapp="$verify_tmp/libapp.so"
+      unzip -p "$APP_BUNDLE" "$aot_path" > "$libapp" 2>/dev/null
+      if [[ "$(strings "$libapp" | grep -cF "$CANARY_STRING")" -gt 0 ]]; then
+        ok "AOT snapshot readable (canary string present in libapp.so)"
+      else
+        bad 'AOT snapshot canary string missing; strings check is not trustworthy'
+      fi
+      qa_hit=0
+      for marker in "${QA_MARKERS[@]}"; do
+        if [[ "$(strings "$libapp" | grep -cF "$marker")" -gt 0 ]]; then
+          bad "QA marker '$marker' found in libapp.so"
+          qa_hit=1
+        fi
+      done
+      if [[ "$qa_hit" -eq 0 ]]; then
+        ok 'no QA-autoplay markers in the AOT snapshot (store entrypoint)'
+      fi
+    done <<< "$aot_paths"
+  else
+    bad 'no libapp.so AOT snapshots found in the AAB'
   fi
 else
   printf '\n=== Android release AAB ===\n'
@@ -185,18 +242,25 @@ if [[ -d "$IOS_APP" ]]; then
 
   ios_plist="$IOS_APP/Info.plist"
   if [[ -f "$ios_plist" ]]; then
-    ios_version="$(defaults read "$(pwd)/$ios_plist" CFBundleShortVersionString 2>/dev/null)"
-    ios_build="$(defaults read "$(pwd)/$ios_plist" CFBundleVersion 2>/dev/null)"
+    ios_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ios_plist" 2>/dev/null)"
+    ios_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ios_plist" 2>/dev/null)"
     if [[ "$ios_version" == "$expected_version_name" ]]; then
       ok "CFBundleShortVersionString $ios_version matches pubspec (build $ios_build)"
     else
       bad "CFBundleShortVersionString '$ios_version' does not match pubspec '$expected_version'"
     fi
-    if defaults read "$(pwd)/$ios_plist" UIBackgroundModes >/dev/null 2>&1; then
+    if [[ "$ios_build" == "$expected_version_code" ]]; then
+      ok "CFBundleVersion $ios_build matches pubspec build number"
+    else
+      bad "CFBundleVersion '$ios_build' does not match pubspec '$expected_version_code'"
+    fi
+    if /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes' "$ios_plist" >/dev/null 2>&1; then
       bad 'UIBackgroundModes present in Info.plist (should be absent for a local-notification app)'
     else
       ok 'no UIBackgroundModes in Info.plist'
     fi
+  else
+    bad "Info.plist missing at $ios_plist"
   fi
 
   app_framework="$IOS_APP/Frameworks/App.framework/App"
@@ -220,14 +284,14 @@ if [[ -d "$IOS_APP" ]]; then
     bad "App.framework missing at $app_framework"
   fi
 
-  if codesign -dv "$IOS_APP" >/dev/null 2>&1; then
-    ok 'iOS .app is code-signed'
+  if codesign --verify --deep --strict "$IOS_APP" >/dev/null 2>&1; then
+    ok 'iOS .app code signature verifies (not App Store distribution validation)'
     info "$(codesign -dv "$IOS_APP" 2>&1 | grep -E 'TeamIdentifier|Authority' | head -2 | tr '\n' '; ')"
   else
-    info 'iOS .app is NOT code-signed (unsigned compilation artifact)'
+    bad 'iOS .app code signature is missing or fails verification'
   fi
   [[ -f "$IOS_APP/embedded.mobileprovision" ]] \
-    && ok 'embedded provisioning profile present (device-distributable)' \
+    && ok 'embedded provisioning profile present (distribution eligibility not asserted)' \
     || info 'no embedded provisioning profile'
 else
   printf '\n=== iOS release .app ===\n'

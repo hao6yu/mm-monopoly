@@ -1,0 +1,62 @@
+
+=== Toolchain ===
+  ---- Flutter 3.44.6 • channel stable • https://github.com/flutter/flutter.git
+  ---- iOS PCK: d86a4afe5a3420b05ca960c5f250a606d036a647c1a895cb8af9f0275171add7  (ios/Runner/Godot/property_tycoon.pck)
+  ---- Android PCK: 8c9d78808bec305bad0fefa9d1d4fbaa1a681ad1dbcdb7103dc2a4d85aea00b6  (android/app/src/main/assets/godot/property_tycoon.pck)
+  ---- pubspec version: 2.0.1+12
+
+=== Android release AAB: build/app/outputs/bundle/release/app-release.aab ===
+  ---- size: 155M
+  ---- sha256: d5bf68372ed27462193f03668b90a37b314ddb3f588ea639fb681f719e43630f
+  [32mPASS[0m versionName 2.0.1 matches pubspec (versionCode 12)
+  [32mPASS[0m versionCode 12 matches pubspec build number
+  ---- merged-manifest permissions:
+       android.permission.CAMERA
+       android.permission.POST_NOTIFICATIONS
+       android.permission.RECEIVE_BOOT_COMPLETED
+       android.permission.VIBRATE
+       com.hyu.properotyTycoon.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+  [32mPASS[0m expected permission present: android.permission.CAMERA
+  [32mPASS[0m expected permission present: android.permission.POST_NOTIFICATIONS
+  [32mPASS[0m expected permission present: android.permission.RECEIVE_BOOT_COMPLETED
+  [32mPASS[0m expected permission present: android.permission.VIBRATE
+  [32mPASS[0m no forbidden permission: android.permission.DUMP
+  [32mPASS[0m no forbidden permission: android.permission.READ_MEDIA_IMAGES
+  [32mPASS[0m no forbidden permission: android.permission.READ_EXTERNAL_STORAGE
+  [32mPASS[0m no forbidden permission: android.permission.SCHEDULE_EXACT_ALARM
+  [32mPASS[0m no forbidden permission: android.permission.USE_EXACT_ALARM
+  [32mPASS[0m no forbidden permission: android.permission.READ_MEDIA_VISUAL_USER_SELECTED
+  [32mPASS[0m no forbidden permission: android.permission.ACCESS_FINE_LOCATION
+  [32mPASS[0m no forbidden permission: android.permission.RECORD_AUDIO
+  [32mPASS[0m no forbidden permission: android.permission.READ_CONTACTS
+  [32mPASS[0m AAB JAR signature verifies, with no unsigned entries
+  [32mPASS[0m AAB certificate matches expected release identity: 22:67:D0:88:FB:43:EA:2E:85:7B:02:FF:2D:DD:F0:10:2D:29:FD:DF:EA:BE:85:28:5E:F9:C1:D4:E3:CA:9D:F8
+  [32mPASS[0m Android embedded PCK matches source pack
+  [31mFAIL[0m Godot JNI/bridge symbol missing from release DEX: Lorg/godotengine/godot/GodotRenderView;
+  [31mFAIL[0m Godot JNI/bridge symbol missing from release DEX: openURI
+  [31mFAIL[0m Godot JNI/bridge symbol missing from release DEX: stateApplied
+  [31mFAIL[0m Godot JNI/bridge symbol missing from release DEX: movementComplete
+  [31mFAIL[0m Godot JNI/bridge symbol missing from release DEX: boardObjectTapped
+  ---- checking base/lib/arm64-v8a/libapp.so
+  [32mPASS[0m AOT snapshot readable (canary string present in libapp.so)
+  [32mPASS[0m no QA-autoplay markers in the AOT snapshot (store entrypoint)
+  ---- checking base/lib/armeabi-v7a/libapp.so
+  [32mPASS[0m AOT snapshot readable (canary string present in libapp.so)
+  [32mPASS[0m no QA-autoplay markers in the AOT snapshot (store entrypoint)
+  ---- checking base/lib/x86_64/libapp.so
+  [32mPASS[0m AOT snapshot readable (canary string present in libapp.so)
+  [32mPASS[0m no QA-autoplay markers in the AOT snapshot (store entrypoint)
+
+=== iOS release .app: build/ios/iphoneos/Runner.app ===
+  ---- size: 154M
+  [32mPASS[0m embedded PCK matches source pack (d86a4afe5a3420b05ca960c5f250a606d036a647c1a895cb8af9f0275171add7)
+  [32mPASS[0m CFBundleShortVersionString 2.0.1 matches pubspec (build 12)
+  [32mPASS[0m CFBundleVersion 12 matches pubspec build number
+  [32mPASS[0m no UIBackgroundModes in Info.plist
+  [32mPASS[0m AOT snapshot readable (canary string present in App.framework)
+  [32mPASS[0m no QA-autoplay markers in the AOT snapshot (store entrypoint)
+  [32mPASS[0m iOS .app code signature verifies (not App Store distribution validation)
+  ---- TeamIdentifier=F9XW9FCX92;
+  [32mPASS[0m embedded provisioning profile present (distribution eligibility not asserted)
+
+=== Result: 32 passed, 5 failed ===
