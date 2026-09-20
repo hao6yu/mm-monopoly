@@ -1822,4 +1822,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get aiLevelHotel => 'un hotel';
+
+  @override
+  String get diceType => 'Tipo de Dado';
+
+  @override
+  String get sixSidedDice => 'Dado Clásico (D6)';
+
+  @override
+  String get twelveSidedDice => 'Dado de Doce Caras (D12)';
+
+  @override
+  String get d12Style => 'Tira de 1 a 12';
 }

@@ -11,7 +11,8 @@ Flutter sends:
 - `scene_state`: game `sessionId`, monotonic `stateGeneration`, board ID,
   localized tile names and types, prices, ownership, upgrades, mortgage state,
   completed color-group state, logical tile count, visual spot count, current
-  turn, dice, and player state.
+  turn, dice, dice shape (`diceSides`: 6 = classic cube, 12 = dodecahedron;
+  the 3D dice rebuild themselves when the shape changes), and player state.
 - `animate_roll`: dice values, logical start/destination, and a mapped visual
   path. Godot uses that path for the route preview, destination beacon, dice
   animation, pawn movement, and landing reaction before returning completion.
@@ -147,6 +148,13 @@ The Flutter splash, main menu, and two-step setup flow use a lightweight
 Flutter-drawn miniature city backdrop rather than a second Godot surface. This
 keeps startup immediate while matching the embedded renderer's navy, teal,
 gold, water, island, skyline, and glass-panel visual language.
+
+Dice presentation notes: the two dice rest on their dock at slots computed
+against the camera's screen-right axis, so the pair always reads side by side
+no matter how the player orbits (fixed world-axis lanes visually stacked the
+dice from along-axis views). Twelve-sided games render procedural
+dodecahedra with numerals on every pentagonal face; opposite faces sum to 13
+and the settle rotation brings the rolled value upright on top.
 
 The Godot city catalog mirrors `CityBoardRegistry`: Atlantic City, New York
 City, Los Angeles, London, Edinburgh, Manchester, Paris, Lyon, Marseille,

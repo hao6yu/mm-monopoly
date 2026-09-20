@@ -55,6 +55,8 @@ QA_MARKERS=(
   'PT_QA_AUTOPLAY'
   'QaAutoplayApp'
   'M&M Property Tycoon QA'
+  'QaScreenshotTourApp'
+  'TOUR '
 )
 # A Dart string literal that must exist in the store entrypoint's snapshot
 # (the Godot bridge channel name), proving the strings search is live.

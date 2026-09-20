@@ -110,6 +110,9 @@ class GameState {
   // Number of dice to use (1 or 2)
   int diceCount;
 
+  // Number of faces per die (6 = classic cube, 12 = dodecahedron)
+  int diceSides;
+
   GameState({
     required this.id,
     required this.createdAt,
@@ -145,6 +148,7 @@ class GameState {
     this.totalDiceSum = 0,
     this.doublesRolledTotal = 0,
     this.diceCount = 2,
+    this.diceSides = 6,
   }) : boardTheme = boardTheme ?? BoardThemes.classic,
        playerPowerUps = playerPowerUps ?? {},
        activePowerUps = activePowerUps ?? [],
@@ -243,6 +247,7 @@ class GameState {
     WinCondition winCondition = WinCondition.lastStanding,
     int startingCash = 1500,
     int diceCount = 2,
+    int diceSides = 6,
     String cityBoardId = 'usa',
   }) {
     // Set starting cash for all players
@@ -262,6 +267,7 @@ class GameState {
       die1Value: 0,
       die2Value: 0,
       diceCount: diceCount,
+      diceSides: diceSides,
       cityBoardId: cityBoardId,
     );
   }
@@ -301,6 +307,7 @@ class GameState {
     int? totalDiceSum,
     int? doublesRolledTotal,
     int? diceCount,
+    int? diceSides,
     String? cityBoardId,
   }) {
     return GameState(
@@ -338,6 +345,7 @@ class GameState {
       totalDiceSum: totalDiceSum ?? this.totalDiceSum,
       doublesRolledTotal: doublesRolledTotal ?? this.doublesRolledTotal,
       diceCount: diceCount ?? this.diceCount,
+      diceSides: diceSides ?? this.diceSides,
     );
   }
 
@@ -471,6 +479,7 @@ class GameState {
       'totalDiceSum': totalDiceSum,
       'doublesRolledTotal': doublesRolledTotal,
       'diceCount': diceCount,
+      'diceSides': diceSides,
     };
   }
 
@@ -550,6 +559,7 @@ class GameState {
       totalDiceSum: json['totalDiceSum'] as int,
       doublesRolledTotal: json['doublesRolledTotal'] as int,
       diceCount: json['diceCount'] as int,
+      diceSides: (json['diceSides'] as int?) ?? 6,
     );
   }
 }

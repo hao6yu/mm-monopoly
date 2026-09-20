@@ -688,5 +688,9 @@
   "privacyContactTitle": "联系我们",
   "privacyContact": "对本政策有疑问?请通过设置中的支持链接或应用商店页面上的联系方式与开发者取得联系。",
   "aiLevelHouse": "房屋",
-  "aiLevelHotel": "酒店"
+  "aiLevelHotel": "酒店",
+  "diceType": "骰子类型",
+  "sixSidedDice": "经典六面 (D6)",
+  "twelveSidedDice": "十二面骰 (D12)",
+  "d12Style": "掷出 1–12 点"
 }

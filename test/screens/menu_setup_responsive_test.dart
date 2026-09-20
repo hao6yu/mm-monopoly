@@ -66,6 +66,7 @@ void main() {
                   (
                     _, {
                     diceCount = 2,
+                    diceSides = 6,
                     cityBoard = const CityBoard(
                       country: Country.usa,
                       cityId: 'atlantic_city',
@@ -91,7 +92,10 @@ void main() {
         if (size.width < 700 && size.height > size.width) {
           expect(find.byType(Scrollbar), findsOneWidget);
           expect(find.text('One Die'), findsOneWidget);
-          expect(find.text('Classic style'), findsOneWidget);
+          // "Classic style" labels both the one-die card and the D6 card.
+          expect(find.text('Classic style'), findsNWidgets(2));
+          expect(find.byKey(const Key('setup-dice-sides-6')), findsOneWidget);
+          expect(find.byKey(const Key('setup-dice-sides-12')), findsOneWidget);
         }
 
         await tester.tap(find.text('Next'));
@@ -133,6 +137,7 @@ void main() {
                   (
                     _, {
                     diceCount = 2,
+                    diceSides = 6,
                     cityBoard = const CityBoard(
                       country: Country.usa,
                       cityId: 'atlantic_city',
@@ -164,7 +169,7 @@ void main() {
       localizedApp(
         GameSetupScreen(
           onBack: () => backCount++,
-          onStartGame: (_, {diceCount = 2, required cityBoard}) {
+          onStartGame: (_, {diceCount = 2, diceSides = 6, required cityBoard}) {
             startCount++;
             return startCompleter.future;
           },

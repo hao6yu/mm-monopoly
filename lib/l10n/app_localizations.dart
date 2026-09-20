@@ -3355,6 +3355,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'a hotel'**
   String get aiLevelHotel;
+
+  /// No description provided for @diceType.
+  ///
+  /// In en, this message translates to:
+  /// **'Dice Type'**
+  String get diceType;
+
+  /// No description provided for @sixSidedDice.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic D6'**
+  String get sixSidedDice;
+
+  /// No description provided for @twelveSidedDice.
+  ///
+  /// In en, this message translates to:
+  /// **'Twelve-Sided D12'**
+  String get twelveSidedDice;
+
+  /// No description provided for @d12Style.
+  ///
+  /// In en, this message translates to:
+  /// **'Rolls 1–12'**
+  String get d12Style;
 }
 
 class _AppLocalizationsDelegate

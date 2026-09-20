@@ -1009,5 +1009,9 @@
   "privacyContactTitle": "Contact",
   "privacyContact": "Questions about this policy? Reach the developer through the support link in Settings or the contact options in the app store listing.",
   "aiLevelHouse": "a house",
-  "aiLevelHotel": "a hotel"
+  "aiLevelHotel": "a hotel",
+  "diceType": "Dice Type",
+  "sixSidedDice": "Classic D6",
+  "twelveSidedDice": "Twelve-Sided D12",
+  "d12Style": "Rolls 1–12"
 }

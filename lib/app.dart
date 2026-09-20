@@ -98,6 +98,7 @@ class _AppNavigatorState extends State<AppNavigator>
   GameResult? _gameResult;
   GameSettings _settings = const GameSettings();
   int _diceCount = 2; // Track dice count for the game
+  int _diceSides = 6; // Track dice faces (6 = classic, 12 = dodecahedron)
   CityBoard _selectedCityBoard = CityBoardRegistry.defaultForCountry(
     Country.usa,
   ); // Track selected city board
@@ -120,6 +121,7 @@ class _AppNavigatorState extends State<AppNavigator>
     }
     _gameResult = widget.initialGameResult;
     _diceCount = _gameSession?.state.diceCount ?? _diceCount;
+    _diceSides = _gameSession?.state.diceSides ?? _diceSides;
     final restoredBoardId = _gameSession?.state.cityBoardId;
     _selectedCityBoard =
         widget.initialCityBoard ??
@@ -193,6 +195,7 @@ class _AppNavigatorState extends State<AppNavigator>
   Future<void> _startGame(
     List<PlayerConfig> configs, {
     int diceCount = 2,
+    int diceSides = 6,
     CityBoard? cityBoard,
   }) async {
     final board = cityBoard ?? CityBoardRegistry.defaultForCountry(Country.usa);
@@ -220,6 +223,7 @@ class _AppNavigatorState extends State<AppNavigator>
     // Create game state using factory constructor
     setState(() {
       _diceCount = diceCount;
+      _diceSides = diceSides;
       _selectedCityBoard = board;
       _ensureBoardController();
       _gameSession = GameSessionController(
@@ -228,6 +232,7 @@ class _AppNavigatorState extends State<AppNavigator>
           tiles: tiles,
           startingCash: _settings.startingCash,
           diceCount: diceCount,
+          diceSides: diceSides,
           cityBoardId: board.boardId,
         ),
       );
@@ -260,6 +265,7 @@ class _AppNavigatorState extends State<AppNavigator>
           CityBoardRegistry.byBoardId(session.state.cityBoardId) ??
           _inferCityBoardFromTheme(session.state.boardTheme.id);
       final diceCount = session.state.diceCount;
+      final diceSides = session.state.diceSides;
       // Reset all players
       final resetPlayers = session.state.players.map((p) {
         return Player(
@@ -295,6 +301,7 @@ class _AppNavigatorState extends State<AppNavigator>
       session.deactivate();
       setState(() {
         _diceCount = diceCount;
+        _diceSides = diceSides;
         _selectedCityBoard = board;
         _ensureBoardController();
       _gameSession = GameSessionController(
@@ -303,6 +310,7 @@ class _AppNavigatorState extends State<AppNavigator>
             tiles: tiles,
             startingCash: _settings.startingCash,
             diceCount: diceCount,
+            diceSides: diceSides,
             cityBoardId: board.boardId,
           ),
         );
@@ -323,6 +331,7 @@ class _AppNavigatorState extends State<AppNavigator>
       _gameSession = GameSessionController(savedState);
         _gameResult = null;
         _diceCount = savedState.diceCount;
+        _diceSides = savedState.diceSides;
         _selectedCityBoard =
             CityBoardRegistry.byBoardId(savedState.cityBoardId) ??
             _inferCityBoardFromTheme(savedState.boardTheme.id);
@@ -365,6 +374,7 @@ class _AppNavigatorState extends State<AppNavigator>
         _inferCityBoardFromTheme(state.boardTheme.id);
     setState(() {
       _diceCount = state.diceCount;
+      _diceSides = state.diceSides;
       _selectedCityBoard = board;
     });
     AudioService.instance.playGameMusic(boardId: board.boardId);
@@ -507,10 +517,6 @@ class _AppNavigatorState extends State<AppNavigator>
   /// switch the outgoing screen's late "hidden" report must not override the
   /// replacement's "visible".
   void _handleGameScreenBoardRequest(bool requested, Object session) {
-    final gameInForeground =
-        _currentScreen == AppScreen.game ||
-        (_currentScreen == AppScreen.howToPlay &&
-            _previousScreen == AppScreen.game);
     final isCurrentSession = identical(session, _gameSession);
     final isQuitReport = !requested && _gameSession == null;
     if (!isCurrentSession && !isQuitReport) return;

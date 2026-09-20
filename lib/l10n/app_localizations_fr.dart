@@ -1831,4 +1831,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aiLevelHotel => 'un hôtel';
+
+  @override
+  String get diceType => 'Type de Dé';
+
+  @override
+  String get sixSidedDice => 'Dé Classique (D6)';
+
+  @override
+  String get twelveSidedDice => 'Dé à Douze Faces (D12)';
+
+  @override
+  String get d12Style => 'Donne 1 à 12';
 }

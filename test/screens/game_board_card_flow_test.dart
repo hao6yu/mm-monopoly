@@ -13,6 +13,7 @@ import 'package:property_tycoon/models/tile.dart';
 import 'package:property_tycoon/integration/godot_board_controller.dart';
 import 'package:property_tycoon/screens/game_board_screen.dart';
 import 'package:property_tycoon/widgets/dialogs/card_pick_dialog.dart';
+import 'package:property_tycoon/widgets/board/game_board.dart';
 
 /// Drives real Chance/Community Chest card selection through
 /// [GameBoardScreen] for every movement family: amount cards, forward,
@@ -50,7 +51,12 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
     final city = CityBoardRegistry.byBoardId('usa_new_york')!;
     final players = [
-      Player(id: 'player_0', name: 'Mia', icon: PlayerIcon.dog, color: Colors.red),
+      Player(
+        id: 'player_0',
+        name: 'Mia',
+        icon: PlayerIcon.dog,
+        color: Colors.red,
+      ),
       Player(
         id: 'player_1',
         name: 'Noah',
@@ -82,9 +88,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 250));
 
-    return tester.state<GameBoardScreenState>(
-      find.byType(GameBoardScreen),
-    );
+    return tester.state<GameBoardScreenState>(find.byType(GameBoardScreen));
   }
 
   /// The flow's audio ducking schedules an 800 ms timer; expire it so the
@@ -97,31 +101,106 @@ void main() {
     return state.tiles.firstWhere((tile) => tile.type == type);
   }
 
-  testWidgets(
-    'amount card moves nobody and pays out through the screen',
-    (tester) async {
-      final screenState = await pumpBoard(tester);
-      final gameState = screenState.gameState;
-      final player = gameState.players.first;
-      final chanceTile = tileOfType(gameState, TileType.chance);
-      final cashBefore = player.cash;
-
-      final flow = screenState.drawCardForTesting(player, chanceTile);
-      await tester.pump();
-      expect(screenState.waitingForCardPickForTesting, isTrue);
-
-      screenState.handlePickedCardForTesting(
-        const PickableCard(text: '🎲', effect: '+\$25', action: 'collect25'),
+  for (final type in [TileType.chance, TileType.communityChest]) {
+    testWidgets('$type chooser auto-opens without a deck tap', (tester) async {
+      final screen = await pumpBoard(tester);
+      final flow = screen.drawCardForTesting(
+        screen.gameState.players.first,
+        tileOfType(screen.gameState, type),
+      );
+      await tester.pump(const Duration(milliseconds: 1000));
+      expect(find.byType(CardPickDialog), findsNothing);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(CardPickDialog), findsOneWidget);
+      expect(
+        tester.widget<CardPickDialog>(find.byType(CardPickDialog)).isChance,
+        type == TileType.chance,
+      );
+      screen.handlePickedCardForTesting(
+        const PickableCard(text: 'test', effect: '+25', action: 'collect25'),
       );
       await flow;
+      await tester.pumpWidget(const SizedBox.shrink());
       await flushAudioTimers(tester);
+    });
+  }
 
-      expect(player.position, 0);
-      expect(player.cash, cashBefore + 25);
-      expect(screenState.waitingForCardPickForTesting, isFalse);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('invalidated turn cannot auto-open a card chooser', (
+    tester,
+  ) async {
+    final screen = await pumpBoard(tester);
+    final flow = screen.drawCardForTesting(
+      screen.gameState.players.first,
+      tileOfType(screen.gameState, TileType.chance),
+    );
+    screen.widget.session.invalidatePendingWork();
+    await tester.pump(const Duration(milliseconds: 1500));
+    expect(find.byType(CardPickDialog), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await flow;
+    await flushAudioTimers(tester);
+  });
+
+  testWidgets('disposing a pending chooser cancels auto-open', (tester) async {
+    final screen = await pumpBoard(tester);
+    final flow = screen.drawCardForTesting(
+      screen.gameState.players.first,
+      tileOfType(screen.gameState, TileType.chance),
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await flow;
+    await tester.pump(const Duration(milliseconds: 1500));
+    expect(find.byType(CardPickDialog), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('manual deck tap and auto-open present only one chooser', (
+    tester,
+  ) async {
+    final screen = await pumpBoard(tester);
+    final flow = screen.drawCardForTesting(
+      screen.gameState.players.first,
+      tileOfType(screen.gameState, TileType.chance),
+    );
+    await tester.pump();
+    tester.widget<GameBoard>(find.byType(GameBoard)).onChanceTap!();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 1100));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(CardPickDialog, skipOffstage: false), findsOneWidget);
+    screen.handlePickedCardForTesting(
+      const PickableCard(text: 'test', effect: '+25', action: 'collect25'),
+    );
+    await flow;
+    await tester.pumpWidget(const SizedBox.shrink());
+    await flushAudioTimers(tester);
+  });
+
+  testWidgets('amount card moves nobody and pays out through the screen', (
+    tester,
+  ) async {
+    final screenState = await pumpBoard(tester);
+    final gameState = screenState.gameState;
+    final player = gameState.players.first;
+    final chanceTile = tileOfType(gameState, TileType.chance);
+    final cashBefore = player.cash;
+
+    final flow = screenState.drawCardForTesting(player, chanceTile);
+    await tester.pump();
+    expect(screenState.waitingForCardPickForTesting, isTrue);
+
+    screenState.handlePickedCardForTesting(
+      const PickableCard(text: '🎲', effect: '+\$25', action: 'collect25'),
+    );
+    await flow;
+    await flushAudioTimers(tester);
+
+    expect(player.position, 0);
+    expect(player.cash, cashBefore + 25);
+    expect(screenState.waitingForCardPickForTesting, isFalse);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'forward card crosses GO, awards the bonus, and resolves the landing',
@@ -254,11 +333,7 @@ void main() {
       await tester.pump();
 
       screenState.handlePickedCardForTesting(
-        const PickableCard(
-          text: '🎲',
-          effect: '🚂',
-          action: 'nearestRailroad',
-        ),
+        const PickableCard(text: '🎲', effect: '🚂', action: 'nearestRailroad'),
       );
       await flow;
       await flushAudioTimers(tester);

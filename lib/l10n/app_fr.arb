@@ -688,5 +688,9 @@
   "privacyContactTitle": "Contact",
   "privacyContact": "Des questions sur cette politique ? Contactez le développeur via le lien de soutien dans les réglages ou les coordonnées de la fiche de l'app store.",
   "aiLevelHouse": "une maison",
-  "aiLevelHotel": "un hôtel"
+  "aiLevelHotel": "un hôtel",
+  "diceType": "Type de Dé",
+  "sixSidedDice": "Dé Classique (D6)",
+  "twelveSidedDice": "Dé à Douze Faces (D12)",
+  "d12Style": "Donne 1 à 12"
 }

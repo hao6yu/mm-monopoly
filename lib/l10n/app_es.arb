@@ -688,5 +688,9 @@
   "privacyContactTitle": "Contacto",
   "privacyContact": "¿Tienes preguntas sobre esta política? Contacta con el desarrollador a través del enlace de apoyo en Ajustes o de las opciones de contacto de la ficha de la tienda.",
   "aiLevelHouse": "una casa",
-  "aiLevelHotel": "un hotel"
+  "aiLevelHotel": "un hotel",
+  "diceType": "Tipo de Dado",
+  "sixSidedDice": "Dado Clásico (D6)",
+  "twelveSidedDice": "Dado de Doce Caras (D12)",
+  "d12Style": "Tira de 1 a 12"
 }

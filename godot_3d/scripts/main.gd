@@ -255,6 +255,15 @@ var rpg_path_direction := -1.0
 var tile_positions: Array[Vector3] = []
 var player_tokens: Array[Node3D] = []
 var table_players: Array[Node3D] = []
+const DICE_PLATFORM_LIFT := 0.68
+const DICE_SLOT_SPACING := 1.84
+const DICE_SIDES_D6 := 6
+const DICE_SIDES_D12 := 12
+
+
+## Number of faces on the synced dice (6 = classic cube, 12 = dodecahedron).
+## Flutter is authoritative; scene_state carries "diceSides" every generation.
+var dice_sides := DICE_SIDES_D6
 var dice_nodes: Array[Node3D] = []
 var dice_tweens: Array[Tween] = []
 var player_tiles: Array[int] = [19, 32, 45, 6]
@@ -2620,21 +2629,27 @@ func _make_table_player(
 
 func _create_dice() -> void:
 	var platform_center := _dice_platform_center()
-	_add_box(
+	var platform := _add_box(
 		board_root,
-		Vector3(3.95, 0.16, 2.2),
+		# Deep enough that the camera-relative dice lanes plus a die's own
+		# horizontal reach stay on the dock from every orbit angle; the old
+		# 2.2-deep dock let the settled pair overhang into the water.
+		Vector3(4.0, 0.16, 3.6),
 		platform_center,
 		_material(Color("#172642"), 0.22, 0.3)
 	)
+	platform.name = "DicePlatform"
 	for index in 2:
 		var die := _make_die()
 		die.name = "Die%d" % (index + 1)
-		die.position = Vector3(
-			platform_center.x - 0.92 + index * 1.84,
-			1.9,
-			platform_center.z - 0.15 + index * 0.3
-		)
-		die.rotation_degrees = Vector3(-8.0, -16.0 + index * 31.0, 5.0)
+		die.position = _dice_rest_position(index)
+		# Dice must rest on a face, never a corner: the d12 starts settled so
+		# its lower vertex cannot poke below the dock surface.
+		if dice_sides == DICE_SIDES_D6:
+			die.rotation_degrees = Vector3(-8.0, -16.0 + index * 31.0, 5.0)
+		else:
+			# _die_face_rotation returns radians, not degrees.
+			die.rotation = _die_face_rotation(1 + index * 5)
 		# Until the first settled roll there is no second value to communicate.
 		# Keeping one physical die preserves the affordance without implying 0 + 0.
 		die.visible = index == 0
@@ -2642,15 +2657,77 @@ func _create_dice() -> void:
 		dice_nodes.append(die)
 
 
+## Frees the dice platform and both dice, then rebuilds them for the synced
+## dice shape. Used when Flutter changes the dice sides mid-session.
+func _recreate_dice() -> void:
+	_cancel_dice_tweens()
+	for node_name in ["DicePlatform", "Die1", "Die2"]:
+		var node := board_root.get_node_or_null(NodePath(node_name))
+		if node != null:
+			board_root.remove_child(node)
+			node.queue_free()
+	dice_nodes.clear()
+	_create_dice()
+
+
+## Resting height above the platform center: the cube's half size keeps its
+## bottom face on the platform top, and the d12 uses the same lift.
+func _dice_rest_position(index: int) -> Vector3:
+	return _dice_platform_center() + Vector3(0.0, DICE_PLATFORM_LIFT, 0.0) + (
+		_dice_slot_offset(index)
+	)
+
+
+## Slot offsets are computed against the camera's screen-right axis so the two
+## dice always read side by side. Fixed world-axis lanes put the dice one
+## behind the other from any camera looking along that axis (caught on iPhone
+## QA), so the pair now follows the current view direction with a small depth
+## stagger for organic framing. Uniform board scale keeps local directions
+## equal to world directions.
+func _dice_slot_offset(index: int) -> Vector3:
+	var right := Vector3.RIGHT
+	var forward := Vector3.BACK
+	if camera != null:
+		right = camera.global_transform.basis.x
+		forward = -camera.global_transform.basis.z
+	right.y = 0.0
+	forward.y = 0.0
+	if right.length_squared() < 0.001:
+		right = Vector3(cos(camera_azimuth), 0.0, -sin(camera_azimuth))
+	else:
+		right = right.normalized()
+	if forward.length_squared() < 0.001:
+		forward = Vector3(-sin(camera_azimuth), 0.0, -cos(camera_azimuth))
+	else:
+		forward = forward.normalized()
+	var lateral := -DICE_SLOT_SPACING * 0.5 + index * DICE_SLOT_SPACING
+	var depth := -0.12 + index * 0.24
+	return right * lateral + forward * depth
+
+
+## Instantly repositions visible settled dice onto the current camera-relative
+## slots. Safe only while no dice tween is running (those own the positions).
+func _settle_dice_at_slots() -> void:
+	if not dice_tweens.is_empty():
+		return
+	for index in dice_nodes.size():
+		var die := dice_nodes[index]
+		if is_instance_valid(die) and die.visible:
+			die.position = _dice_rest_position(index)
+
+
 func _dice_platform_center() -> Vector3:
 	if current_board_id == "usa_new_york":
 		return Vector3(9.0, 1.22, 4.8)
 	# Kept inside the city water ellipse (radius 11.9) after the water margin
 	# was tightened; the platform reads as a dock off the island's east shore.
-	return Vector3(9.7, 1.22, 0.5)
+	# Nudged slightly inboard so the widened dock corners stay inside it.
+	return Vector3(9.55, 1.22, 0.42)
 
 
 func _make_die() -> Node3D:
+	if dice_sides == DICE_SIDES_D12:
+		return _make_d12_die()
 	var die := Node3D.new()
 	_add_box(
 		die,
@@ -2666,6 +2743,137 @@ func _make_die() -> Node3D:
 	_add_die_face_pips(die, Vector3.RIGHT, 3, pip_material)
 	_add_die_face_pips(die, Vector3.LEFT, 4, pip_material)
 	return die
+
+
+const DODECAHEDRON_PHI := 1.618033988749895
+const DODECAHEDRON_TARGET_INRADIUS := 0.6
+
+
+## Regular dodecahedron (classic d12): 20 vertices, 12 pentagonal faces whose
+## opposite faces sum to 13, with a dark numeral centered on every face.
+func _make_d12_die() -> Node3D:
+	var die := Node3D.new()
+	var body := MeshInstance3D.new()
+	body.name = "DodecahedronBody"
+	body.mesh = _build_dodecahedron_mesh()
+	var body_material := StandardMaterial3D.new()
+	body_material.albedo_color = Color("#fffaf0")
+	body_material.roughness = 0.12
+	body_material.metallic = 0.18
+	# A closed convex solid never shows backfaces; disabling culling keeps the
+	# die rendered regardless of procedural winding direction.
+	body_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	body.material_override = body_material
+	die.add_child(body)
+	for value in range(1, 13):
+		var normal := _d12_face_normal(value)
+		var label := Label3D.new()
+		label.text = str(value)
+		label.font_size = 220
+		label.pixel_size = 0.001
+		label.modulate = INK
+		label.outline_modulate = Color("#fffaf0")
+		label.outline_size = 6
+		label.transform = _d12_label_transform(normal)
+		die.add_child(label)
+	return die
+
+
+func _dodecahedron_vertices() -> PackedVector3Array:
+	var vertices: PackedVector3Array = [
+		Vector3(-1, -1, -1), Vector3(1, -1, -1),
+		Vector3(-1, 1, -1), Vector3(1, 1, -1),
+		Vector3(-1, -1, 1), Vector3(1, -1, 1),
+		Vector3(-1, 1, 1), Vector3(1, 1, 1),
+	]
+	for sy in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			vertices.append(Vector3(0.0, sy / DODECAHEDRON_PHI, sz * DODECAHEDRON_PHI))
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			vertices.append(Vector3(sx / DODECAHEDRON_PHI, sy * DODECAHEDRON_PHI, 0.0))
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			vertices.append(Vector3(sx * DODECAHEDRON_PHI, 0.0, sz / DODECAHEDRON_PHI))
+	return vertices
+
+
+## The 12 face normals, arranged so index 6 + i is the opposite of index i.
+func _dodecahedron_face_normals() -> Array[Vector3]:
+	var base: Array[Vector3] = [
+		Vector3(0, DODECAHEDRON_PHI, 1),
+		Vector3(0, DODECAHEDRON_PHI, -1),
+		Vector3(1, 0, DODECAHEDRON_PHI),
+		Vector3(-1, 0, DODECAHEDRON_PHI),
+		Vector3(DODECAHEDRON_PHI, 1, 0),
+		Vector3(DODECAHEDRON_PHI, -1, 0),
+	]
+	var normals: Array[Vector3] = []
+	for normal in base:
+		normals.append(normal.normalized())
+	for normal in base:
+		normals.append(-normal.normalized())
+	return normals
+
+
+func _d12_face_normal(value: int) -> Vector3:
+	var normals := _dodecahedron_face_normals()
+	return normals[clampi(value, 1, 12) - 1]
+
+
+## The five vertices coplanar on the given face, ordered counter-clockwise
+## when viewed from outside (along the face normal).
+func _dodecahedron_face_vertices(
+	normal: Vector3,
+	vertices: PackedVector3Array
+) -> Array[Vector3]:
+	var plane_distance := -INF
+	for vertex in vertices:
+		plane_distance = maxf(plane_distance, normal.dot(vertex))
+	var face: Array[Vector3] = []
+	for vertex in vertices:
+		if normal.dot(vertex) > plane_distance - 0.1:
+			face.append(vertex)
+	var reference := Vector3.UP if absf(normal.y) < 0.9 else Vector3.RIGHT
+	var tangent := (reference - normal * reference.dot(normal)).normalized()
+	var bitangent := normal.cross(tangent)
+	face.sort_custom(func(a: Vector3, b: Vector3) -> bool:
+		var angle_a := atan2(a.dot(bitangent), a.dot(tangent))
+		var angle_b := atan2(b.dot(bitangent), b.dot(tangent))
+		return angle_a < angle_b
+	)
+	return face
+
+
+func _build_dodecahedron_mesh() -> ArrayMesh:
+	var vertices := _dodecahedron_vertices()
+	var normals := _dodecahedron_face_normals()
+	var reference_face := _dodecahedron_face_vertices(normals[0], vertices)
+	var inradius: float = normals[0].dot(reference_face[0])
+	var scale := DODECAHEDRON_TARGET_INRADIUS / inradius
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for normal in normals:
+		var face := _dodecahedron_face_vertices(normal, vertices)
+		for corner in range(1, face.size() - 1):
+			for vertex_index in [0, corner, corner + 1]:
+				surface.set_normal(normal)
+				surface.add_vertex(face[vertex_index] * scale)
+	return surface.commit()
+
+
+## Orients one numeral on its face: pushed slightly above the surface, facing
+## outward, with the glyph's up axis chosen so the number reads upright when
+## that face is settled on top (the settle rotation maps the normal to UP and
+## the glyph up to "north").
+func _d12_label_transform(normal: Vector3) -> Transform3D:
+	var settle := Quaternion(normal, Vector3.UP)
+	var label_up := (settle.inverse() * Vector3.BACK).normalized()
+	var label_right := label_up.cross(normal).normalized()
+	return Transform3D(
+		Basis(label_right, label_up, normal),
+		normal * (DODECAHEDRON_TARGET_INRADIUS + 0.012)
+	)
 
 
 func _add_die_face_pips(
@@ -2712,6 +2920,11 @@ func _add_die_face_pips(
 
 
 func _die_face_rotation(value: int) -> Vector3:
+	if dice_sides == DICE_SIDES_D12:
+		# Settling a d12 brings the face normal to UP; Euler round-trips through
+		# the node's YXZ rotation order, and whole-turn offsets stay identity.
+		var normal := _d12_face_normal(value)
+		return Basis(Quaternion(normal, Vector3.UP)).get_euler()
 	match clampi(value, 1, 6):
 		2:
 			return Vector3(PI * 0.5, 0.0, 0.0)
@@ -2730,7 +2943,6 @@ func _die_face_rotation(value: int) -> Vector3:
 func _animate_3d_dice(die_one: int, die_two: int) -> void:
 	_cancel_dice_tweens()
 	var values := [die_one, die_two]
-	var platform_center := _dice_platform_center()
 	for index in dice_nodes.size():
 		var die := dice_nodes[index]
 		var die_value := int(values[index])
@@ -2752,12 +2964,10 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 		# pass), so the cosmetic slot trade was removed. Lane spacing also
 		# stays wider than a cube's rotated diagonal (1.08 * sqrt(2) = 1.53)
 		# so even mid-roll corner orientations cannot intersect the other die.
-		var target_position := Vector3(
-			platform_center.x - 0.92 + index * 1.84
-				+ randf_range(-0.05, 0.05),
-			1.9,
-			platform_center.z - 0.15 + index * 0.3
-				+ randf_range(-0.05, 0.05)
+		var target_position := _dice_rest_position(index) + Vector3(
+			randf_range(-0.05, 0.05),
+			0.0,
+			randf_range(-0.05, 0.05)
 		)
 		var tween := create_tween()
 		dice_tweens.append(tween)
@@ -2780,9 +2990,11 @@ func _animate_3d_dice(die_one: int, die_two: int) -> void:
 		tween.tween_property(die, "position:z", target_position.z, 0.92).set_delay(
 			launch_delay
 		)
-		tween.tween_property(die, "position:y", 3.65, 0.3).set_delay(launch_delay)
+		# A moderate hop apex keeps the flight arc visually over the dock; the
+		# old 3.65 apex made the pair read as drifting out over the water.
+		tween.tween_property(die, "position:y", 2.85, 0.3).set_delay(launch_delay)
 		tween.chain().tween_property(die, "position:y", 1.9, 0.42)
-		tween.chain().tween_property(die, "position:y", 2.22, 0.12)
+		tween.chain().tween_property(die, "position:y", 2.16, 0.12)
 		tween.chain().tween_property(die, "position:y", 1.9, 0.14)
 
 
@@ -4501,6 +4713,10 @@ func _apply_camera_gesture_json(json: String) -> void:
 	var zoom_scale := float(gesture.get("zoomScale", 1.0))
 	if orbit_delta_x != 0.0 or orbit_delta_y != 0.0:
 		_orbit_camera(orbit_delta_x, orbit_delta_y)
+		# Orbiting can line the old world-axis dice lanes up with the view
+		# direction, stacking the pair; settled dice slide onto the new
+		# camera-relative lanes. A rolling pair keeps tween ownership.
+		_settle_dice_at_slots()
 	if pan_delta_x != 0.0 or pan_delta_y != 0.0:
 		_pan_camera(pan_delta_x, pan_delta_y)
 	if zoom_scale > 0.0 and not is_equal_approx(zoom_scale, 1.0):
@@ -4724,6 +4940,15 @@ func _apply_flutter_state_json(json: String) -> void:
 	_cancel_hosted_roll("Flutter synchronized authoritative board state")
 	active_host_session_key = incoming_session_key
 	var requested_board_id := str(payload.get("boardId", current_board_id))
+	# Dice shape follows Flutter. Apply it before any city rebuild so the
+	# rebuilt platform already carries the correct dice.
+	var synced_dice_sides := clampi(
+		int(payload.get("diceSides", dice_sides)),
+		DICE_SIDES_D6,
+		DICE_SIDES_D12
+	)
+	var dice_shape_changed := synced_dice_sides != dice_sides
+	dice_sides = synced_dice_sides
 	var logical_tile_names: Array[String] = []
 	var tile_names_value = payload.get("tileNames", [])
 	if typeof(tile_names_value) == TYPE_ARRAY:
@@ -4744,6 +4969,8 @@ func _apply_flutter_state_json(json: String) -> void:
 			# Never acknowledge a state against a different visible city. Flutter's
 			# watchdog will offer Retry or the deterministic 2D renderer.
 			return
+	elif dice_shape_changed:
+		_recreate_dice()
 	elif (
 		logical_tile_names != latest_logical_tile_names
 		or logical_tiles != latest_logical_tiles
@@ -4799,6 +5026,9 @@ func _apply_flutter_state_json(json: String) -> void:
 	var synced_die_two := int(payload.get("die2", 0))
 	if dice_nodes.size() > 1:
 		dice_nodes[1].visible = synced_die_two > 0
+	# Restored sessions and shape swaps can leave the settled dice on stale
+	# world-axis slots; re-seat them on the current camera-relative lanes.
+	_settle_dice_at_slots()
 	dice_value_label.text = (
 		"DICE\n—"
 		if synced_die_one <= 0
@@ -5625,15 +5855,15 @@ func _roll_rpg_dice() -> void:
 	rpg_roll_active = true
 	roll_button.disabled = true
 	var rolling_player := current_player_index
-	var die_one := randi_range(1, 6)
-	var die_two := randi_range(1, 6)
+	var die_one := randi_range(1, dice_sides)
+	var die_two := randi_range(1, dice_sides)
 	var total := die_one + die_two
 	turn_label.text = "%s ROLLS AT STREET LEVEL…" % PLAYER_NAMES[rolling_player]
 
 	for preview_roll in 6:
 		dice_value_label.text = "ROLLING\n%d + %d" % [
-			randi_range(1, 6),
-			randi_range(1, 6),
+			randi_range(1, dice_sides),
+			randi_range(1, dice_sides),
 		]
 		await get_tree().create_timer(0.08 + preview_roll * 0.012).timeout
 
@@ -5712,8 +5942,8 @@ func _roll_dice() -> void:
 	if active_tween != null and active_tween.is_running():
 		return
 	var rolling_player := current_player_index
-	var die_one := randi_range(1, 6)
-	var die_two := randi_range(1, 6)
+	var die_one := randi_range(1, dice_sides)
+	var die_two := randi_range(1, dice_sides)
 	var total := die_one + die_two
 	dice_value_label.text = "ROLLING…"
 	turn_label.text = "%s IS ROLLING…" % PLAYER_NAMES[rolling_player]

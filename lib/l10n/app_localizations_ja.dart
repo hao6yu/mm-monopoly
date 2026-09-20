@@ -1764,4 +1764,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get aiLevelHotel => 'ホテル';
+
+  @override
+  String get diceType => 'サイコロの種類';
+
+  @override
+  String get sixSidedDice => '定番の6面 (D6)';
+
+  @override
+  String get twelveSidedDice => '十二面ダイス (D12)';
+
+  @override
+  String get d12Style => '1〜12を出す';
 }

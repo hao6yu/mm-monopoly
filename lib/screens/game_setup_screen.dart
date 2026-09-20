@@ -11,12 +11,14 @@ import '../config/constants.dart' hide Offset;
 import '../widgets/avatar/avatar_selector.dart';
 import '../widgets/avatar/avatar_widget.dart';
 import '../widgets/city_theme/city_theme.dart';
+import '../widgets/dice/dice_3d.dart';
 
 /// Game setup screen for configuring players before starting
 typedef GameSetupStartCallback =
     FutureOr<void> Function(
       List<PlayerConfig> players, {
       int diceCount,
+      int diceSides,
       required CityBoard cityBoard,
     });
 
@@ -38,6 +40,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     with SingleTickerProviderStateMixin {
   int _playerCount = 2;
   int _diceCount = 2;
+  int _diceSides = 6;
   Country _selectedCountry = Country.usa;
   CityBoard _selectedCityBoard = CityBoardRegistry.defaultForCountry(
     Country.usa,
@@ -132,6 +135,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           await widget.onStartGame(
             List<PlayerConfig>.unmodifiable(_playerConfigs),
             diceCount: _diceCount,
+            diceSides: _diceSides,
             cityBoard: _selectedCityBoard,
           );
         } catch (_) {
@@ -317,46 +321,57 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           vertical: isCompactLandscape ? 5 : 10,
         ),
         radius: isCompactLandscape ? 16 : 22,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildBackButton(compact: isCompactLandscape),
-            SizedBox(width: isCompactLandscape ? 11 : 16),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _currentStep == 0 ? l10n.gameSetupTitle : l10n.playerSetup,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isCompactLandscape ? 17 : 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  if (!isCompactLandscape) ...[
-                    const SizedBox(height: 3),
-                    Text(
+            Row(
+              children: [
+                _buildBackButton(compact: isCompactLandscape),
+                SizedBox(width: isCompactLandscape ? 11 : 16),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
                       _currentStep == 0
-                          ? l10n.gameSetupSubtitle
-                          : l10n.playerSetupSubtitle,
+                          ? l10n.gameSetupTitle
+                          : l10n.playerSetup,
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isCompactLandscape ? 17 : 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.2,
+                        height: 1.12,
                       ),
                     ),
-                  ],
-                ],
-              ),
+                  ),
+                ),
+                SizedBox(width: isCompactLandscape ? 8 : 12),
+                _buildHeaderStepBadge(compact: isCompactLandscape),
+              ],
             ),
-            SizedBox(width: isCompactLandscape ? 8 : 12),
-            _buildHeaderStepBadge(compact: isCompactLandscape),
+            // The subtitle sits below the row so it can use the full panel
+            // width; squeezing it beside the badge forced ellipsizing on
+            // phones.
+            if (!isCompactLandscape) ...[
+              const SizedBox(height: 3),
+              Text(
+                _currentStep == 0
+                    ? l10n.gameSetupSubtitle
+                    : l10n.playerSetupSubtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -611,7 +626,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
             icon: Icons.tune_rounded,
             title: l10n.setupStep,
             value:
-                '$_playerCount ${l10n.players} · ${_diceCount == 1 ? l10n.oneDie : l10n.twoDice}',
+                '$_playerCount ${l10n.players} · ${_diceSummary(l10n)}',
           ),
           SizedBox(height: isCompact ? 12 : 18),
           _buildPlayersSection(isCompact: isCompact),
@@ -840,7 +855,9 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               itemCount: cities.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (_, index) => SizedBox(
-                width: 150,
+                // Width follows the localized name so city labels such as
+                // "Atlantic City" never truncate to "Atlantic C...".
+                width: _cityCardWidth(cities[index], isCompact),
                 child: _buildCityCard(cities[index], isCompact),
               ),
             ),
@@ -856,6 +873,31 @@ class _GameSetupScreenState extends State<GameSetupScreen>
           ),
       ],
     );
+  }
+
+  /// Human-readable dice configuration summary, e.g. "Two Dice · D12".
+  String _diceSummary(AppLocalizations l10n) {
+    final count = _diceCount == 1 ? l10n.oneDie : l10n.twoDice;
+    return _diceSides == 12 ? '$count · D12' : count;
+  }
+
+  /// Measures the localized city label so the fixed-height horizontal city
+  /// carousel can give every card the width its full name needs.
+  double _cityCardWidth(CityBoard city, bool isCompact) {
+    final textStyle = TextStyle(
+      fontSize: isCompact ? 11 : 12,
+      fontWeight: FontWeight.w900,
+    );
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: city.localizedDisplayName(AppLocalizations.of(context)!),
+        style: textStyle,
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    // icon box 30 + icon/text gaps 16 + horizontal padding 20 + check icon 17
+    return (textPainter.width + 83).clamp(150.0, 280.0);
   }
 
   Widget _buildCityCard(CityBoard city, bool isCompact) {
@@ -1074,6 +1116,36 @@ class _GameSetupScreenState extends State<GameSetupScreen>
             ),
           ],
         ),
+        SizedBox(height: isCompact ? 12 : 18),
+        CitySectionLabel(
+          icon: Icons.hexagon_rounded,
+          label: AppLocalizations.of(context)!.diceType,
+          color: const Color(0xFFFFD86B),
+        ),
+        SizedBox(height: isCompact ? 9 : 13),
+        Row(
+          children: [
+            Expanded(
+              child: _buildDiceSidesCard(
+                6,
+                const DiceIcon(sides: 6, size: 26),
+                AppLocalizations.of(context)!.sixSidedDice,
+                AppLocalizations.of(context)!.classicStyle,
+                const Color(0xFF35D5C5),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildDiceSidesCard(
+                12,
+                const DiceIcon(sides: 12, size: 26),
+                AppLocalizations.of(context)!.twelveSidedDice,
+                AppLocalizations.of(context)!.d12Style,
+                const Color(0xFFF2C452),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -1085,7 +1157,47 @@ class _GameSetupScreenState extends State<GameSetupScreen>
     String subtitle,
     Color color,
   ) {
-    final isSelected = _diceCount == count;
+    return _buildDiceOptionCard(
+      cardKey: Key('setup-dice-count-$count'),
+      isSelected: _diceCount == count,
+      onTap: () => setState(() => _diceCount = count),
+      icon: Text(emoji, style: const TextStyle(fontSize: 24, height: 1)),
+      label: label,
+      subtitle: subtitle,
+      color: color,
+    );
+  }
+
+  Widget _buildDiceSidesCard(
+    int sides,
+    Widget icon,
+    String label,
+    String subtitle,
+    Color color,
+  ) {
+    return _buildDiceOptionCard(
+      cardKey: Key('setup-dice-sides-$sides'),
+      isSelected: _diceSides == sides,
+      onTap: () => setState(() => _diceSides = sides),
+      icon: icon,
+      label: label,
+      subtitle: subtitle,
+      color: color,
+    );
+  }
+
+  /// Shared option card for the dice count and dice type rows. Text stacks
+  /// under the emoji so localized labels always have the full card width;
+  /// squeezing them beside the emoji truncated on phones.
+  Widget _buildDiceOptionCard({
+    required Key cardKey,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Widget icon,
+    required String label,
+    required String subtitle,
+    required Color color,
+  }) {
     final foreground = isSelected
         ? const Color(0xFF15213A)
         : const Color(0xFFF3F7FB);
@@ -1093,11 +1205,11 @@ class _GameSetupScreenState extends State<GameSetupScreen>
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => setState(() => _diceCount = count),
+        onTap: onTap,
         child: AnimatedContainer(
-          key: Key('setup-dice-count-$count'),
+          key: cardKey,
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             gradient: isSelected
                 ? LinearGradient(colors: [color, color.withValues(alpha: 0.76)])
@@ -1120,40 +1232,41 @@ class _GameSetupScreenState extends State<GameSetupScreen>
                   ]
                 : null,
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 25)),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: foreground.withValues(alpha: 0.7),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+              Row(
+                children: [
+                  SizedBox.square(dimension: 26, child: Center(child: icon)),
+                  const Spacer(),
+                  if (isSelected)
+                    Icon(Icons.check_circle_rounded, color: foreground, size: 18),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  height: 1.15,
                 ),
               ),
-              if (isSelected)
-                Icon(Icons.check_circle_rounded, color: foreground, size: 18),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: foreground.withValues(alpha: 0.7),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  height: 1.15,
+                ),
+              ),
             ],
           ),
         ),
@@ -1802,7 +1915,7 @@ class _GameSetupScreenState extends State<GameSetupScreen>
               ),
               const SizedBox(height: 3),
               Text(
-                '${_selectedCountry.flag} ${_selectedCityBoard.localizedDisplayName(l10n)}  ·  $_playerCount ${l10n.players}  ·  ${_diceCount == 1 ? l10n.oneDie : l10n.twoDice}',
+                '${_selectedCountry.flag} ${_selectedCityBoard.localizedDisplayName(l10n)}  ·  $_playerCount ${l10n.players}  ·  ${_diceSummary(l10n)}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(

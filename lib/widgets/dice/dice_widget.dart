@@ -13,6 +13,7 @@ class DieWidget extends StatelessWidget {
   final bool isRolling;
   final AnimationController? animationController;
   final bool use3D;
+  final int sides;
 
   const DieWidget({
     super.key,
@@ -20,6 +21,7 @@ class DieWidget extends StatelessWidget {
     this.isRolling = false,
     this.animationController,
     this.use3D = true, // 3D by default
+    this.sides = 6,
   });
 
   @override
@@ -29,21 +31,23 @@ class DieWidget extends StatelessWidget {
         value: value,
         isRolling: isRolling,
         animationController: animationController,
+        sides: sides,
       );
     }
 
     if (isRolling && animationController != null) {
-      return _AnimatedDie(controller: animationController!);
+      return _AnimatedDie(controller: animationController!, sides: sides);
     }
 
-    return _StaticDie(value: value);
+    return _StaticDie(value: value, sides: sides);
   }
 }
 
 class _StaticDie extends StatelessWidget {
   final int value;
+  final int sides;
 
-  const _StaticDie({required this.value});
+  const _StaticDie({required this.value, this.sides = 6});
 
   @override
   Widget build(BuildContext context) {
@@ -69,18 +73,20 @@ class _StaticDie extends StatelessWidget {
                   ),
                 ),
               )
-              : _DotPattern(value: value),
+              : _DotPattern(value: value, sides: sides),
     );
   }
 }
 
-/// Displays traditional dice dot pattern
+/// Displays traditional dice dot pattern; twelve-sided values render as a
+/// numeral because they have no pip pattern.
 class _DotPattern extends StatelessWidget {
   final int value;
+  final int sides;
   static const double _dotSize = 10.0;
   static final Color _dotColor = Colors.red.shade700;
 
-  const _DotPattern({required this.value});
+  const _DotPattern({required this.value, this.sides = 6});
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +108,18 @@ class _DotPattern extends StatelessWidget {
       case 6:
         return _buildSix();
       default:
+        if (sides == 12) {
+          return Center(
+            child: Text(
+              '$value',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1D2436),
+              ),
+            ),
+          );
+        }
         return const SizedBox();
     }
   }
@@ -227,9 +245,10 @@ class _DotPattern extends StatelessWidget {
 
 class _AnimatedDie extends StatelessWidget {
   final AnimationController controller;
+  final int sides;
   final Random _random = Random();
 
-  _AnimatedDie({required this.controller});
+  _AnimatedDie({required this.controller, this.sides = 6});
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +257,7 @@ class _AnimatedDie extends StatelessWidget {
       builder: (context, child) {
         final rotation = controller.value * 4 * pi;
         final scale = 1.0 + sin(controller.value * pi) * 0.2;
-        final randomValue = _random.nextInt(6) + 1;
+        final randomValue = _random.nextInt(sides) + 1;
 
         return Transform.scale(
           scale: scale,
@@ -258,7 +277,7 @@ class _AnimatedDie extends StatelessWidget {
                   ),
                 ],
               ),
-              child: _DotPattern(value: randomValue),
+              child: _DotPattern(value: randomValue, sides: sides),
             ),
           ),
         );
@@ -275,6 +294,7 @@ class DicePair extends StatelessWidget {
   final AnimationController? animationController;
   final bool use3D;
   final int diceCount; // 1 or 2 dice
+  final int diceSides; // 6 or 12 faces per die
 
   const DicePair({
     super.key,
@@ -284,6 +304,7 @@ class DicePair extends StatelessWidget {
     this.animationController,
     this.use3D = true, // 3D by default
     this.diceCount = 2,
+    this.diceSides = 6,
   });
 
   @override
@@ -295,6 +316,7 @@ class DicePair extends StatelessWidget {
         isRolling: isRolling,
         animationController: animationController,
         diceCount: diceCount,
+        sides: diceSides,
       );
     }
 
@@ -305,6 +327,7 @@ class DicePair extends StatelessWidget {
           isRolling: isRolling,
           animationController: animationController,
           use3D: false,
+          sides: diceSides,
         ),
       );
     }
@@ -317,6 +340,7 @@ class DicePair extends StatelessWidget {
           isRolling: isRolling,
           animationController: animationController,
           use3D: false,
+          sides: diceSides,
         ),
         const SizedBox(width: 16),
         DieWidget(
@@ -324,6 +348,7 @@ class DicePair extends StatelessWidget {
           isRolling: isRolling,
           animationController: animationController,
           use3D: false,
+          sides: diceSides,
         ),
       ],
     );
@@ -422,6 +447,7 @@ class CenterControls extends StatefulWidget {
   final AnimationController diceController;
   final AnimationController glowController;
   final int diceCount;
+  final int diceSides;
 
   const CenterControls({
     super.key,
@@ -433,6 +459,7 @@ class CenterControls extends StatefulWidget {
     required this.diceController,
     required this.glowController,
     this.diceCount = 2,
+    this.diceSides = 6,
   });
 
   @override
@@ -495,6 +522,7 @@ class _CenterControlsState extends State<CenterControls>
                     isRolling: widget.isRolling,
                     diceController: widget.diceController,
                     diceCount: widget.diceCount,
+                    diceSides: widget.diceSides,
                     canRoll: canRoll,
                     glowIntensity: glowIntensity,
                   ),
@@ -515,6 +543,7 @@ class _GlowingDice extends StatelessWidget {
   final bool isRolling;
   final AnimationController diceController;
   final int diceCount;
+  final int diceSides;
   final bool canRoll;
   final double glowIntensity;
 
@@ -524,6 +553,7 @@ class _GlowingDice extends StatelessWidget {
     required this.isRolling,
     required this.diceController,
     required this.diceCount,
+    required this.diceSides,
     required this.canRoll,
     required this.glowIntensity,
   });
@@ -572,6 +602,7 @@ class _GlowingDice extends StatelessWidget {
         isRolling: isRolling,
         animationController: diceController,
         size: 80.0, // Increased from 68
+        sides: diceSides,
       ),
     );
   }

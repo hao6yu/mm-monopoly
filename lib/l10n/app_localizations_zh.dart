@@ -1761,4 +1761,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiLevelHotel => '酒店';
+
+  @override
+  String get diceType => '骰子类型';
+
+  @override
+  String get sixSidedDice => '经典六面 (D6)';
+
+  @override
+  String get twelveSidedDice => '十二面骰 (D12)';
+
+  @override
+  String get d12Style => '掷出 1–12 点';
 }

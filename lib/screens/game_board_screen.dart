@@ -348,6 +348,8 @@ class GameBoardScreenState extends State<GameBoardScreen>
 
   // Card picking state
   bool _waitingForCardPick = false;
+  Timer? _cardPickAutoOpenTimer;
+  bool _cardPickDialogOpen = false;
   bool _isChanceCard = false;
   Player? _cardPickPlayer;
   Completer<_CardMoveOutcome?>? _cardPickCompleter;
@@ -634,6 +636,8 @@ class GameBoardScreenState extends State<GameBoardScreen>
   void dispose() {
     _cancelScheduledTurnActions();
     _turnOperationId++;
+    _cardPickAutoOpenTimer?.cancel();
+    _cardPickAutoOpenTimer = null;
     final cardPickCompleter = _cardPickCompleter;
     if (cardPickCompleter != null && !cardPickCompleter.isCompleted) {
       cardPickCompleter.complete(null);
@@ -1075,6 +1079,8 @@ class GameBoardScreenState extends State<GameBoardScreen>
       _cancelScheduledTurnActions();
       _turnOperationId++;
       widget.session.invalidatePendingWork();
+      _cardPickAutoOpenTimer?.cancel();
+      _cardPickAutoOpenTimer = null;
       setState(() {
         _replaceGameState(recoveredState);
         _isPaused = false;
@@ -1545,19 +1551,9 @@ class GameBoardScreenState extends State<GameBoardScreen>
               ? const Color(0xE61D765F)
               : const Color(0xE6111A33),
         ),
-        const SizedBox(width: 7),
-        _build3DOverlayButton(
-          icon: _cameraFollowEnabled
-              ? Icons.center_focus_strong
-              : Icons.center_focus_weak,
-          tooltip: _cameraFollowEnabled
-              ? l10n.cameraFollowOff
-              : l10n.cameraFollowOn,
-          onTap: _toggleCameraFollow,
-          color: _cameraFollowEnabled
-              ? const Color(0xE61D765F)
-              : const Color(0xE6111A33),
-        ),
+        // The camera-follow toggle lives in the more-actions sheet: the top
+        // bar no longer carries a second focus/view-style button beside the
+        // bottom bar's View control.
         if (!compact && !currentPlayer.isAI && widget.tradingEnabled) ...[
           const SizedBox(width: 7),
           _build3DOverlayButton(
@@ -1655,6 +1651,24 @@ class GameBoardScreenState extends State<GameBoardScreen>
                   _showPowerUpHand();
                 },
               ),
+            ListTile(
+              leading: Icon(
+                _cameraFollowEnabled
+                    ? Icons.center_focus_strong
+                    : Icons.center_focus_weak,
+                color: Colors.cyanAccent,
+              ),
+              title: Text(
+                _cameraFollowEnabled
+                    ? l10n.cameraFollowOff
+                    : l10n.cameraFollowOn,
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _toggleCameraFollow();
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -2401,6 +2415,7 @@ class GameBoardScreenState extends State<GameBoardScreen>
       diceController: _diceController,
       glowController: _glowController,
       diceCount: gameState.diceCount,
+      diceSides: gameState.diceSides,
     );
   }
 
@@ -2427,8 +2442,10 @@ class GameBoardScreenState extends State<GameBoardScreen>
     // Play dice roll sound
     AudioService.instance.onDiceRoll();
 
-    // Generate dice values (respect configured dice count and double-dice power-up)
+    // Generate dice values (respect configured dice count, dice sides, and
+    // double-dice power-up)
     final player = gameState.currentPlayer;
+    final diceSides = gameState.diceSides;
     int die1;
     int die2;
     int roll;
@@ -2440,23 +2457,25 @@ class GameBoardScreenState extends State<GameBoardScreen>
 
     if (gameState.diceCount == 1) {
       if (hasDoubleDice) {
-        final r1 = _random.nextInt(6) + 1;
-        final r2 = _random.nextInt(6) + 1;
+        final r1 = _random.nextInt(diceSides) + 1;
+        final r2 = _random.nextInt(diceSides) + 1;
         die1 = r1 > r2 ? r1 : r2;
       } else {
-        die1 = _random.nextInt(6) + 1;
+        die1 = _random.nextInt(diceSides) + 1;
       }
       die2 = 0;
       roll = die1;
     } else {
       if (hasDoubleDice) {
-        final rolls = List<int>.generate(4, (_) => _random.nextInt(6) + 1)
-          ..sort((a, b) => b.compareTo(a));
+        final rolls = List<int>.generate(
+          4,
+          (_) => _random.nextInt(diceSides) + 1,
+        )..sort((a, b) => b.compareTo(a));
         die1 = rolls[0];
         die2 = rolls[1];
       } else {
-        die1 = _random.nextInt(6) + 1;
-        die2 = _random.nextInt(6) + 1;
+        die1 = _random.nextInt(diceSides) + 1;
+        die2 = _random.nextInt(diceSides) + 1;
       }
       roll = die1 + die2;
       isDoubles = die1 == die2;
@@ -2643,6 +2662,8 @@ class GameBoardScreenState extends State<GameBoardScreen>
   }
 
   void _cancelScheduledTurnActions() {
+    _cardPickAutoOpenTimer?.cancel();
+    _cardPickAutoOpenTimer = null;
     for (final timer in _scheduledTurnTimers) {
       timer.cancel();
     }
@@ -3565,6 +3586,7 @@ class GameBoardScreenState extends State<GameBoardScreen>
   /// effect, clears the waiting state, and hands the movement outcome to the
   /// awaiting turn flow.
   void _handlePickedCard(PickableCard pickedCard) {
+    if (!mounted || !_waitingForCardPick) return;
     AudioService.instance.onFlipCard();
     final cardPlayer = _cardPickPlayer;
     final outcome = cardPlayer == null
@@ -3572,6 +3594,8 @@ class GameBoardScreenState extends State<GameBoardScreen>
         : _applyCardEffect(cardPlayer, pickedCard.action);
 
     // Reset card picking state
+    _cardPickAutoOpenTimer?.cancel();
+    _cardPickAutoOpenTimer = null;
     setState(() {
       _waitingForCardPick = false;
       _isChanceCard = false;
@@ -3612,10 +3636,16 @@ class GameBoardScreenState extends State<GameBoardScreen>
   @visibleForTesting
   bool get waitingForCardPickForTesting => _waitingForCardPick;
 
-  void _onCardDeckTap(bool isChance) {
+  void _onCardDeckTap(bool isChance) async {
+    if (!mounted || !widget.isActive || _isPaused || _cardPickDialogOpen) return;
     if (!_waitingForCardPick) return;
     if (isChance != _isChanceCard) return; // Wrong deck tapped
     if (_cardPickPlayer == null) return;
+    _cardPickAutoOpenTimer?.cancel();
+    _cardPickAutoOpenTimer = null;
+    _cardPickDialogOpen = true;
+    final operation = _captureTurnOperation(player: _cardPickPlayer);
+    final pendingPick = _cardPickCompleter;
 
     final localizedCards = isChance
         ? _localizedChanceCards
@@ -3638,12 +3668,21 @@ class GameBoardScreenState extends State<GameBoardScreen>
         .toList();
 
     AudioService.instance.onDrawCard();
-    showCardPickDialog(
-      context: context,
-      isChance: isChance,
-      cards: pickableCards,
-      onCardPicked: _handlePickedCard,
-    );
+    try {
+      await showCardPickDialog(
+        context: context,
+        isChance: isChance,
+        cards: pickableCards,
+        onCardPicked: (card) {
+          if (_isTurnOperationActive(operation) &&
+              identical(pendingPick, _cardPickCompleter)) {
+            _handlePickedCard(card);
+          }
+        },
+      );
+    } finally {
+      _cardPickDialogOpen = false;
+    }
   }
 
   Future<void> _handleDrawCard(
@@ -3697,12 +3736,26 @@ class GameBoardScreenState extends State<GameBoardScreen>
       return;
     }
 
-    // Human player - highlight the deck and wait for them to tap it
+    // Human player - highlight the deck, then offer the chooser automatically.
+    final pickOperation = operation ?? _captureTurnOperation(player: player);
     _cardPickCompleter = Completer<_CardMoveOutcome?>();
     setState(() {
       _waitingForCardPick = true;
       _isChanceCard = isChance;
       _cardPickPlayer = player;
+    });
+
+    // Auto-open the pick popup after a short beat: the deck highlight and
+    // prompt still read for a moment, but the human no longer has to find and
+    // tap the deck first. The deck tap remains available as a fallback. The
+    // timer is tracked so a cancelled turn or a disposed screen cannot leave
+    // it pending.
+    _cardPickAutoOpenTimer?.cancel();
+    _cardPickAutoOpenTimer = Timer(const Duration(milliseconds: 1100), () {
+      _cardPickAutoOpenTimer = null;
+      if (!_isTurnOperationActive(pickOperation)) return;
+      if (!_waitingForCardPick) return;
+      _onCardDeckTap(_isChanceCard);
     });
 
     // Wait for the card to be picked

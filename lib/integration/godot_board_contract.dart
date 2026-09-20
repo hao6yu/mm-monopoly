@@ -182,6 +182,7 @@ class GodotBoardSceneState {
     required this.roundNumber,
     required this.die1,
     required this.die2,
+    required this.diceSides,
     required this.tileNames,
     required this.tiles,
     required this.players,
@@ -196,6 +197,9 @@ class GodotBoardSceneState {
   final int roundNumber;
   final int die1;
   final int die2;
+
+  /// Faces per die: 6 (classic cube) or 12 (dodecahedron).
+  final int diceSides;
   final List<String> tileNames;
   final List<GodotBoardTileState> tiles;
   final List<GodotBoardPlayerState> players;
@@ -212,6 +216,7 @@ class GodotBoardSceneState {
     'roundNumber': roundNumber,
     'die1': die1,
     'die2': die2,
+    'diceSides': diceSides,
     'tileNames': tileNames,
     'tiles': tiles.map((tile) => tile.toJson()).toList(),
     'players': players.map((player) => player.toJson()).toList(),

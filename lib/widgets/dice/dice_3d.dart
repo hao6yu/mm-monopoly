@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 
 /// A 3D dice widget using Matrix4 transforms to create a rotating cube effect.
 /// This technique can be reused for buttons, cards, and other 3D UI elements.
+/// [sides] selects the die shape: 6 renders the classic pip cube, 12 renders
+/// a numbered dodecahedron-style face.
 class Dice3D extends StatelessWidget {
   final int value;
   final bool isRolling;
   final AnimationController? animationController;
   final double size;
+  final int sides;
 
   const Dice3D({
     super.key,
@@ -15,10 +18,22 @@ class Dice3D extends StatelessWidget {
     this.isRolling = false,
     this.animationController,
     this.size = 56.0,
+    this.sides = 6,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (sides == 12) {
+      if (isRolling && animationController != null) {
+        return _AnimatedDice12(
+          controller: animationController!,
+          size: size,
+          targetValue: value,
+        );
+      }
+      return _StaticDice12(value: value, size: size);
+    }
+
     if (isRolling && animationController != null) {
       return _AnimatedDice3D(
         controller: animationController!,
@@ -528,6 +543,325 @@ class _DotPattern3D extends StatelessWidget {
   }
 }
 
+/// Small static dice icon for pickers and menus: a pip face for the classic
+/// cube and a numbered pentagon face for the twelve-sided die, matching the
+/// look of the 3D board dice.
+class DiceIcon extends StatelessWidget {
+  final int sides;
+  final double size;
+
+  const DiceIcon({super.key, this.sides = 6, this.size = 28});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: sides == 12
+          ? _Die12FacePainter(value: 12)
+          : _Dice6IconPainter(value: 5),
+    );
+  }
+}
+
+/// Paints a classic cube face with pips for the small icon.
+class _Dice6IconPainter extends CustomPainter {
+  final int value;
+
+  _Dice6IconPainter({required this.value});
+
+  static const _pipLayouts = {
+    1: [Offset(0.5, 0.5)],
+    2: [Offset(0.28, 0.28), Offset(0.72, 0.72)],
+    3: [Offset(0.26, 0.26), Offset(0.5, 0.5), Offset(0.74, 0.74)],
+    4: [
+      Offset(0.28, 0.28),
+      Offset(0.72, 0.28),
+      Offset(0.28, 0.72),
+      Offset(0.72, 0.72),
+    ],
+    5: [
+      Offset(0.27, 0.27),
+      Offset(0.73, 0.27),
+      Offset(0.5, 0.5),
+      Offset(0.27, 0.73),
+      Offset(0.73, 0.73),
+    ],
+    6: [
+      Offset(0.28, 0.24),
+      Offset(0.72, 0.24),
+      Offset(0.28, 0.5),
+      Offset(0.72, 0.5),
+      Offset(0.28, 0.76),
+      Offset(0.72, 0.76),
+    ],
+  };
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final radius = size.width * 0.18;
+
+    final facePaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Colors.white, Colors.grey.shade200],
+      ).createShader(rect);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(0.5), Radius.circular(radius)),
+      facePaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(0.5), Radius.circular(radius)),
+      Paint()
+        ..color = Colors.grey.shade400
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.03,
+    );
+
+    final dotPaint = Paint()..color = const Color(0xFFB03A2E);
+    final dotRadius = size.width * 0.09;
+    for (final fraction in _pipLayouts[value] ?? const <Offset>[]) {
+      canvas.drawCircle(
+        Offset(size.width * fraction.dx, size.height * fraction.dy),
+        dotRadius,
+        dotPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Dice6IconPainter oldDelegate) =>
+      oldDelegate.value != value;
+}
+
+/// Static twelve-sided die: a numbered pentagon face with soft depth edges.
+class _StaticDice12 extends StatefulWidget {
+  final int value;
+  final double size;
+
+  const _StaticDice12({required this.value, required this.size});
+
+  @override
+  State<_StaticDice12> createState() => _StaticDice12State();
+}
+
+class _StaticDice12State extends State<_StaticDice12>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _idleController;
+  late Animation<double> _idleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _idleController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _idleAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _idleController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _idleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = widget.size;
+    final depth = size * 0.12;
+
+    return AnimatedBuilder(
+      animation: _idleAnimation,
+      builder: (context, child) {
+        final float = sin(_idleAnimation.value * pi) * 2;
+
+        return Transform.translate(
+          offset: Offset(0, -float),
+          child: SizedBox(
+            width: size + depth,
+            height: size + depth,
+            child: Stack(
+              children: [
+                Positioned(
+                  bottom: 0,
+                  left: depth / 2,
+                  child: Container(
+                    width: size * 0.85,
+                    height: size * 0.12,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(size * 0.4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: 0.25 - float * 0.02,
+                          ),
+                          blurRadius: 10 + float,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: depth,
+                  top: depth,
+                  child: CustomPaint(
+                    size: Size.square(size),
+                    painter: _Die12FacePainter(
+                      value: widget.value,
+                      shade: 0.82,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: depth * 0.6,
+                  top: depth * 0.6,
+                  child: CustomPaint(
+                    size: Size.square(size),
+                    painter: _Die12FacePainter(
+                      value: widget.value,
+                      shade: 0.9,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  child: CustomPaint(
+                    size: Size.square(size),
+                    painter: _Die12FacePainter(value: widget.value),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Animated twelve-sided die that tumbles through random faces before
+/// settling on the target value.
+class _AnimatedDice12 extends StatelessWidget {
+  final AnimationController controller;
+  final double size;
+  final int targetValue;
+  final Random _random = Random();
+
+  _AnimatedDice12({
+    required this.controller,
+    required this.size,
+    required this.targetValue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        final progress = controller.value;
+        final rotationX = progress * 4 * pi;
+        final rotationY = progress * 6 * pi;
+        final rotationZ = progress * 2 * pi;
+        final scale = 1.0 + sin(progress * pi) * 0.15;
+        final displayValue = progress < 0.9 ? _random.nextInt(12) + 1 : targetValue;
+
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.002)
+            ..multiply(Matrix4.diagonal3Values(scale, scale, scale))
+            ..rotateX(rotationX)
+            ..rotateY(rotationY)
+            ..rotateZ(rotationZ * 0.3),
+          child: CustomPaint(
+            size: Size.square(size),
+            painter: _Die12FacePainter(value: displayValue, glow: true),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Paints one pentagonal d12 face with a centered numeral, matching the
+/// ivory-and-ink look of the 3D board dice.
+class _Die12FacePainter extends CustomPainter {
+  final int value;
+  final double shade;
+  final bool glow;
+
+  _Die12FacePainter({required this.value, this.shade = 1.0, this.glow = false});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    final facePath = _pentagonPath(center, radius * 0.98);
+
+    if (glow) {
+      canvas.drawShadow(facePath, Colors.amber, 6.0, false);
+    }
+
+    final basePaint = Paint()
+      ..color = Color.lerp(Colors.white, Colors.grey.shade300, 1 - shade)!;
+    canvas.drawPath(facePath, basePaint);
+
+    final borderPaint = Paint()
+      ..color = Colors.grey.shade400
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.02;
+    canvas.drawPath(facePath, borderPaint);
+
+    final textSpan = TextSpan(
+      text: value <= 0 ? '?' : '$value',
+      style: TextStyle(
+        fontSize: size.width * (value >= 10 ? 0.42 : 0.48),
+        fontWeight: FontWeight.w900,
+        color: const Color(0xFF1D2436),
+      ),
+    );
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    textPainter.paint(
+      canvas,
+      center - Offset(textPainter.width / 2, textPainter.height / 2),
+    );
+  }
+
+  Path _pentagonPath(Offset center, double radius) {
+    final path = Path();
+    for (var i = 0; i < 5; i++) {
+      final angle = -pi / 2 + i * 2 * pi / 5;
+      final point = Offset(
+        center.dx + radius * cos(angle),
+        center.dy + radius * sin(angle),
+      );
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(_Die12FacePainter oldDelegate) =>
+      oldDelegate.value != value ||
+      oldDelegate.shade != shade ||
+      oldDelegate.glow != glow;
+}
+
 /// Pair of 3D dice
 class DicePair3D extends StatelessWidget {
   final int die1;
@@ -536,6 +870,7 @@ class DicePair3D extends StatelessWidget {
   final AnimationController? animationController;
   final double diceSize;
   final int diceCount;
+  final int sides;
 
   const DicePair3D({
     super.key,
@@ -545,6 +880,7 @@ class DicePair3D extends StatelessWidget {
     this.animationController,
     this.diceSize = 56.0,
     this.diceCount = 2,
+    this.sides = 6,
   });
 
   @override
@@ -557,6 +893,7 @@ class DicePair3D extends StatelessWidget {
           isRolling: isRolling,
           animationController: animationController,
           size: diceSize,
+          sides: sides,
         ),
       );
     }
@@ -570,6 +907,7 @@ class DicePair3D extends StatelessWidget {
           isRolling: isRolling,
           animationController: animationController,
           size: diceSize,
+          sides: sides,
         ),
         SizedBox(width: diceSize * 0.3),
         Dice3D(
@@ -577,6 +915,7 @@ class DicePair3D extends StatelessWidget {
           isRolling: isRolling,
           animationController: animationController,
           size: diceSize,
+          sides: sides,
         ),
       ],
     );

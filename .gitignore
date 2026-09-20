@@ -120,6 +120,17 @@ coverage/
 # Manual device/simulator QA captures and drive helpers
 qa_shots/
 
+# Generated QA images (keep existing tracked evidence and test source).
+/qa_evidence/**/*.png
+/test/failures/
+
+# Local device captures and resized store screenshots. Keep the curated
+# store icon/feature artwork and previously tracked listing images.
+/store_assets/*/ios-ipad*/
+/store_assets/*/ios-iphone*/
+/store_assets/*/google-play-phone/
+/store_assets/*/google-play-tablet/
+
 # Raw Instruments traces stay on local disk; summarized exports are committed.
 qa_evidence/**/*.trace/
 qa_evidence/**/*.trace

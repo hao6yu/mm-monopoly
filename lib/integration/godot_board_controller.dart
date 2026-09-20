@@ -203,6 +203,7 @@ class GodotBoardController extends ChangeNotifier {
       roundNumber: gameState.roundNumber,
       die1: gameState.die1Value,
       die2: gameState.die2Value,
+      diceSides: gameState.diceSides,
       tileNames: [for (final tile in gameState.tiles) tile.name],
       tiles: [
         for (final tile in gameState.tiles)
